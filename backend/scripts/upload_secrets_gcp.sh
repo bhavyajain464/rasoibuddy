@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Upload backend secrets from backend/.env to GCP Secret Manager (never commit .env).
+set -euo pipefail
+
+PROJECT="${GCP_PROJECT:-kitchmate-495620}"
+ENV_FILE="${1:-$(dirname "$0")/../.env}"
+RUNTIME_SA="${RUNTIME_SA:-208103249970-compute@developer.gserviceaccount.com}"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Missing env file: $ENV_FILE" >&2
+  exit 1
+fi
+
+get_env() {
+  local key="$1"
+  local line
+  line=$(grep -E "^${key}=" "$ENV_FILE" | tail -1 || true)
+  if [[ -z "$line" ]]; then
+    echo ""
+    return
+  fi
+  echo "${line#*=}"
+}
+
+upsert_secret() {
+  local name="$1"
+  local value="$2"
+  if [[ -z "$value" ]]; then
+    echo "skip $name (empty)"
+    return
+  fi
+  if gcloud secrets describe "$name" --project "$PROJECT" >/dev/null 2>&1; then
+    printf '%s' "$value" | gcloud secrets versions add "$name" --project "$PROJECT" --data-file=-
+    echo "updated $name"
+  else
+    printf '%s' "$value" | gcloud secrets create "$name" --project "$PROJECT" --replication-policy=automatic --data-file=-
+    echo "created $name"
+  fi
+  gcloud secrets add-iam-policy-binding "$name" --project "$PROJECT" \
+    --member="serviceAccount:${RUNTIME_SA}" \
+    --role="roles/secretmanager.secretAccessor" --quiet >/dev/null
+}
+
+upsert_secret "database-url" "$(get_env DATABASE_URL)"
+upsert_secret "gemini-api-key" "$(get_env GEMINI_API_KEY)"
+upsert_secret "groq-api-key" "$(get_env GROQ_API_KEY)"
+upsert_secret "session-token-secret" "$(get_env SESSION_TOKEN_SECRET)"
+upsert_secret "redis-url" "$(get_env REDIS_URL)"
+upsert_secret "kafka-sasl-password" "$(get_env KAFKA_PASSWORD)"
+
+translate="$(get_env GOOGLE_TRANSLATE_KEY)"
+if [[ -n "$translate" ]]; then
+  upsert_secret "google-translate-key" "$translate"
+fi
+
+echo "Done. Kafka CA PEM: gcloud secrets versions add kafka-ca-pem --data-file=/path/to/ca.pem"

@@ -96,7 +96,7 @@ These are items the design has called out but the codebase does not yet ship. Tr
 *   **Voice input for vernacular households:** Speaking to the app in Hindi/Kannada (instead of typing) is a natural fit for non-English-first households but not yet planned beyond a note.
 *   **Shelf-life feedback loop polish:** The Kafka-driven shelf-life estimator now runs on `shelf-life-estimate` and writes back to `inventory.estimated_expiry`, but there is no surface in the app that signals "expiry was AI-estimated vs. user-entered". A small badge would build trust.
 *   **Cook-reported "cooked today" path:** `cooked_log.source = cook-reported` is in the schema for completeness, but actually capturing it requires the WhatsApp Share-In NLU (Phase 3) to recognise "aaj X banaya" intents.
-*   **Production secret hygiene:** `GROQ_API_KEY`, `GEMINI_API_KEY`, `DATABASE_URL`, and `SESSION_TOKEN_SECRET` are still injected as plain env vars on Cloud Run. Only `KAFKA_PASSWORD` and `KAFKA_CA_FILE` have been moved to GCP Secret Manager. Migrating the rest is a small, queued task.
+*   **Production secret hygiene:** Sensitive backend values live in GCP Secret Manager (`database-url`, `gemini-api-key`, `groq-api-key`, `session-token-secret`, `redis-url`, `kafka-sasl-password`, `kafka-ca-pem`). Rotate credentials if they were ever exposed in git history or Cloud Run logs before migration.
 *   **Android Play Store distribution:** Production APK is currently sideload-only (Desktop). No Play Console listing, no internal testing track, no Play-signed AAB pipeline yet.
 
 ---
