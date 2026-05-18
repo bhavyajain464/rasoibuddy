@@ -81,7 +81,7 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 
 		var recentDishes []string
 		if cookedLog != nil {
-			if entries, _, err := cookedLog.ListLast15Days(r.Context(), userID); err == nil {
+			if entries, _, err := cookedLog.ListEatenLast15Days(r.Context(), userID); err == nil {
 				seen := map[string]bool{}
 				for _, e := range entries {
 					name := strings.TrimSpace(e.DishName)

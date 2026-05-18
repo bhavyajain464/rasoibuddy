@@ -20,11 +20,28 @@ type logCookedDishRequest struct {
 	Notes    string  `json:"notes,omitempty"`
 }
 
+// GetCookMessages returns the last few WhatsApp drafts sent to the cook (not "what you ate").
+func GetCookMessages(svc *services.CookedLogService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		entries, err := svc.ListRecentCookMessages(r.Context(), userID, 5)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"messages": entries,
+			"limit":    5,
+		})
+	}
+}
+
 // GetCookedHistory returns dishes cooked in the last 15 days (Redis cache when available).
 func GetCookedHistory(svc *services.CookedLogService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
-		entries, fromCache, err := svc.ListLast15Days(r.Context(), userID)
+		entries, fromCache, err := svc.ListEatenLast15Days(r.Context(), userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

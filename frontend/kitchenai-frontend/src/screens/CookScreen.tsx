@@ -8,7 +8,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  Linking,
 } from 'react-native';
 import {
   Text,
@@ -23,14 +22,10 @@ import {
 import { useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
-import { CookProfile } from '../types';
+import { buildWaMeUrl, isIosHomeScreenWeb, openWhatsAppUrl } from '../utils/openWhatsApp';
+import { CookedLogEntry, CookProfile } from '../types';
 import { layout } from '../theme';
 import { MessageComposer } from '../components/MessageComposer';
-
-interface SentMessage {
-  text: string;
-  time: string;
-}
 
 const COOK_ACCENT = '#128C7E';
 const COOK_BORDER = '#B2DFDB';
@@ -57,7 +52,8 @@ export function CookScreen() {
 
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
+  const [cookMessages, setCookMessages] = useState<CookedLogEntry[]>([]);
+  const [whatsappFallbackUrl, setWhatsappFallbackUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const parts: string[] = [];
@@ -81,7 +77,19 @@ export function CookScreen() {
     }
   }, []);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  const loadCookMessages = useCallback(async () => {
+    try {
+      const res = await api.getCookMessages();
+      setCookMessages(res.messages || []);
+    } catch {
+      setCookMessages([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProfile();
+    loadCookMessages();
+  }, [loadProfile, loadCookMessages]);
 
   useEffect(() => {
     if (!cookProfile) return;
@@ -92,9 +100,9 @@ export function CookScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadProfile();
+    await Promise.all([loadProfile(), loadCookMessages()]);
     setRefreshing(false);
-  }, [loadProfile]);
+  }, [loadProfile, loadCookMessages]);
 
   const profileHasPhone = Boolean(cookProfile?.phone_number?.trim());
 
@@ -114,6 +122,17 @@ export function CookScreen() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const cookMessageBody = (entry: CookedLogEntry) => {
+    const notes = entry.notes?.trim();
+    if (notes) return notes;
+    return entry.dish_name;
+  };
+
+  const cookMessageTime = (entry: CookedLogEntry) => {
+    if (!entry.created_at) return '';
+    return formatStoredAt(entry.created_at);
   };
 
   const openCookEditor = () => {
@@ -157,30 +176,36 @@ export function CookScreen() {
     const phone = cookProfile?.phone_number?.trim();
     if (!text || !phone) return;
 
-    setSending(true);
-    try {
-      const dishName = primaryDishFromMessage(text);
-      const result = await api.sendWhatsAppMessage(phone, text, dishName);
-
-      if (result.whatsapp_url) {
-        if (Platform.OS === 'web') {
-          window.open(result.whatsapp_url, '_blank', 'noopener,noreferrer');
-        } else {
-          await Linking.openURL(result.whatsapp_url);
-        }
-      }
-
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setSentMessages((prev) => [{ text, time: now }, ...prev]);
-      setMessage('');
-
-      if (!result.whatsapp_url) {
-        const msg = 'Could not build a WhatsApp link. Check the cook number in your profile.';
-        Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Failed', msg);
-      }
-    } catch {
-      const msg = 'Could not open WhatsApp. Save the cook number in Cook profile below.';
+    const waUrl = buildWaMeUrl(phone, text);
+    if (!waUrl) {
+      const msg = 'Could not build a WhatsApp link. Check the cook number (include country code, e.g. +91…).';
       Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Failed', msg);
+      return;
+    }
+
+    setSending(true);
+    const dishName = primaryDishFromMessage(text);
+
+    // Open immediately while the tap gesture is still active (required on iOS home-screen web).
+    openWhatsAppUrl(waUrl);
+    if (Platform.OS === 'web' && isIosHomeScreenWeb()) {
+      setWhatsappFallbackUrl(waUrl);
+    } else {
+      setWhatsappFallbackUrl(null);
+    }
+
+    try {
+      await api.sendWhatsAppMessage(phone, text, dishName);
+      setMessage('');
+      await loadCookMessages();
+    } catch {
+      const msg =
+        Platform.OS === 'web' && isIosHomeScreenWeb()
+          ? 'If WhatsApp did not open, use the link below.'
+          : 'Could not sync with server. WhatsApp may still have opened with your draft.';
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Notice', msg);
+      setMessage('');
+      await loadCookMessages();
     } finally {
       setSending(false);
     }
@@ -247,6 +272,19 @@ export function CookScreen() {
           submitIcon="whatsapp"
           accessibilityLabel="Send to cook on WhatsApp"
         />
+
+        {whatsappFallbackUrl ? (
+          <Pressable
+            onPress={() => openWhatsAppUrl(whatsappFallbackUrl)}
+            style={styles.waFallback}
+            accessibilityRole="link"
+            accessibilityLabel="Open WhatsApp"
+          >
+            <Text variant="bodySmall" style={styles.waFallbackText}>
+              WhatsApp didn&apos;t open? Tap here to open your message
+            </Text>
+          </Pressable>
+        ) : null}
 
         {dishGuess !== '' && (
           <View style={styles.knownRow}>
@@ -437,19 +475,19 @@ export function CookScreen() {
         </Surface>
       )}
 
-      {/* Sent History */}
-      {sentMessages.length > 0 && (
+      {/* Recent messages to cook */}
+      {cookMessages.length > 0 && (
         <View style={styles.historyWrap}>
-          <Text variant="titleSmall" style={styles.historyLabel}>Sent Today</Text>
-          {sentMessages.map((msg, i) => (
-            <Surface key={i} style={styles.historyCard} elevation={0}>
+          <Text variant="titleSmall" style={styles.historyLabel}>Recent messages to cook</Text>
+          {cookMessages.map((entry) => (
+            <Surface key={entry.id} style={styles.historyCard} elevation={0}>
               <View style={styles.historyDot} />
               <View style={styles.historyInfo}>
-                <Text variant="bodyMedium" style={styles.historyDish} numberOfLines={3}>
-                  {msg.text}
+                <Text variant="bodyMedium" style={styles.historyDish} numberOfLines={4}>
+                  {cookMessageBody(entry)}
                 </Text>
               </View>
-              <Text variant="labelSmall" style={styles.historyTime}>{msg.time}</Text>
+              <Text variant="labelSmall" style={styles.historyTime}>{cookMessageTime(entry)}</Text>
             </Surface>
           ))}
         </View>
@@ -505,6 +543,16 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', marginBottom: 10 },
 
   knownRow: { marginTop: 8 },
+  waFallback: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#A5D6A7',
+  },
+  waFallbackText: { color: '#128C7E', fontWeight: '600', textAlign: 'center' },
   knownBadge: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, gap: 2 },
   knownText: { color: '#2E7D32', fontSize: 12, fontWeight: '600' },
   unknownText: { color: '#E65100', fontSize: 12, fontWeight: '600', flex: 1 },

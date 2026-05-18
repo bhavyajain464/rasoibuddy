@@ -26,10 +26,8 @@ import { layout } from '../theme';
 
 const SOURCE_LABELS: Record<string, string> = {
   manual: 'Logged',
-  'ai-suggested': 'Meal idea',
-  'meal-sent': 'Sent to cook',
-  'cook-sent': 'Cook message',
   'whatsapp-parsed': 'WhatsApp',
+  'cook-reported': 'From cook',
 };
 
 const MEAL_SLOTS = [

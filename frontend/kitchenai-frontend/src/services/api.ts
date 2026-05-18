@@ -519,6 +519,12 @@ export async function getCookedHistory(): Promise<CookedHistoryResponse> {
   return res.json();
 }
 
+export async function getCookMessages(): Promise<{ messages: CookedLogEntry[]; limit: number }> {
+  const res = await authFetch(`${API_BASE_URL}/cook/messages`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function logCookedDish(payload: {
   dish_name: string;
   meal_slot?: string;

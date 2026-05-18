@@ -20,6 +20,31 @@ const (
 	cookedCacheTTL      = 16 * 24 * time.Hour
 )
 
+// Non-eaten sources are kept in cooked_log for auditing but excluded from "What you ate".
+var cookedLogNonEatenSources = map[string]bool{
+	CookedSourceCookSent: true,
+	CookedSourceMealSent: true,
+	"ai-suggested":       true,
+}
+
+// IsEatenLogSource reports whether a cooked_log row belongs in meal / diet history.
+func IsEatenLogSource(source string) bool {
+	return !cookedLogNonEatenSources[strings.ToLower(strings.TrimSpace(source))]
+}
+
+func filterEatenEntries(entries []CookedLogEntry) []CookedLogEntry {
+	if len(entries) == 0 {
+		return entries
+	}
+	out := make([]CookedLogEntry, 0, len(entries))
+	for _, e := range entries {
+		if IsEatenLogSource(e.Source) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // CookedLogEntry is one dish cooked on a given day.
 type CookedLogEntry struct {
 	ID        string  `json:"id"`
@@ -138,6 +163,15 @@ func (s *CookedLogService) ListLast15Days(ctx context.Context, userID string) ([
 	return entries, false, nil
 }
 
+// ListEatenLast15Days returns only dishes the user actually ate (excludes cook WhatsApp drafts).
+func (s *CookedLogService) ListEatenLast15Days(ctx context.Context, userID string) ([]CookedLogEntry, bool, error) {
+	entries, fromCache, err := s.ListLast15Days(ctx, userID)
+	if err != nil {
+		return nil, fromCache, err
+	}
+	return filterEatenEntries(entries), fromCache, nil
+}
+
 func (s *CookedLogService) loadFromDB(ctx context.Context, userID string) ([]CookedLogEntry, error) {
 	since := time.Now().UTC().AddDate(0, 0, -(CookedHistoryDays - 1))
 	since = time.Date(since.Year(), since.Month(), since.Day(), 0, 0, 0, 0, time.UTC)
@@ -227,4 +261,74 @@ func (s *CookedLogService) LogDishName(ctx context.Context, userID, dishName, so
 	if err != nil {
 		log.Printf("[cooked_log] log dish %q source=%s: %v", dishName, source, err)
 	}
+}
+
+const (
+	CookedSourceCookSent  = "cook-sent"
+	CookedSourceMealSent  = "meal-sent"
+)
+
+// LogCookMessage records an outbound WhatsApp draft to the cook (excluded from "What you ate").
+func (s *CookedLogService) LogCookMessage(ctx context.Context, userID, source, dishName, body string) {
+	if s == nil {
+		return
+	}
+	title := strings.TrimSpace(dishName)
+	if title == "" && strings.TrimSpace(body) != "" {
+		title = strings.TrimSpace(strings.Split(body, "\n")[0])
+	}
+	if title == "" {
+		title = "Message to cook"
+	}
+	if len(title) > 120 {
+		title = title[:117] + "..."
+	}
+	_, err := s.Log(ctx, userID, LogCookedDishInput{
+		DishName: title,
+		Source:   source,
+		Notes:    strings.TrimSpace(body),
+	})
+	if err != nil {
+		log.Printf("[cooked_log] log cook message source=%s: %v", source, err)
+	}
+}
+
+// ListRecentCookMessages returns the latest outbound cook WhatsApp drafts (not eaten meals).
+func (s *CookedLogService) ListRecentCookMessages(ctx context.Context, userID string, limit int) ([]CookedLogEntry, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, fmt.Errorf("user_id is required")
+	}
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, dish_name, dish_id, cooked_on, meal_slot, portions, source, COALESCE(notes, ''), created_at
+		FROM cooked_log
+		WHERE user_id = $1 AND source IN ($2, $3)
+		ORDER BY created_at DESC
+		LIMIT $4
+	`, userID, CookedSourceCookSent, CookedSourceMealSent, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query cook messages: %w", err)
+	}
+	defer rows.Close()
+
+	var out []CookedLogEntry
+	for rows.Next() {
+		var e CookedLogEntry
+		var cookedOn time.Time
+		var createdAt time.Time
+		var dishID sql.NullString
+		if err := rows.Scan(&e.ID, &e.DishName, &dishID, &cookedOn, &e.MealSlot, &e.Portions, &e.Source, &e.Notes, &createdAt); err != nil {
+			return nil, err
+		}
+		e.CookedOn = cookedOn.Format("2006-01-02")
+		e.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		if dishID.Valid {
+			e.DishID = &dishID.String
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }

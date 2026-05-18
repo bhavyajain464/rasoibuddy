@@ -118,6 +118,7 @@ func main() {
 	// Cook profile
 	api.Handle("/cook/profile", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookProfile(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/cook/profile", middleware.RequireAuth(http.HandlerFunc(handlers.UpdateCookProfile(sqlDB)))).Methods("PUT", "OPTIONS")
+	api.Handle("/cook/messages", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookMessages(cookedLogSvc)))).Methods("GET", "OPTIONS")
 
 	// Bill scanning
 	api.Handle("/bill/scan", middleware.RequireAuth(http.HandlerFunc(handlers.ScanBill(sqlDB, cfg)))).Methods("POST", "OPTIONS")
@@ -127,7 +128,7 @@ func main() {
 	// WhatsApp
 	api.Handle("/whatsapp/send", middleware.RequireAuth(http.HandlerFunc(handlers.SendWhatsAppMessage(sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/whatsapp/send-meal-suggestion", middleware.RequireAuth(http.HandlerFunc(handlers.SendMealSuggestionToCook(sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
-	api.Handle("/whatsapp/send-daily-menu", middleware.RequireAuth(http.HandlerFunc(handlers.SendDailyMenuToCook(sqlDB, cfg)))).Methods("POST", "OPTIONS")
+	api.Handle("/whatsapp/send-daily-menu", middleware.RequireAuth(http.HandlerFunc(handlers.SendDailyMenuToCook(sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/whatsapp/test", middleware.RequireAuth(http.HandlerFunc(handlers.TestWhatsAppIntegration(sqlDB, cfg)))).Methods("GET", "OPTIONS")
 	api.Handle("/whatsapp/cook-info", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookWhatsAppInfo(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/whatsapp/parse", middleware.RequireAuth(http.HandlerFunc(handlers.ParseWhatsAppMessage(cfg)))).Methods("POST", "OPTIONS")

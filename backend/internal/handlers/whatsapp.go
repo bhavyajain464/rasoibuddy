@@ -87,9 +87,7 @@ func SendWhatsAppMessage(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 			if dish == "" && strings.TrimSpace(req.Message) != "" {
 				dish = strings.TrimSpace(strings.Split(req.Message, "\n")[0])
 			}
-			if dish != "" {
-				cookedLog.LogDishName(r.Context(), getUserID(r), dish, "cook-sent")
-			}
+			cookedLog.LogCookMessage(r.Context(), getUserID(r), services.CookedSourceCookSent, dish, body)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -134,7 +132,7 @@ func SendMealSuggestionToCook(db *sql.DB, cfg *config.Config, cookedLog *service
 		response.Body = body
 		response.WhatsappURL = waURL
 		if cookedLog != nil {
-			cookedLog.LogDishName(r.Context(), userID, req.MealName, "meal-sent")
+			cookedLog.LogCookMessage(r.Context(), userID, services.CookedSourceMealSent, req.MealName, body)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -143,7 +141,7 @@ func SendMealSuggestionToCook(db *sql.DB, cfg *config.Config, cookedLog *service
 }
 
 // SendDailyMenuToCook sends the daily menu to the cook
-func SendDailyMenuToCook(db *sql.DB, cfg *config.Config) http.HandlerFunc {
+func SendDailyMenuToCook(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req SendDailyMenuRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -181,6 +179,9 @@ func SendDailyMenuToCook(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 		response.Message = "Open WhatsApp to send the daily menu to your cook."
 		response.Body = body
 		response.WhatsappURL = waURL
+		if cookedLog != nil {
+			cookedLog.LogCookMessage(r.Context(), userID, services.CookedSourceCookSent, "Daily menu", body)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
