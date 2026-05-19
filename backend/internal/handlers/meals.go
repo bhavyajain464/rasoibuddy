@@ -345,7 +345,8 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 	if category != "" {
 		meta := categoryMeta[category]
 		sb.WriteString(fmt.Sprintf(`Return JSON array with 1 object, exactly 1 meal in "meals". "name" must copy a shortlist dish exactly:
-[{"id":"%s","title":"%s","description":"%s","meals":[{"name":"","description":"1 line","ingredients":[],"items_to_order":[],"cooking_time_mins":30,"difficulty":"easy","why_this_meal":"short"}]}]`, category, meta.Title, meta.Desc))
+[{"id":"%s","title":"%s","description":"%s","meals":[{"name":"","description":"1 line","ingredients":[],"items_to_order":[],"cooking_time_mins":30,"difficulty":"easy","why_this_meal":"short"}]}]
+"ingredients" = main recipe ingredients for that dish (from shortlist), NOT the full pantry list.`, category, meta.Title, meta.Desc))
 	} else {
 		sb.WriteString(`Return JSON array, 6 category objects, exactly 1 meal each; names from shortlist only.`)
 	}
@@ -608,7 +609,8 @@ func mergeGroqMeal(base, groq SmartMeal) SmartMeal {
 	if d := strings.TrimSpace(groq.Description); d != "" {
 		base.Description = d
 	}
-	if len(groq.Ingredients) > 0 {
+	// Keep catalog recipe ingredients; Groq often echoes the full pantry for meal_of_day.
+	if len(groq.Ingredients) > 0 && len(base.Ingredients) == 0 {
 		base.Ingredients = groq.Ingredients
 	}
 	if len(groq.ItemsToOrder) > 0 {
@@ -702,25 +704,34 @@ func smartMealFromCatalog(d services.CatalogDish, invNames []string, category st
 }
 
 func catalogIngredientHints(d services.CatalogDish, invNames []string, category string) []string {
-	if category == "rescue_meal" || category == "meal_of_day" {
-		if len(invNames) > 0 {
-			n := 6
-			if len(invNames) < n {
-				n = len(invNames)
-			}
-			return invNames[:n]
+	if len(d.Ingredients) > 0 {
+		n := len(d.Ingredients)
+		if n > 8 {
+			n = 8
 		}
+		out := make([]string, n)
+		for i, ing := range d.Ingredients[:n] {
+			out[i] = titleIngredientToken(ing)
+		}
+		return out
 	}
-	if len(d.Ingredients) == 0 {
-		return nil
+	// No catalog ingredients: rescue flow may list pantry staples only.
+	if category == "rescue_meal" && len(invNames) > 0 {
+		n := 6
+		if len(invNames) < n {
+			n = len(invNames)
+		}
+		return invNames[:n]
 	}
-	n := 6
-	if len(d.Ingredients) < n {
-		n = len(d.Ingredients)
+	return nil
+}
+
+func titleIngredientToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return s
 	}
-	out := make([]string, n)
-	copy(out, d.Ingredients[:n])
-	return out
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 func fallbackMeals(inventory []inventoryRow) []MealCategory {

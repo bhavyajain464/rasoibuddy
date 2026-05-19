@@ -4798,7 +4798,7 @@
   {
     "name": "Dahi Baingan - Brinjal In Curd Based Gravy",
     "cuisine": "indian",
-    "diet": "vegan",
+    "diet": "vegetarian",
     "meal_type": [
       "lunch",
       "dinner",
@@ -4806,8 +4806,10 @@
     ],
     "ingredients": [
       "eggplant",
+      "curd",
       "onion",
-      "tomatoes"
+      "tomatoes",
+      "spices"
     ]
   },
   {

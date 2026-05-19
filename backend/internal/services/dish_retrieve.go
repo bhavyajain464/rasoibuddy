@@ -319,6 +319,9 @@ func FormatCandidateList(ranked []RankedDish) string {
 		if len(r.Dish.MealType) > 0 {
 			meta = append(meta, strings.Join(r.Dish.MealType, ", "))
 		}
+		if len(r.Dish.Ingredients) > 0 {
+			meta = append(meta, "ing: "+strings.Join(r.Dish.Ingredients, ", "))
+		}
 		if len(meta) > 0 {
 			b.WriteString(" [" + strings.Join(meta, " | ") + "]")
 		}
