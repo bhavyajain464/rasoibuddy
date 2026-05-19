@@ -19,10 +19,10 @@ import (
 )
 
 type MealCategory struct {
-	ID          string       `json:"id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	Meals       []SmartMeal  `json:"meals"`
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Meals       []SmartMeal `json:"meals"`
 }
 
 type SmartMeal struct {
@@ -711,15 +711,15 @@ func catalogIngredientHints(d services.CatalogDish, invNames []string, category 
 			return invNames[:n]
 		}
 	}
-	if len(d.Keywords) == 0 {
+	if len(d.Ingredients) == 0 {
 		return nil
 	}
 	n := 6
-	if len(d.Keywords) < n {
-		n = len(d.Keywords)
+	if len(d.Ingredients) < n {
+		n = len(d.Ingredients)
 	}
 	out := make([]string, n)
-	copy(out, d.Keywords[:n])
+	copy(out, d.Ingredients[:n])
 	return out
 }
 

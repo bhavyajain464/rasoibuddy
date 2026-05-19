@@ -33,8 +33,8 @@ type RankedDish struct {
 	Score float64
 }
 
-// RetrieveDishes ranks the dish catalog by basic word overlap with prefs, memories, prompt,
-// inventory, and category. No Groq call — see CatalogRetrieveTopK.
+// RetrieveDishes ranks the dish catalog by word overlap with prefs, memories, prompt,
+// inventory, meal_type, diet, and UI category. No Groq call — see CatalogRetrieveTopK.
 func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 	catalog := DishCatalog()
 	if len(catalog) == 0 {
@@ -50,17 +50,19 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 	for _, d := range in.RecentDishes {
 		recent[strings.ToLower(strings.TrimSpace(d))] = true
 	}
-	vegOnly := dietRequiresVegetarian(in.DietaryTags)
 
 	var scored []RankedDish
 	for _, dish := range catalog {
-		if vegOnly && dishIsNonVeg(dish) {
+		if !DishAllowedForUserDiet(dish, in.DietaryTags) {
 			continue
 		}
 		if dishBlockedByDislikes(dish, in.Dislikes) {
 			continue
 		}
 		if dishBlockedByAllergies(dish, in.Allergies) {
+			continue
+		}
+		if in.Category != "" && !DishMatchesUICategory(dish, in.Category) {
 			continue
 		}
 		score := scoreDish(dish, userVec, in)
@@ -82,10 +84,10 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 	}
 	if len(scored) == 0 {
 		for _, dish := range catalog {
-			if vegOnly && dishIsNonVeg(dish) {
+			if !DishAllowedForUserDiet(dish, in.DietaryTags) {
 				continue
 			}
-			if in.Category != "" && !dishHasCategory(dish, in.Category) {
+			if in.Category != "" && !DishMatchesUICategory(dish, in.Category) {
 				continue
 			}
 			scored = append(scored, RankedDish{Dish: dish, Score: 0.1})
@@ -196,15 +198,25 @@ func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInpu
 			dot += w
 		}
 	}
-	// Direct slug match (e.g. user wants italian, dish.cuisine == italian)
 	if slug := strings.ToLower(strings.TrimSpace(dish.Cuisine)); slug != "" {
 		if w, ok := userVec[slug]; ok {
 			dot += w
 		}
 	}
-	if in.Category != "" && dishHasCategory(dish, in.Category) {
+	if diet := dish.NormalizedDiet(); diet != "" {
+		if w, ok := userVec[diet]; ok {
+			dot += w * 1.2
+		}
+	}
+	for _, slot := range dish.MealType {
+		if w, ok := userVec[strings.ToLower(slot)]; ok {
+			dot += w * 1.1
+		}
+	}
+	if in.Category != "" && DishMatchesUICategory(dish, in.Category) {
 		dot += 3.0
 	}
+	dot += uiCategoryStyleBoost(dish, in.Category)
 	if in.Category == "rescue_meal" || in.Category == "meal_of_day" {
 		for _, inv := range in.InventoryNames {
 			for _, t := range tokenizeForDishes(inv) {
@@ -223,47 +235,40 @@ func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInpu
 	return dot
 }
 
+// uiCategoryStyleBoost nudges dishes for tasty / healthy / meal-prep style categories (name heuristics).
+func uiCategoryStyleBoost(dish CatalogDish, uiCategory string) float64 {
+	name := strings.ToLower(dish.Name)
+	switch strings.ToLower(strings.TrimSpace(uiCategory)) {
+	case "most_tasty":
+		if strings.Contains(name, "butter") || strings.Contains(name, "tikka") ||
+			strings.Contains(name, "masala") || strings.Contains(name, "fried") {
+			return 2.0
+		}
+	case "most_healthy":
+		if strings.Contains(name, "dal") || strings.Contains(name, "sabzi") ||
+			strings.Contains(name, "rasam") || strings.Contains(name, "steamed") {
+			return 2.0
+		}
+		if dish.NormalizedDiet() == "vegan" || dish.NormalizedDiet() == "vegetarian" {
+			return 0.8
+		}
+	case "long_lasting":
+		if strings.Contains(name, "biryani") || strings.Contains(name, "khichdi") ||
+			strings.Contains(name, "rajma") || strings.Contains(name, "chole") {
+			return 2.0
+		}
+	case "rescue_meal":
+		if strings.Contains(name, "quick") || strings.Contains(name, "stir") {
+			return 1.2
+		}
+	}
+	return 0
+}
+
 func isIndianCuisine(cuisine string) bool {
 	c := strings.ToLower(strings.TrimSpace(cuisine))
 	return c == "indian" || strings.HasSuffix(c, "-indian")
 }
-
-func dishHasCategory(d CatalogDish, cat string) bool {
-	cat = strings.ToLower(strings.TrimSpace(cat))
-	for _, c := range d.Categories {
-		if strings.ToLower(c) == cat {
-			return true
-		}
-	}
-	return false
-}
-
-func dietRequiresVegetarian(tags []string) bool {
-	for _, tag := range tags {
-		lower := strings.ToLower(tag)
-		if strings.Contains(lower, "vegetarian") || strings.Contains(lower, "vegan") || strings.Contains(lower, "jain") {
-			return true
-		}
-	}
-	return false
-}
-
-func dishIsNonVeg(d CatalogDish) bool {
-	for _, diet := range d.Diet {
-		if strings.ToLower(diet) == "non-veg" || strings.Contains(strings.ToLower(diet), "non") {
-			return true
-		}
-	}
-	name := strings.ToLower(d.Name)
-	for _, kw := range nonVegDishKeywords {
-		if strings.Contains(name, kw) {
-			return true
-		}
-	}
-	return false
-}
-
-var nonVegDishKeywords = []string{"chicken", "mutton", "fish", "egg", "prawn", "meat", "keema"}
 
 func dishBlockedByDislikes(d CatalogDish, dislikes []string) bool {
 	name := strings.ToLower(d.Name)
@@ -304,8 +309,18 @@ func FormatCandidateList(ranked []RankedDish) string {
 	b.WriteString("Shortlist (word-matched; Groq must pick only from these names):\n")
 	for i, r := range ranked {
 		b.WriteString(fmt.Sprintf("%d. %s", i+1, r.Dish.Name))
+		var meta []string
 		if c := strings.TrimSpace(r.Dish.Cuisine); c != "" {
-			b.WriteString(" [" + c + "]")
+			meta = append(meta, c)
+		}
+		if d := r.Dish.NormalizedDiet(); d != "" {
+			meta = append(meta, d)
+		}
+		if len(r.Dish.MealType) > 0 {
+			meta = append(meta, strings.Join(r.Dish.MealType, ", "))
+		}
+		if len(meta) > 0 {
+			b.WriteString(" [" + strings.Join(meta, " | ") + "]")
 		}
 		b.WriteString("\n")
 	}

@@ -9,13 +9,16 @@ import (
 	"sync"
 )
 
-// CatalogDish is one row in dishes/catalog.json (expand to ~500 at your pace).
+// CatalogDish is one row in dishes/catalog.json.
+// diet: vegan | vegetarian | eggetarian | non-veg
+// meal_type: breakfast | lunch | dinner | snack | dessert | side
+// ingredients: top important ingredient tokens for matching and display.
 type CatalogDish struct {
-	Name       string   `json:"name"`
-	Cuisine    string   `json:"cuisine,omitempty"` // e.g. north-indian, italian, chinese
-	Diet       []string `json:"diet,omitempty"`
-	Categories []string `json:"categories,omitempty"`
-	Keywords   []string `json:"keywords,omitempty"`
+	Name        string   `json:"name"`
+	Cuisine     string   `json:"cuisine,omitempty"`
+	Diet        string   `json:"diet,omitempty"`
+	MealType    []string `json:"meal_type,omitempty"`
+	Ingredients []string `json:"ingredients,omitempty"`
 }
 
 //go:embed dishes/catalog.json
@@ -51,7 +54,11 @@ func DishCatalogSize() int {
 	return len(dishCatalog)
 }
 
-// dishFeatureTokens builds a sparse feature set for similarity scoring.
+// NormalizedDiet returns the catalog diet slug in lowercase.
+func (d CatalogDish) NormalizedDiet() string {
+	return strings.ToLower(strings.TrimSpace(d.Diet))
+}
+
 func (d CatalogDish) featureTokens() map[string]struct{} {
 	tokens := map[string]struct{}{}
 	add := func(s string) {
@@ -61,16 +68,21 @@ func (d CatalogDish) featureTokens() map[string]struct{} {
 	}
 	add(d.Name)
 	add(d.Cuisine)
-	for _, c := range d.Categories {
-		add(c)
+	add(d.NormalizedDiet())
+	for _, m := range d.MealType {
+		add(m)
 	}
-	for _, k := range d.Keywords {
-		add(k)
-	}
-	for _, diet := range d.Diet {
-		add(diet)
+	for _, ing := range d.Ingredients {
+		add(ing)
 	}
 	return tokens
+}
+
+func (d CatalogDish) searchBlob() string {
+	parts := []string{d.Name, d.Cuisine, d.NormalizedDiet()}
+	parts = append(parts, d.MealType...)
+	parts = append(parts, d.Ingredients...)
+	return strings.ToLower(strings.Join(parts, " "))
 }
 
 func tokenizeForDishes(s string) []string {
@@ -96,18 +108,72 @@ func UserPromptTokens(s string) []string {
 	return tokenizeForDishes(s)
 }
 
-// DishMatchesPrompt reports whether dish name or keywords contain any prompt token.
+// DishMatchesPrompt reports whether dish name, ingredients, or meal type contain any prompt token.
 func DishMatchesPrompt(d CatalogDish, tokens []string) bool {
 	if len(tokens) == 0 {
 		return true
 	}
-	blob := strings.ToLower(d.Name + " " + strings.Join(d.Keywords, " "))
+	blob := d.searchBlob()
 	for _, t := range tokens {
 		if strings.Contains(blob, t) {
 			return true
 		}
 	}
 	return false
+}
+
+// DishAllowedForUserDiet applies profile dietary tags to catalog diet slugs.
+func DishAllowedForUserDiet(d CatalogDish, dietaryTags []string) bool {
+	if len(dietaryTags) == 0 {
+		return true
+	}
+	dDiet := d.NormalizedDiet()
+	wantsVegan := false
+	wantsVeg := false
+	for _, tag := range dietaryTags {
+		lower := strings.ToLower(strings.TrimSpace(tag))
+		if strings.Contains(lower, "vegan") {
+			wantsVegan = true
+		}
+		if strings.Contains(lower, "jain") || strings.Contains(lower, "vegetarian") {
+			wantsVeg = true
+		}
+	}
+	if wantsVegan {
+		return dDiet == "vegan"
+	}
+	if wantsVeg {
+		return dDiet == "vegan" || dDiet == "vegetarian"
+	}
+	return true
+}
+
+// DishHasMealType reports whether the dish is tagged for a meal slot (breakfast, lunch, etc.).
+func (d CatalogDish) DishHasMealType(slot string) bool {
+	slot = strings.ToLower(strings.TrimSpace(slot))
+	for _, m := range d.MealType {
+		if strings.ToLower(strings.TrimSpace(m)) == slot {
+			return true
+		}
+	}
+	return false
+}
+
+// DishMatchesUICategory maps Meals-screen category ids to catalog meal_type tags.
+func DishMatchesUICategory(d CatalogDish, uiCategory string) bool {
+	cat := strings.ToLower(strings.TrimSpace(uiCategory))
+	if cat == "" || cat == "daily" {
+		return true
+	}
+	switch cat {
+	case "meal_of_day", "most_healthy", "most_tasty", "long_lasting", "rescue_meal":
+		return d.DishHasMealType("breakfast") ||
+			d.DishHasMealType("lunch") ||
+			d.DishHasMealType("dinner") ||
+			d.DishHasMealType("snack")
+	default:
+		return true
+	}
 }
 
 // BestCandidateForPrompt returns the highest-ranked shortlist dish matching the prompt, or the top pick.
