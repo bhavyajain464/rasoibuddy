@@ -84,8 +84,9 @@ func SendPreMarketPingHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		procurementService := services.NewProcurementService(db)
+		userID := getUserID(r)
 
-		response, err := procurementService.SendPreMarketPing(req)
+		response, err := procurementService.SendPreMarketPing(userID, req)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to send pre-market ping: %v", err), http.StatusInternalServerError)
 			return

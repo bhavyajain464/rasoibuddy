@@ -4,6 +4,8 @@ import {
   View,
   ScrollView,
   Pressable,
+  Alert,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -126,6 +128,7 @@ export function MealsScreen() {
   const [addNotes, setAddNotes] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [cookProfileReady, setCookProfileReady] = useState(false);
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -139,6 +142,12 @@ export function MealsScreen() {
   useEffect(() => {
     refreshHistory();
   }, [refreshHistory]);
+
+  useEffect(() => {
+    api.fetchCookProfile()
+      .then((p) => setCookProfileReady(Boolean(p.configured && p.phone_number?.trim())))
+      .catch(() => setCookProfileReady(false));
+  }, []);
 
   const openAddMeal = () => {
     setAddDishName('');
@@ -185,6 +194,12 @@ export function MealsScreen() {
   };
 
   const sendToCook = (meal: SmartMeal) => {
+    if (!cookProfileReady) {
+      const msg = 'Add your cook profile with a WhatsApp number on the Cook tab before sending messages.';
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Cook profile required', msg);
+      navigation.navigate('Cook');
+      return;
+    }
     const instructions = [
       meal.description,
       `Ingredients: ${(meal.ingredients || []).join(', ')}`,
@@ -413,10 +428,11 @@ export function MealsScreen() {
                   compact
                   onPress={() => sendToCook(meal)}
                   style={styles.cookBtn}
-                  buttonColor="#25D366"
+                  buttonColor={cookProfileReady ? '#25D366' : '#9E9E9E'}
                   contentStyle={{ paddingVertical: 2 }}
+                  disabled={!cookProfileReady}
                 >
-                  Send to Cook
+                  {cookProfileReady ? 'Send to Cook' : 'Set up Cook profile'}
                 </Button>
               </Card.Content>
             </Card>

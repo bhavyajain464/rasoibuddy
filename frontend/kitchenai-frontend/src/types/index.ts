@@ -241,11 +241,12 @@ export interface CookInfo {
 }
 
 export interface CookProfile {
-  cook_id: string;
+  cook_id?: string;
   cook_name?: string;
   dishes_known: string[];
   preferred_lang: string;
   phone_number?: string;
+  configured?: boolean;
   created_at?: string;
   updated_at?: string;
 }

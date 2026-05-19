@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"kitchenai-backend/internal/models"
-
-	"github.com/lib/pq"
 )
 
 // WhatsAppService builds WhatsApp "click to chat" links (https://wa.me/…).
@@ -122,45 +120,13 @@ func (s *WhatsAppService) PrepareShoppingListWhatsApp(recipientPhone string, ite
 	return body, waURL, nil
 }
 
-// getCookProfileForUser loads the cook profile for WhatsApp (scoped to the logged-in user).
+// getCookProfileForUser loads a configured cook profile for WhatsApp (user must have saved a number).
 func (s *WhatsAppService) getCookProfileForUser(userID string) (*models.CookProfile, error) {
-	var profile models.CookProfile
-	err := s.db.QueryRow(`
-		SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-		FROM cook_profile
-		WHERE user_id = $1
-	`, userID).Scan(
-		&profile.CookID,
-		&profile.CookName,
-		pq.Array(&profile.DishesKnown),
-		&profile.PreferredLang,
-		&profile.PhoneNumber,
-		&profile.CreatedAt,
-		&profile.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		err = s.db.QueryRow(`
-			SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-			FROM cook_profile
-			WHERE user_id IS NULL
-			LIMIT 1
-		`).Scan(
-			&profile.CookID,
-			&profile.CookName,
-			pq.Array(&profile.DishesKnown),
-			&profile.PreferredLang,
-			&profile.PhoneNumber,
-			&profile.CreatedAt,
-			&profile.UpdatedAt,
-		)
-	}
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("cook profile not found")
-	}
+	profile, err := RequireConfiguredCookProfile(s.db, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cook profile not configured")
 	}
-	return &profile, nil
+	return profile, nil
 }
 
 // buildMealMessage builds a meal suggestion message in the target language

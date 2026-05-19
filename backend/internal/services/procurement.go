@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"kitchenai-backend/internal/models"
@@ -429,7 +428,7 @@ type PreMarketPingResponse struct {
 }
 
 // SendPreMarketPing builds a WhatsApp compose link for low-stock items (user sends from their app).
-func (s *ProcurementService) SendPreMarketPing(req PreMarketPingRequest) (*PreMarketPingResponse, error) {
+func (s *ProcurementService) SendPreMarketPing(userID string, req PreMarketPingRequest) (*PreMarketPingResponse, error) {
 	// Get low stock items
 	lowStockItems, err := s.GetLowStockItems()
 	if err != nil {
@@ -460,10 +459,14 @@ func (s *ProcurementService) SendPreMarketPing(req PreMarketPingRequest) (*PreMa
 		}, nil
 	}
 
-	// Get cook's phone number from profile
-	cookProfile, err := s.getCookProfile()
+	cookProfile, err := RequireConfiguredCookProfile(s.db, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cook profile: %v", err)
+		return &PreMarketPingResponse{
+			Sent:          false,
+			Message:       "Add your cook's WhatsApp number in Cook profile before sending messages.",
+			ItemsIncluded: getItemNames(itemsToInclude),
+			Error:         "cook_profile_not_configured",
+		}, nil
 	}
 
 	if cookProfile.PhoneNumber == "" {
@@ -513,69 +516,6 @@ func buildPreMarketMessage(items []LowStockItem, language string) string {
 
 	message += "\nPlease let me know if you need anything else!"
 	return message
-}
-
-// getCookProfile retrieves the cook profile from database
-func (s *ProcurementService) getCookProfile() (*models.CookProfile, error) {
-	query := `
-		SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, phone_number, created_at, updated_at
-		FROM cook_profile
-		LIMIT 1
-	`
-
-	row := s.db.QueryRow(query)
-	var profile models.CookProfile
-	var dishesKnownStr string
-	var phoneNumber sql.NullString
-
-	err := row.Scan(
-		&profile.CookID,
-		&profile.CookName,
-		&dishesKnownStr,
-		&profile.PreferredLang,
-		&phoneNumber,
-		&profile.CreatedAt,
-		&profile.UpdatedAt,
-	)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Return default profile for testing
-			return &models.CookProfile{
-				CookID:        "default-cook",
-				DishesKnown:   []string{"paneer butter masala", "dal tadka", "roti"},
-				PreferredLang: "hi",
-				PhoneNumber:   "+919876543210",
-			}, nil
-		}
-		return nil, fmt.Errorf("failed to get cook profile: %v", err)
-	}
-
-	// Parse dishes_known array (stored as PostgreSQL array string)
-	// Simple parsing - in production would use proper array parsing
-	profile.DishesKnown = parsePostgreSQLArray(dishesKnownStr)
-	if phoneNumber.Valid {
-		profile.PhoneNumber = phoneNumber.String
-	}
-
-	return &profile, nil
-}
-
-// parsePostgreSQLArray parses a PostgreSQL array string into slice
-func parsePostgreSQLArray(arrayStr string) []string {
-	// Simple parsing for format: {"item1","item2","item3"}
-	if len(arrayStr) < 2 {
-		return []string{}
-	}
-
-	// Remove curly braces
-	trimmed := strings.Trim(arrayStr, "{}")
-	if trimmed == "" {
-		return []string{}
-	}
-
-	// Split by comma
-	return strings.Split(trimmed, ",")
 }
 
 // getItemNames extracts names from low stock items

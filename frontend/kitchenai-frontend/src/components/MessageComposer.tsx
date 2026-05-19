@@ -55,7 +55,7 @@ export function MessageComposer({
         onSubmitEditing={canSubmit ? onSubmit : undefined}
         returnKeyType="send"
         blurOnSubmit
-        editable={!loading}
+        editable={!loading && !disabled}
         multiline
       />
       <Pressable

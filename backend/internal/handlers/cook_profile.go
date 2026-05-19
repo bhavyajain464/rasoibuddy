@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"kitchenai-backend/internal/models"
+	"kitchenai-backend/internal/services"
 
 	"github.com/lib/pq"
 )
@@ -15,47 +16,8 @@ func GetCookProfile(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
-		var profile models.CookProfile
-		err := db.QueryRow(`
-			SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-			FROM cook_profile
-			WHERE user_id = $1
-		`, userID).Scan(
-			&profile.CookID,
-			&profile.CookName,
-			pq.Array(&profile.DishesKnown),
-			&profile.PreferredLang,
-			&profile.PhoneNumber,
-			&profile.CreatedAt,
-			&profile.UpdatedAt,
-		)
-
-		if err == sql.ErrNoRows {
-			// Fall back to legacy profile without user_id
-			err = db.QueryRow(`
-				SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-				FROM cook_profile
-				WHERE user_id IS NULL
-				LIMIT 1
-			`).Scan(
-				&profile.CookID,
-				&profile.CookName,
-				pq.Array(&profile.DishesKnown),
-				&profile.PreferredLang,
-				&profile.PhoneNumber,
-				&profile.CreatedAt,
-				&profile.UpdatedAt,
-			)
-			if err == sql.ErrNoRows {
-				profile = models.CookProfile{
-					DishesKnown:   []string{},
-					PreferredLang: "en",
-				}
-			} else if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		} else if err != nil {
+		profile, err := services.LoadCookProfileForUser(db, userID)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

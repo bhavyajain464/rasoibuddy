@@ -9,8 +9,6 @@ import (
 	"kitchenai-backend/internal/models"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
-
-	"github.com/lib/pq"
 )
 
 // SendWhatsAppMessageRequest represents the request to send a WhatsApp message
@@ -62,10 +60,21 @@ func SendWhatsAppMessage(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 			return
 		}
 
-		// Validate phone number
-		if req.PhoneNumber == "" {
-			http.Error(w, "phone_number is required", http.StatusBadRequest)
+		userID := getUserID(r)
+		cookProfile, err := services.RequireConfiguredCookProfile(db, userID)
+		if err != nil {
+			response := SendWhatsAppMessageResponse{
+				Success: false,
+				Error:   "Add your cook's WhatsApp number in Cook profile before sending messages.",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
 			return
+		}
+
+		if req.PhoneNumber == "" {
+			req.PhoneNumber = cookProfile.PhoneNumber
 		}
 
 		whatsappService := services.NewWhatsAppService(db)
@@ -237,46 +246,8 @@ func GetCookWhatsAppInfo(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
-		var profile models.CookProfile
-		err := db.QueryRow(`
-			SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-			FROM cook_profile
-			WHERE user_id = $1
-		`, userID).Scan(
-			&profile.CookID,
-			&profile.CookName,
-			pq.Array(&profile.DishesKnown),
-			&profile.PreferredLang,
-			&profile.PhoneNumber,
-			&profile.CreatedAt,
-			&profile.UpdatedAt,
-		)
-
-		if err == sql.ErrNoRows {
-			err = db.QueryRow(`
-				SELECT cook_id, COALESCE(cook_name, ''), dishes_known, preferred_lang, COALESCE(phone_number, ''), created_at, updated_at
-				FROM cook_profile
-				WHERE user_id IS NULL
-				LIMIT 1
-			`).Scan(
-				&profile.CookID,
-				&profile.CookName,
-				pq.Array(&profile.DishesKnown),
-				&profile.PreferredLang,
-				&profile.PhoneNumber,
-				&profile.CreatedAt,
-				&profile.UpdatedAt,
-			)
-		}
-
-		if err == sql.ErrNoRows {
-			profile = models.CookProfile{
-				CookID:        "",
-				DishesKnown:   []string{},
-				PreferredLang: "en",
-				PhoneNumber:   "",
-			}
-		} else if err != nil {
+		profile, err := services.LoadCookProfileForUser(db, userID)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -295,10 +266,11 @@ func GetCookWhatsAppInfo(db *sql.DB) http.HandlerFunc {
 
 		response := map[string]interface{}{
 			"cook_id":             profile.CookID,
+			"configured":          profile.Configured,
 			"cook_name_set":       strings.TrimSpace(profile.CookName) != "",
 			"cook_name_masked":    maskedName,
 			"preferred_language":  profile.PreferredLang,
-			"phone_number_set":    profile.PhoneNumber != "",
+			"phone_number_set":    profile.Configured,
 			"phone_number_masked": maskedPhone,
 			"dishes_known_count":  len(profile.DishesKnown),
 			"dishes_known":        profile.DishesKnown,

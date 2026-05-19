@@ -6,9 +6,10 @@ import { RescueMealSuggestion } from '../types';
 interface RescueMealCardProps {
   meal: RescueMealSuggestion;
   onSendToCook?: (meal: RescueMealSuggestion) => void;
+  sendDisabled?: boolean;
 }
 
-export function RescueMealCard({ meal, onSendToCook }: RescueMealCardProps) {
+export function RescueMealCard({ meal, onSendToCook, sendDisabled }: RescueMealCardProps) {
   return (
     <Card
       style={[
@@ -71,8 +72,9 @@ export function RescueMealCard({ meal, onSendToCook }: RescueMealCardProps) {
             compact
             onPress={() => onSendToCook(meal)}
             icon="whatsapp"
+            disabled={sendDisabled}
           >
-            Send to Cook
+            {sendDisabled ? 'Set up Cook profile' : 'Send to Cook'}
           </Button>
         </Card.Actions>
       )}

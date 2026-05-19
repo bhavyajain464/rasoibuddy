@@ -212,9 +212,7 @@ func fetchUserCookProfile(db *sql.DB, userID string) *services.CookProfileData {
 	err := db.QueryRow(`
 		SELECT COALESCE(cook_name, ''), dishes_known, preferred_lang
 		FROM cook_profile
-		WHERE user_id = $1 OR user_id IS NULL
-		ORDER BY CASE WHEN user_id = $1 THEN 0 ELSE 1 END
-		LIMIT 1
+		WHERE user_id = $1
 	`, userID).Scan(&cp.CookName, pq.Array(&cp.DishesKnown), &cp.PreferredLang)
 	if err != nil {
 		return nil

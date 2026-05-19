@@ -56,11 +56,12 @@ export function CookScreen() {
   const [whatsappFallbackUrl, setWhatsappFallbackUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!cookProfile?.configured) return;
     const parts: string[] = [];
     if (route.params?.dishName) parts.push(String(route.params.dishName).trim());
     if (route.params?.instructions) parts.push(String(route.params.instructions).trim());
     if (parts.length > 0) setMessage(parts.join('\n'));
-  }, [route.params?.dishName, route.params?.instructions]);
+  }, [route.params?.dishName, route.params?.instructions, cookProfile?.configured]);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -105,6 +106,8 @@ export function CookScreen() {
   }, [loadProfile, loadCookMessages]);
 
   const profileHasPhone = Boolean(cookProfile?.phone_number?.trim());
+  const canMessageCook =
+    !profileLoading && !profileError && Boolean(cookProfile?.configured && profileHasPhone);
 
   const languageLabel = (code?: string) => {
     if (code === 'hi') return 'Hindi';
@@ -212,16 +215,14 @@ export function CookScreen() {
   };
 
   const handleSendToCook = async () => {
-    if (!message.trim()) return;
-
-    if (!profileHasPhone) {
-      setPendingSendAfterSave(true);
+    if (!canMessageCook) {
+      setPendingSendAfterSave(Boolean(message.trim()));
       openCookEditor();
-      const msg = 'Add the cook WhatsApp number first. After saving, this message will open in WhatsApp automatically.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Add cook number', msg);
+      const msg = 'Add your cook profile with a WhatsApp number before sending messages.';
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Cook profile required', msg);
       return;
     }
-
+    if (!message.trim()) return;
     await sendCurrentMessageToCook();
   };
 
@@ -260,13 +261,26 @@ export function CookScreen() {
           </View>
         </View>
 
+        {!canMessageCook && !profileLoading ? (
+          <Surface style={styles.blockedPrompt} elevation={0}>
+            <IconButton icon="account-plus" iconColor="#E65100" size={18} style={{ margin: 0 }} />
+            <Text variant="bodySmall" style={styles.blockedPromptText}>
+              Add your cook&apos;s WhatsApp number in the profile below to compose and send messages.
+            </Text>
+          </Surface>
+        ) : null}
+
         <MessageComposer
           value={message}
-          onChangeText={setMessage}
+          onChangeText={canMessageCook ? setMessage : () => {}}
           onSubmit={handleSendToCook}
-          placeholder="e.g. Paneer butter masala, medium spicy, less oil"
+          placeholder={
+            canMessageCook
+              ? 'e.g. Paneer butter masala, medium spicy, less oil'
+              : 'Set up cook profile to message'
+          }
           loading={sending}
-          disabled={sending}
+          disabled={!canMessageCook || sending}
           accentColor={COOK_ACCENT}
           borderColor={COOK_BORDER}
           submitIcon="whatsapp"
@@ -466,7 +480,7 @@ export function CookScreen() {
           </Text>
           <View style={styles.dishesGrid}>
             {dishesKnown.map((dish, i) => (
-              <Pressable key={i} onPress={() => setMessage(dish)}>
+              <Pressable key={i} onPress={() => canMessageCook && setMessage(dish)} disabled={!canMessageCook}>
                 <Chip compact icon="check" style={styles.dishChip} textStyle={styles.dishChipText}>{dish}</Chip>
               </Pressable>
             ))}
@@ -542,6 +556,16 @@ const styles = StyleSheet.create({
   cardLabel: { fontWeight: '700', color: '#333', marginBottom: 12 },
   input: { backgroundColor: '#fff', marginBottom: 10 },
 
+  blockedPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    padding: 10,
+    gap: 4,
+    marginBottom: 10,
+  },
+  blockedPromptText: { color: '#E65100', flex: 1, lineHeight: 18 },
   knownRow: { marginTop: 8 },
   waFallback: {
     marginTop: 10,
