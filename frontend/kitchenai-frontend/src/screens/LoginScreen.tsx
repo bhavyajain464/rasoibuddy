@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Platform, Image } from 'react-native';
 import { Text, Button, Surface, IconButton } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
@@ -8,14 +8,45 @@ import { colors } from '../theme';
 const logo = require('../../assets/icon.png');
 
 function GoogleButtonWeb() {
-  const { googleButtonRef } = useAuth();
+  const { setGoogleButtonRef, signIn, loading, ready, googleButtonRendered } = useAuth();
+  const [showFallback, setShowFallback] = useState(false);
+
+  useEffect(() => {
+    if (googleButtonRendered) {
+      setShowFallback(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowFallback(true), 1200);
+    return () => clearTimeout(timer);
+  }, [googleButtonRendered, ready]);
+
+  const useFallback = ready && showFallback && !googleButtonRendered;
 
   return (
     <View style={styles.gisContainer}>
       <div
-        ref={googleButtonRef as any}
-        style={{ display: 'flex', justifyContent: 'center', minHeight: 44 }}
+        ref={setGoogleButtonRef as any}
+        style={{
+          display: useFallback ? 'none' : 'flex',
+          justifyContent: 'center',
+          minHeight: 44,
+        }}
       />
+      {useFallback && (
+        <Button
+          mode="contained"
+          onPress={() => signIn()}
+          loading={loading}
+          disabled={!ready || loading}
+          icon="google"
+          style={styles.googleButton}
+          contentStyle={styles.googleButtonContent}
+          labelStyle={styles.googleButtonLabel}
+          buttonColor={colors.google}
+        >
+          Sign in with Google
+        </Button>
+      )}
     </View>
   );
 }

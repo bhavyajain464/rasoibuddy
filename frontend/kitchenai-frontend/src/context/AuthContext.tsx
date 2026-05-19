@@ -33,10 +33,12 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   ready: boolean;
+  /** Web: true after GIS renderButton succeeds (false → show fallback) */
+  googleButtonRendered: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  /** Web only: ref to a div where Google renders its button */
-  googleButtonRef: React.RefObject<HTMLDivElement | null>;
+  /** Web only: callback ref for the div where Google renders its button */
+  setGoogleButtonRef: (node: HTMLDivElement | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,9 +46,10 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   loading: true,
   ready: false,
+  googleButtonRendered: false,
   signIn: async () => {},
   signOut: async () => {},
-  googleButtonRef: { current: null },
+  setGoogleButtonRef: () => {},
 });
 
 export function useAuth() {
@@ -55,50 +58,104 @@ export function useAuth() {
 
 // ─── Web: Google Identity Services ───────────────────────────
 
+const GSI_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+
 function useGoogleIdentityServices(onCredential: (credential: string) => void) {
   const buttonRef = useRef<HTMLDivElement | null>(null);
-  const [ready, setReady] = useState(false);
+  const [gisReady, setGisReady] = useState(false);
+  const [buttonRendered, setButtonRendered] = useState(false);
   const callbackRef = useRef(onCredential);
   callbackRef.current = onCredential;
+  const initializedRef = useRef(false);
 
+  const initializeGis = useCallback(() => {
+    const google = (window as any).google;
+    if (!google?.accounts?.id || initializedRef.current) {
+      return !!google?.accounts?.id;
+    }
+    google.accounts.id.initialize({
+      client_id: GOOGLE_WEB_CLIENT_ID,
+      callback: (response: { credential: string }) => {
+        callbackRef.current(response.credential);
+      },
+    });
+    initializedRef.current = true;
+    setGisReady(true);
+    return true;
+  }, []);
+
+  const renderGoogleButton = useCallback(() => {
+    if (!gisReady || !buttonRef.current) {
+      return false;
+    }
+    const google = (window as any).google;
+    if (!google?.accounts?.id) {
+      return false;
+    }
+    try {
+      buttonRef.current.innerHTML = '';
+      google.accounts.id.renderButton(buttonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 320,
+        text: 'signin_with',
+        shape: 'pill',
+      });
+      const hasButton = buttonRef.current.childElementCount > 0;
+      setButtonRendered(hasButton);
+      return hasButton;
+    } catch (e) {
+      console.error('GIS renderButton failed:', e);
+      setButtonRendered(false);
+      return false;
+    }
+  }, [gisReady]);
+
+  // Load GIS script once (do not remove on unmount — breaks remount / strict mode).
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
+    if ((window as any).google?.accounts?.id) {
+      initializeGis();
+      return;
+    }
+
+    const existing = document.querySelector(`script[src="${GSI_SCRIPT_SRC}"]`);
+    if (existing) {
+      const onReady = () => initializeGis();
+      existing.addEventListener('load', onReady);
+      if ((window as any).google?.accounts?.id) {
+        onReady();
+      }
+      return () => existing.removeEventListener('load', onReady);
+    }
+
     const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    script.src = GSI_SCRIPT_SRC;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      const google = (window as any).google;
-      if (!google?.accounts?.id) return;
-
-      google.accounts.id.initialize({
-        client_id: GOOGLE_WEB_CLIENT_ID,
-        callback: (response: { credential: string }) => {
-          callbackRef.current(response.credential);
-        },
-      });
-
-      if (buttonRef.current) {
-        google.accounts.id.renderButton(buttonRef.current, {
-          theme: 'outline',
-          size: 'large',
-          width: 320,
-          text: 'signin_with',
-          shape: 'pill',
-        });
-      }
-
-      setReady(true);
-    };
+    script.onload = () => initializeGis();
+    script.onerror = () => console.error('Failed to load Google Identity Services');
     document.head.appendChild(script);
+  }, [initializeGis]);
 
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
+  // Re-render when GIS becomes ready (login div may mount later than script onload).
+  useEffect(() => {
+    if (!gisReady) return;
+    renderGoogleButton();
+  }, [gisReady, renderGoogleButton]);
 
-  return { buttonRef, ready };
+  const setGoogleButtonRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      buttonRef.current = node;
+      if (node && gisReady) {
+        requestAnimationFrame(() => renderGoogleButton());
+      }
+    },
+    [gisReady, renderGoogleButton]
+  );
+
+  return { setGoogleButtonRef, ready: gisReady, buttonRendered };
 }
 
 // ─── Provider ────────────────────────────────────────────────
@@ -140,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Platform-specific hooks
   const webAuth = Platform.OS === 'web'
     ? useGoogleIdentityServices(handleCredential)
-    : { buttonRef: { current: null } as React.RefObject<HTMLDivElement | null>, ready: false };
+    : { setGoogleButtonRef: () => {}, ready: false, buttonRendered: false };
 
   // For native, we use expo-auth-session hooks at the top level
   const nativeAuth = useNativeAuthRequest(handleCredential);
@@ -239,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearSession]);
 
   const ready = Platform.OS === 'web' ? webAuth.ready : nativeAuth.ready;
+  const googleButtonRendered = Platform.OS === 'web' ? webAuth.buttonRendered : true;
 
   return (
     <AuthContext.Provider
@@ -247,9 +305,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         loading,
         ready,
+        googleButtonRendered,
         signIn,
         signOut,
-        googleButtonRef: webAuth.buttonRef as React.RefObject<HTMLDivElement | null>,
+        setGoogleButtonRef: webAuth.setGoogleButtonRef,
       }}
     >
       {children}
