@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import { showAppError, showAppInfo } from '../utils/alertMessage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { AuthUser } from '../types';
@@ -184,11 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e: any) {
       console.error('Google sign-in error:', e);
-      if (Platform.OS === 'web') {
-        alert('Sign in failed: ' + (e.message || 'Unknown error'));
-      } else {
-        Alert.alert('Sign In Failed', 'Could not sign in with Google. Please try again.');
-      }
+      showAppError('Could not sign in with Google. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -282,15 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // local session immediately so screens stop showing "0" everywhere and
       // the navigator routes back to Login on the next render.
       clearSession({ skipServerLogout: true });
-      if (Platform.OS === 'web') {
-        try {
-          if (typeof window !== 'undefined') {
-            window.alert('Your session has expired. Please sign in again.');
-          }
-        } catch {}
-      } else {
-        Alert.alert('Session expired', 'Please sign in again to continue.');
-      }
+      showAppInfo('Your session has expired. Please sign in again.');
     });
     return () => setOnUnauthorized(null);
   }, [clearSession]);

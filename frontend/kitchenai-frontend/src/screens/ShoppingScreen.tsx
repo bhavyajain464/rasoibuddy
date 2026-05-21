@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
 import { UserShoppingItem } from '../types';
 import { layout } from '../theme';
+import { showAppError } from '../utils/alertMessage';
 
 const QUICK_UNITS = ['pcs', 'kg', 'g', 'L', 'ml', 'pack'];
 
@@ -68,8 +69,7 @@ export function ShoppingScreen() {
       setNewName('');
       setNewQty('1');
     } catch {
-      const msg = 'Could not add item.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+      showAppError('Could not add item.');
     } finally {
       setAdding(false);
     }

@@ -23,6 +23,7 @@ import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
+import { showAppError, showAppInfo } from '../utils/alertMessage';
 import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
@@ -203,8 +204,7 @@ export function MealsScreen() {
         return { ...prev, meals };
       });
     } catch {
-      const msg = 'Could not update star.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+      showAppError('Could not update star.');
     } finally {
       setStarringDish(null);
     }
@@ -212,8 +212,7 @@ export function MealsScreen() {
 
   const sendToCook = (meal: SmartMeal) => {
     if (!cookProfileReady) {
-      const msg = 'Add your cook profile with a WhatsApp number on the Cook tab before sending messages.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Cook profile required', msg);
+      showAppInfo('Add your cook profile with a WhatsApp number on the Cook tab first.');
       navigation.navigate('Cook');
       return;
     }

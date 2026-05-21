@@ -28,6 +28,7 @@ import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { PlanSubscriptionSection } from '../components/PlanSubscriptionSection';
+import { showAppError, showAppSuccess } from '../utils/alertMessage';
 
 const SPICE_LEVELS = ['mild', 'medium', 'spicy', 'extra_spicy'];
 const COOKING_SKILLS = ['beginner', 'intermediate', 'advanced'];
@@ -115,11 +116,9 @@ export function ProfileScreen() {
         spice_level: spiceLevel,
         cooking_skill: cookingSkill,
       });
-      const msg = 'Profile saved! Meal suggestions will reflect these preferences.';
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Saved', msg);
+      showAppSuccess('Profile saved. Meal suggestions will reflect your preferences.');
     } catch {
-      const msg = 'Failed to save profile';
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Error', msg);
+      showAppError('Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -133,8 +132,7 @@ export function ProfileScreen() {
       setProfile(prev => prev ? { ...prev, memories: [newMem, ...prev.memories] } : prev);
       setMemoryContent('');
     } catch {
-      const msg = 'Failed to add memory';
-      Platform.OS === 'web' ? alert(msg) : Alert.alert('Error', msg);
+      showAppError('Failed to add memory');
     } finally {
       setAddingMemory(false);
     }
@@ -146,8 +144,7 @@ export function ProfileScreen() {
         await api.deleteMemory(memoryId);
         setProfile(prev => prev ? { ...prev, memories: prev.memories.filter(m => m.id !== memoryId) } : prev);
       } catch {
-        const msg = 'Failed to delete memory';
-        Platform.OS === 'web' ? alert(msg) : Alert.alert('Error', msg);
+        showAppError('Failed to delete memory');
       }
     };
     if (Platform.OS === 'web') {

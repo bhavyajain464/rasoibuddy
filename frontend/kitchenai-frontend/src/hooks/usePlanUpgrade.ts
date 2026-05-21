@@ -1,22 +1,39 @@
 import { useCallback, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as api from '../services/api';
 import { CheckoutOrderResponse } from '../types';
 import { openRazorpayCheckout } from '../utils/razorpayCheckout';
 import { useEntitlements } from '../context/EntitlementsContext';
+import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 
-async function completeCheckout(order: CheckoutOrderResponse) {
+type CheckoutOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'cancelled' | 'failed' | 'unconfirmed' };
+
+async function completeCheckout(order: CheckoutOrderResponse): Promise<CheckoutOutcome> {
   try {
     const payment = await openRazorpayCheckout(order);
     await api.verifySubscribePayment(payment);
-    return true;
+    return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : '';
     if (msg === 'Payment cancelled') {
-      throw e;
+      return { ok: false, reason: 'cancelled' };
     }
-    const synced = await api.syncSubscribeOrder(order.order_id);
-    return synced.is_pro;
+    try {
+      const synced = await api.syncSubscribeOrder(order.order_id);
+      if (synced.is_pro) return { ok: true };
+    } catch {
+      /* sync is best-effort after Razorpay errors */
+    }
+    if (
+      msg.includes('Payment failed') ||
+      msg.includes('International') ||
+      msg.includes('Razorpay')
+    ) {
+      return { ok: false, reason: 'failed' };
+    }
+    return { ok: false, reason: 'unconfirmed' };
   }
 }
 
@@ -27,33 +44,37 @@ export function usePlanUpgrade() {
   const subscribe = useCallback(
     async (planTier: string, planInterval: string) => {
       if (Platform.OS !== 'web') {
-        Alert.alert(
-          'Upgrade on web',
-          'Subscriptions are available in the web app for now.',
-        );
+        showAppInfo('Subscriptions are available in the web app for now.');
         return;
       }
       setBusy(true);
       try {
         const config = await api.getBillingConfig();
         if (!config.enabled) {
-          throw new Error('Checkout is not configured on the server yet.');
+          showAppError('Checkout is not available yet. Please try again later.');
+          return;
         }
         const order = await api.createSubscribeOrder(planTier, planInterval);
-        const ok = await completeCheckout(order);
-        if (!ok) {
-          throw new Error('Payment not confirmed. Try sync or contact support.');
+        const outcome = await completeCheckout(order);
+        if (!outcome.ok) {
+          if (outcome.reason === 'cancelled' || outcome.reason === 'failed') {
+            return;
+          }
+          showAppInfo(
+            'If you completed payment, tap Sync payment below to activate your plan.',
+          );
+          return;
         }
         await refresh();
         const creditNote =
           order.credit_paise && order.credit_paise > 0
-            ? `\n\n${order.credit_summary}`
+            ? ` ${order.credit_summary}`
             : '';
-        window.alert(`Your plan is now active: ${order.price_label}${creditNote}`);
+        showAppSuccess(`Your plan is active — ${order.price_label}${creditNote}`);
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Upgrade failed';
         if (msg === 'Payment cancelled') return;
-        window.alert(msg);
+        showAppError('Something went wrong with checkout. Please try again.');
       } finally {
         setBusy(false);
       }
@@ -71,12 +92,12 @@ export function usePlanUpgrade() {
         const synced = await api.syncSubscribeOrder('');
         await refresh();
         if (synced.is_pro) {
-          window.alert('Your subscription is now active.');
+          showAppSuccess('Your subscription is active.');
         } else {
-          window.alert('No completed payment found for your pending orders.');
+          showAppInfo('No completed payment found yet.');
         }
-      } catch (e) {
-        window.alert(e instanceof Error ? e.message : 'Sync failed');
+      } catch {
+        showAppError('Could not sync payment. Try again in a moment.');
       } finally {
         setBusy(false);
       }

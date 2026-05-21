@@ -20,6 +20,7 @@ import {
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
+import { showAppError } from '../utils/alertMessage';
 
 const logo = require('../../assets/icon.png');
 
@@ -157,8 +158,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       });
       onComplete();
     } catch (e: any) {
-      const msg = 'Failed to complete setup. Please try again.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+      showAppError('Failed to complete setup. Please try again.');
     } finally {
       setSaving(false);
     }

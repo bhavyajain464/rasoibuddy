@@ -12,6 +12,7 @@ import { showUpgradeMessage } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
 import { showAppAlert } from '../utils/alertMessage';
 import { BILL_SCAN_ALERT_MESSAGE, BILL_SCAN_ALERT_TITLE } from '../utils/billScanMessage';
+import { showAppInfo, showAppSuccess } from '../utils/alertMessage';
 
 export function ScanScreen() {
   const { canBillScan, refresh: refreshEntitlements } = useEntitlements();
@@ -44,7 +45,7 @@ export function ScanScreen() {
 
   const handleScan = async () => {
     if (!imageUri) {
-      Alert.alert('No Image', 'Please take a photo or pick one from gallery first.');
+      showAppInfo('Take a photo or pick one from your gallery first.');
       return;
     }
     if (!canBillScan) {
@@ -60,9 +61,8 @@ export function ScanScreen() {
       setResult(scanResult);
       const addedCount = scanResult.added_to_inventory?.length || 0;
       const itemCount = scanResult.items?.length || 0;
-      Alert.alert(
-        'Bill Scanned!',
-        `Found ${itemCount} items, added ${addedCount} to inventory with estimated expiry dates.`,
+      showAppSuccess(
+        `Found ${itemCount} items, added ${addedCount} to inventory.`,
       );
     } catch (e: unknown) {
       console.error('Scan error:', e);

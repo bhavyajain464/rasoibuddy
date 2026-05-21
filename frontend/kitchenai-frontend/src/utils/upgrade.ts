@@ -1,16 +1,11 @@
 import { Alert, Platform } from 'react-native';
+import { showAppInfo } from './alertMessage';
 
-export function showUpgradeMessage(message: string, onUpgrade?: () => void) {
-  const full = `${message}\n\nPro unlocks unlimited bill scans and all meal categories (Rescue, Meal of Day, Healthy, Tasty, Meal Prep).`;
-  if (Platform.OS === 'web' && onUpgrade) {
-    if (window.confirm(`${full}\n\nOpen checkout now?`)) {
-      onUpgrade();
-    }
+export function showUpgradeMessage(message: string, _onUpgrade?: () => void) {
+  const full = `${message} Pro unlocks unlimited bill scans and all meal categories.`;
+  if (Platform.OS === 'web') {
+    showAppInfo(full);
     return;
   }
-  if (Platform.OS === 'web') {
-    window.alert(full);
-  } else {
-    Alert.alert('Upgrade to Pro', full);
-  }
+  Alert.alert('Upgrade to Pro', full);
 }

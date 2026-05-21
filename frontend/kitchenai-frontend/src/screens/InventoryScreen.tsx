@@ -40,6 +40,7 @@ import { showUpgradeMessage } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
 import { showAppAlert } from '../utils/alertMessage';
 import { BILL_SCAN_ALERT_MESSAGE, BILL_SCAN_ALERT_TITLE } from '../utils/billScanMessage';
+import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 
 type TabValue = 'all' | 'expired';
 
@@ -124,7 +125,7 @@ export function InventoryScreen() {
 
   const handleAddItem = async () => {
     if (!newName.trim() || !newQty.trim() || !newUnit.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in name, quantity, and unit.');
+      showAppInfo('Please fill in name, quantity, and unit.');
       return;
     }
     setAdding(true);
@@ -138,9 +139,9 @@ export function InventoryScreen() {
       setAddModalVisible(false);
       resetAddForm();
       await loadData();
-      Alert.alert('Success', 'Item added to inventory!');
+      showAppSuccess('Item added to inventory.');
     } catch {
-      Alert.alert('Error', 'Could not add item. Check backend connection.');
+      showAppError('Could not add item. Check your connection.');
     } finally {
       setAdding(false);
     }
@@ -170,7 +171,7 @@ export function InventoryScreen() {
     if (!editTarget) return;
     const trimmed = editExpiry.trim();
     if (trimmed && !/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      Alert.alert('Invalid Date', 'Use YYYY-MM-DD or leave blank to clear.');
+      showAppInfo('Use YYYY-MM-DD or leave blank to clear.');
       return;
     }
     setSavingExpiry(true);
@@ -186,7 +187,7 @@ export function InventoryScreen() {
       showSnack(trimmed ? `Expiry updated for "${editTarget.canonical_name}"` : `Expiry cleared for "${editTarget.canonical_name}"`);
       closeEditExpiry();
     } catch {
-      Alert.alert('Error', 'Could not update expiry.');
+      showAppError('Could not update expiry.');
     } finally {
       setSavingExpiry(false);
     }
@@ -211,7 +212,7 @@ export function InventoryScreen() {
       await loadData();
       showSnack(`"${item.canonical_name}" moved to expired`);
     } catch {
-      Alert.alert('Error', 'Could not mark item as expired.');
+      showAppError('Could not mark item as expired.');
     }
   };
 
@@ -222,7 +223,7 @@ export function InventoryScreen() {
       await api.addShoppingItem(item.canonical_name, item.qty, item.unit);
       showSnack(`"${item.canonical_name}" added to shopping list`);
     } catch {
-      Alert.alert('Error', 'Could not add to shopping list.');
+      showAppError('Could not add to shopping list.');
     }
   };
 
@@ -242,7 +243,7 @@ export function InventoryScreen() {
       await api.deleteInventoryItem(item.item_id);
       await loadData();
     } catch {
-      Alert.alert('Error', 'Could not delete item.');
+      showAppError('Could not delete item.');
     }
   };
 
@@ -291,7 +292,7 @@ export function InventoryScreen() {
     if (!scanResult?.items) return;
     const toAdd = scanResult.items.filter((_, i) => selectedItems[i] !== false);
     if (toAdd.length === 0) {
-      Alert.alert('No Items Selected', 'Please select at least one item to add.');
+      showAppInfo('Select at least one item to add.');
       return;
     }
 
@@ -322,9 +323,9 @@ export function InventoryScreen() {
     await loadData();
 
     if (errors.length > 0) {
-      Alert.alert('Partially Added', `Added ${addedCount} items. Failed: ${errors.join(', ')}`);
+      showAppInfo(`Added ${addedCount} items. Some failed: ${errors.join(', ')}`);
     } else {
-      Alert.alert('Success', `Added ${addedCount} items to inventory!`);
+      showAppSuccess(`Added ${addedCount} items to inventory.`);
     }
     closeScanModal();
   };
@@ -352,7 +353,7 @@ export function InventoryScreen() {
 
   const handleScan = async () => {
     if (!imageUri) {
-      Alert.alert('No Image', 'Please take a photo or pick one from gallery first.');
+      showAppInfo('Take a photo or pick one from your gallery first.');
       return;
     }
     if (!canBillScan) {

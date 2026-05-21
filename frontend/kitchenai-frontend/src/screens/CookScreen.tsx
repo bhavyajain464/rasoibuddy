@@ -22,6 +22,7 @@ import {
 import { useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
+import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 import { buildWaMeUrl, isIosHomeScreenWeb, openWhatsAppUrl } from '../utils/openWhatsApp';
 import { CookedLogEntry, CookProfile } from '../types';
 import { layout } from '../theme';
@@ -157,16 +158,16 @@ export function CookScreen() {
       setIsEditingProfile(false);
       const shouldSendAfterSave = pendingSendAfterSave && message.trim() && phoneDraft.trim();
       setPendingSendAfterSave(false);
-      const msg = shouldSendAfterSave
-        ? 'Cook profile saved. Opening WhatsApp with your draft.'
-        : 'Cook profile saved. WhatsApp will use this name and number.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Saved', msg);
+      showAppSuccess(
+        shouldSendAfterSave
+          ? 'Cook profile saved. Opening WhatsApp with your draft.'
+          : 'Cook profile saved.',
+      );
       if (shouldSendAfterSave) {
         await sendCurrentMessageToCook();
       }
     } catch {
-      const msg = 'Could not save cook profile.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+      showAppError('Could not save cook profile.');
     } finally {
       setSavingProfile(false);
     }
@@ -181,8 +182,7 @@ export function CookScreen() {
 
     const waUrl = buildWaMeUrl(phone, text);
     if (!waUrl) {
-      const msg = 'Could not build a WhatsApp link. Check the cook number (include country code, e.g. +91…).';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Failed', msg);
+      showAppError('Could not build a WhatsApp link. Check the cook number (include country code, e.g. +91…).');
       return;
     }
 
@@ -202,11 +202,11 @@ export function CookScreen() {
       setMessage('');
       await loadCookMessages();
     } catch {
-      const msg =
+      showAppInfo(
         Platform.OS === 'web' && isIosHomeScreenWeb()
           ? 'If WhatsApp did not open, use the link below.'
-          : 'Could not sync with server. WhatsApp may still have opened with your draft.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Notice', msg);
+          : 'Could not sync with server. WhatsApp may still have opened with your draft.',
+      );
       setMessage('');
       await loadCookMessages();
     } finally {
@@ -218,8 +218,7 @@ export function CookScreen() {
     if (!canMessageCook) {
       setPendingSendAfterSave(Boolean(message.trim()));
       openCookEditor();
-      const msg = 'Add your cook profile with a WhatsApp number before sending messages.';
-      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Cook profile required', msg);
+      showAppInfo('Add your cook profile with a WhatsApp number before sending messages.');
       return;
     }
     if (!message.trim()) return;

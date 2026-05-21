@@ -18,6 +18,7 @@ import * as api from '../../services/api';
 import { CookedLogEntry, DietAnalysisSettings } from '../../types';
 import { useEntitlements } from '../../context/EntitlementsContext';
 import { usePlanUpgrade } from '../../hooks/usePlanUpgrade';
+import { showAppError } from '../../utils/alertMessage';
 
 const SOURCE_LABELS: Record<string, string> = {
   manual: 'Logged',
@@ -117,9 +118,8 @@ export function MealsHistoryDietTab() {
     try {
       const s = await api.updateDietAnalysisSettings(enabled);
       setDietSettings(s);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not update';
-      window.alert(msg);
+    } catch {
+      showAppError('Could not update diet email settings.');
     } finally {
       setDietSaving(false);
     }
