@@ -19,14 +19,55 @@ cd Kitchenai
 ```bash
 # Option A: Local PostgreSQL
 createdb kitchenai
-psql -d kitchenai -f database/schema.sql
-psql -d kitchenai -f backend/migrations/001_optional_schema.sql
+chmod +x backend/migrations/apply_all.sh
+./backend/migrations/apply_all.sh kitchenai
 
 # Option B: Supabase
 # 1. Create a new project on supabase.com
-# 2. Run database/schema.sql then backend/migrations/001_optional_schema.sql in the SQL editor
+# 2. Run each file in backend/migrations/ in order (000 → 005) in the SQL editor
+#    See backend/migrations/README.md
 # 3. Note your database connection string
 ```
+
+### 2b. Razorpay (Premium checkout, optional)
+
+In `backend/.env`:
+
+```bash
+# staging = Test Mode keys; production = Live Mode keys
+RAZORPAY_ENV=staging
+RAZORPAY_KEY_ID_STAGING=rzp_test_...
+RAZORPAY_KEY_SECRET_STAGING=...
+RAZORPAY_WEBHOOK_SECRET_STAGING=...   # from Dashboard → Webhooks (test)
+RAZORPAY_PREMIUM_AMOUNT_PAISE=49900   # ₹499
+```
+
+For production deploy, set `RAZORPAY_ENV=production` and `RAZORPAY_KEY_ID_PRODUCTION` / `RAZORPAY_KEY_SECRET_PRODUCTION` / `RAZORPAY_WEBHOOK_SECRET_PRODUCTION`.
+
+Webhook URL (no auth): `POST https://<your-api>/api/v1/billing/razorpay/webhook` — subscribe to `payment.captured`.
+
+**Test payment (India, Test Mode):** use domestic card `5267 3181 8797 5449` — not `4111 1111 1111 1111` (that is international and fails unless you enable International Cards in the dashboard). OTP: `123456` (4+ digits). Or use UPI in the checkout modal.
+
+Apply migration `006_razorpay_orders.sql` if not using `apply_all.sh`.
+
+### 2c. Admin API (subscription cancel)
+
+Set a strong secret in `backend/.env`:
+
+```bash
+ADMIN_API_KEY=your-long-random-secret
+```
+
+Cancel a user's subscription immediately (revokes Pro/Elite access):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/subscriptions/cancel \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Key: $ADMIN_API_KEY" \
+  -d '{"email":"user@example.com","reason":"support request"}'
+```
+
+Use `user_id` instead of `email` if you have the UUID. Razorpay is not auto-refunded; this only updates Kitchen AI entitlements.
 
 ### 3. Backend Setup
 ```bash
@@ -82,7 +123,7 @@ chmod +x test_api.sh
 Expected output:
 - Health check returns `{"status": "healthy"}`
 - Inventory endpoints return JSON data
-- Sample data from schema.sql should appear
+- Inventory/meals work after you sign in and add data (migrations no longer seed sample rows)
 
 ### Test Frontend
 1. Open Expo Go app on your phone

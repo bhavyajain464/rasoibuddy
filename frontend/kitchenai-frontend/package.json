@@ -5,6 +5,8 @@
   "scripts": {
     "start": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --port 8082",
     "android": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli run:android --port 8082",
+    "android:launch": "bash scripts/launch-android-dev.sh",
+    "android:dev": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --port 8082 & sleep 3 && bash scripts/launch-android-dev.sh",
     "ios": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli run:ios --port 8082",
     "web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --web --port 8082",
     "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli export --platform web"
@@ -20,6 +22,7 @@
     "expo-camera": "~17.0.10",
     "expo-crypto": "~15.0.9",
     "expo-dev-client": "~6.0.21",
+    "expo-file-system": "~19.0.22",
     "expo-image-picker": "~17.0.11",
     "expo-linking": "~8.0.12",
     "expo-share-intent": "^5.1.1",

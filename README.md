@@ -87,8 +87,8 @@ Kitchenai/
 ├── mcp-server/               # MCP Server for LLM integration
 │   ├── src/index.ts          # MCP server implementation
 │   └── package.json
-├── database/                 # Database schema
-│   └── schema.sql           # PostgreSQL schema
+├── backend/migrations/       # PostgreSQL schema (ordered SQL, apply manually)
+│   └── README.md
 ├── docs/                     # Documentation
 └── plan.txt                  # Project requirements and design
 ```
@@ -125,11 +125,12 @@ Kitchenai/
 # Create PostgreSQL database
 createdb kitchenai
 
-# Apply schema
-psql -d kitchenai -f database/schema.sql
+# Apply all migrations in order
+chmod +x backend/migrations/apply_all.sh
+./backend/migrations/apply_all.sh kitchenai
 ```
 
-After `database/schema.sql`, apply incremental SQL in **`backend/migrations/001_optional_schema.sql`** (user prefs columns, `user_memory`, `shopping_items`, `cook_profile.cook_name`, etc.) on your Postgres instance.
+See **`backend/migrations/README.md`** for the file list and upgrading an existing database.
 
 ### 2. Backend Setup (Go)
 
@@ -684,5 +685,5 @@ The React Native frontend uses `expo-auth-session` (see `src/` screens and `Auth
 
 For issues or questions:
 1. Check the `SETUP_GUIDE.md` for detailed setup instructions
-2. Review database schema in `database/schema.sql`
+2. Review database schema in `backend/migrations/README.md`
 3. Test API endpoints using the provided test scripts

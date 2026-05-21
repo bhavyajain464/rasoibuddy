@@ -52,6 +52,6 @@ func (d *Database) GetDB() *sql.DB {
 // CreateTables creates the necessary tables if they don't exist
 func (d *Database) CreateTables() error {
 	// Read schema from file or embed it
-	// For now, we'll assume tables are already created via schema.sql
+	// Tables are created manually via backend/migrations/*.sql (see migrations/README.md).
 	return nil
 }

@@ -34,11 +34,19 @@ import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/b
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, ScanResult } from '../types';
 import { colors, layout } from '../theme';
+import { useEntitlements } from '../context/EntitlementsContext';
+import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
+import { showUpgradeMessage } from '../utils/upgrade';
+import { UpgradeRequiredError } from '../services/api';
+import { showAppAlert } from '../utils/alertMessage';
+import { BILL_SCAN_ALERT_MESSAGE, BILL_SCAN_ALERT_TITLE } from '../utils/billScanMessage';
 
 type TabValue = 'all' | 'expired';
 
 export function InventoryScreen() {
   const insets = useSafeAreaInsets();
+  const { entitlements, canBillScan, refresh: refreshEntitlements } = useEntitlements();
+  const { startUpgrade } = usePlanUpgrade();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
@@ -241,6 +249,15 @@ export function InventoryScreen() {
   // ── Scan Bill ─────────────────────────────────────────────
 
   const openScanModal = () => {
+    if (!canBillScan) {
+      showUpgradeMessage(
+        entitlements?.bill_scans_used != null
+          ? `You've used all ${entitlements.bill_scan_limit} free bill scans.`
+          : 'Bill scan limit reached on the free plan.',
+        startUpgrade,
+      );
+      return;
+    }
     setImageUri(null);
     setScanResult(null);
     setScanning(false);
@@ -338,20 +355,30 @@ export function InventoryScreen() {
       Alert.alert('No Image', 'Please take a photo or pick one from gallery first.');
       return;
     }
+    if (!canBillScan) {
+      showUpgradeMessage('Free plan includes 5 bill scans (camera or upload).', startUpgrade);
+      return;
+    }
     setScanning(true);
     setScanResult(null);
     setSelectedItems({});
     try {
       const result = await api.scanBillUpload(imageUri);
       setScanResult(result);
+      await refreshEntitlements();
       if (result.items && result.items.length > 0) {
         const allSelected: Record<number, boolean> = {};
         result.items.forEach((_: any, i: number) => { allSelected[i] = true; });
         setSelectedItems(allSelected);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Scan error:', e);
-      Alert.alert('Scan Failed', e.message || 'Could not scan bill. Please try again.');
+      if (e instanceof UpgradeRequiredError) {
+        showUpgradeMessage(e.message, startUpgrade);
+        void refreshEntitlements();
+      } else {
+        showAppAlert(BILL_SCAN_ALERT_TITLE, BILL_SCAN_ALERT_MESSAGE);
+      }
     } finally {
       setScanning(false);
     }
@@ -711,6 +738,11 @@ export function InventoryScreen() {
                   Take a photo or pick from gallery. We'll extract edible items
                   for you to review before adding to inventory.
                 </Text>
+                {entitlements && !entitlements.is_pro ? (
+                  <Text variant="labelMedium" style={styles.scanQuota}>
+                    Free plan: {entitlements.bill_scans_remaining} of {entitlements.bill_scan_limit} bill scans left
+                  </Text>
+                ) : null}
 
                 {imageUri && (
                   <Surface style={styles.imageContainer} elevation={1}>
@@ -1024,6 +1056,11 @@ const styles = StyleSheet.create({
   scanDesc: {
     color: '#666',
     lineHeight: 22,
+    marginBottom: 8,
+  },
+  scanQuota: {
+    color: '#E65100',
+    fontWeight: '600',
     marginBottom: 16,
   },
   imageContainer: {

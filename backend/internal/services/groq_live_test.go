@@ -21,7 +21,7 @@ func TestGroqLiveFromEnv(t *testing.T) {
 	if cfg.LLMProvider != "groq" || cfg.GroqAPIKey == "" {
 		t.Skip("set LLM_PROVIDER=groq and GROQ_API_KEY in backend/.env")
 	}
-	out, err := GroqChatText(context.Background(), cfg.GroqAPIKey, cfg.GroqModel, 0, "Reply with exactly one token: GROQ_OK")
+	out, err := GroqChatText(context.Background(), cfg.GroqAPIKey, cfg.EffectiveGroqModel(), 0, "Reply with exactly one token: GROQ_OK")
 	if err != nil {
 		t.Fatal(err)
 	}

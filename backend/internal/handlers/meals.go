@@ -77,6 +77,10 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 		log.Printf("SmartMeals request: userID=%s, category=%q, mealType=%q (effective=%q), userPrompt=%q, exclude=%v",
 			userID, category, mealType, effectiveMeal, userPrompt, exclude)
 
+		if !requireMealCategory(db, userID, category, w) {
+			return
+		}
+
 		inventory := fetchUserInventory(db, userID)
 		userPrefs := fetchUserPreferences(db, userID)
 
@@ -451,7 +455,7 @@ func callLLMFilterMeals(cfg *config.Config, prompt string) ([]MealCategory, erro
 func callGroqFilterMeals(cfg *config.Config, prompt string) ([]MealCategory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	text, err := services.GroqChatFilterMeals(ctx, cfg.GroqAPIKey, cfg.GroqModel, prompt)
+	text, err := services.GroqChatFilterMeals(ctx, cfg.GroqAPIKey, cfg.EffectiveGroqModel(), prompt)
 	if err != nil {
 		return nil, fmt.Errorf("Groq API error: %w", err)
 	}

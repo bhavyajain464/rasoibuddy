@@ -1,4 +1,5 @@
 -- Global dish stars: each user may star a dish once; star_count is aggregated across all users.
+-- (Part of backend/migrations; apply after 003.)
 
 CREATE TABLE IF NOT EXISTS dish_star_counts (
     dish_name TEXT PRIMARY KEY,

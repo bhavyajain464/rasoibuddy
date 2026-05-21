@@ -73,10 +73,7 @@ func ParseWhatsAppMessage(ctx context.Context, cfg *config.Config, rawText strin
 		return UnknownWhatsAppAction("AI parsing is not configured on the server."), nil
 	}
 
-	model := strings.TrimSpace(cfg.GroqNLUModel)
-	if model == "" {
-		model = "llama-3.1-8b-instant"
-	}
+	model := cfg.EffectiveGroqModel()
 
 	prompt := fmt.Sprintf(`Message (EN/HI/Hinglish/Kannada):
 """

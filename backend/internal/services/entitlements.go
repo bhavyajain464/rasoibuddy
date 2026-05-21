@@ -1,0 +1,191 @@
+package services
+
+import (
+	"database/sql"
+	"strings"
+	"time"
+)
+
+const (
+	FreeBillScanLimit = 5
+	FreeMealCategory  = "daily"
+)
+
+// ProMealCategories are smart-meal category ids beyond the free tier.
+var ProMealCategories = []string{
+	"rescue_meal",
+	"meal_of_day",
+	"most_healthy",
+	"most_tasty",
+	"long_lasting",
+}
+
+// Entitlements describes what the user can access on their current plan.
+type Entitlements struct {
+	PlanTier           string         `json:"plan_tier"`
+	PlanInterval       string         `json:"plan_interval,omitempty"`
+	PlanExpiresAt      *time.Time     `json:"plan_expires_at,omitempty"`
+	IsPro              bool           `json:"is_pro"`
+	IsElite            bool           `json:"is_elite"`
+	HasDietAnalysis    bool           `json:"has_diet_analysis"`
+	BillScansUsed      int            `json:"bill_scans_used"`
+	BillScanLimit      int            `json:"bill_scan_limit"`
+	BillScansRemaining int            `json:"bill_scans_remaining"`
+	FreeMealCategories []string       `json:"free_meal_categories"`
+	ProMealCategories  []string       `json:"pro_meal_categories"`
+	AvailablePlans     []PlanProduct  `json:"available_plans,omitempty"`
+	UpgradeOptions     []UpgradeQuote `json:"upgrade_options,omitempty"`
+}
+
+// GetEntitlements loads plan and usage for a user.
+func GetEntitlements(db *sql.DB, userID string) (Entitlements, error) {
+	var tier string
+	var interval sql.NullString
+	var expires sql.NullTime
+	var scans int
+
+	err := db.QueryRow(`
+		SELECT COALESCE(plan_tier, 'free'), plan_interval, plan_expires_at,
+		       COALESCE(bill_scan_count, 0)
+		FROM users WHERE user_id = $1
+	`, userID).Scan(&tier, &interval, &expires, &scans)
+	if err != nil {
+		return Entitlements{}, err
+	}
+	var expPtr *time.Time
+	if expires.Valid {
+		t := expires.Time
+		expPtr = &t
+	}
+	var intervalStr string
+	if interval.Valid {
+		intervalStr = interval.String
+	}
+	return buildEntitlements(tier, intervalStr, expPtr, scans), nil
+}
+
+func buildEntitlements(tier, interval string, expiresAt *time.Time, scans int) Entitlements {
+	tier = effectiveTier(NormalizeTier(tier), expiresAt)
+	interval = NormalizeInterval(interval)
+
+	isPro := tier == TierPro || tier == TierElite
+	isElite := tier == TierElite
+
+	limit := FreeBillScanLimit
+	remaining := limit - scans
+	if isPro {
+		limit = -1
+		remaining = -1
+	} else if remaining < 0 {
+		remaining = 0
+	}
+
+	ent := Entitlements{
+		PlanTier:           tier,
+		PlanInterval:       interval,
+		PlanExpiresAt:      expiresAt,
+		IsPro:              isPro,
+		IsElite:            isElite,
+		HasDietAnalysis:    isElite,
+		BillScansUsed:      scans,
+		BillScanLimit:      limit,
+		BillScansRemaining: remaining,
+		FreeMealCategories: []string{FreeMealCategory},
+		ProMealCategories:  append([]string(nil), ProMealCategories...),
+		AvailablePlans:     PlanCatalog(),
+	}
+	ent.UpgradeOptions = BuildUpgradeOptions(ent)
+	return ent
+}
+
+func effectiveTier(tier string, expiresAt *time.Time) string {
+	if tier == TierFree {
+		return TierFree
+	}
+	if expiresAt != nil && expiresAt.Before(time.Now()) {
+		return TierFree
+	}
+	return tier
+}
+
+// CanBillScan reports whether another bill scan is allowed.
+func CanBillScan(ent Entitlements) (bool, string) {
+	if ent.IsPro {
+		return true, ""
+	}
+	if ent.BillScansUsed >= FreeBillScanLimit {
+		return false, "Free plan includes 5 bill scans. Upgrade to Pro for unlimited scanning."
+	}
+	return true, ""
+}
+
+// CanUseMealCategory reports whether the smart-meals category is allowed.
+func CanUseMealCategory(ent Entitlements, category string) (bool, string) {
+	cat := strings.ToLower(strings.TrimSpace(category))
+	if cat == "" {
+		cat = FreeMealCategory
+	}
+	if ent.IsPro {
+		return true, ""
+	}
+	if cat == FreeMealCategory {
+		return true, ""
+	}
+	return false, "Daily meal ideas are free. Rescue, Meal of Day, Healthy, Tasty, and Meal Prep require Pro."
+}
+
+// CanUseDietAnalysis gates the upcoming elite feature.
+func CanUseDietAnalysis(ent Entitlements) (bool, string) {
+	if ent.HasDietAnalysis {
+		return true, ""
+	}
+	if ent.IsPro {
+		return false, "Diet analysis is part of Elite. Upgrade to Elite in Settings or on the Meals tab."
+	}
+	return false, "Diet analysis requires an Elite plan."
+}
+
+// ActivateSubscription sets tier, interval, and extends expiry after payment.
+func ActivateSubscription(db *sql.DB, userID, tier, interval string) error {
+	tier = NormalizeTier(tier)
+	interval = NormalizeInterval(interval)
+	if tier == TierFree || interval == "" {
+		return nil
+	}
+
+	var currentTier string
+	var currentExpires sql.NullTime
+	err := db.QueryRow(`
+		SELECT COALESCE(plan_tier, 'free'), plan_expires_at FROM users WHERE user_id = $1
+	`, userID).Scan(&currentTier, &currentExpires)
+	if err != nil {
+		return err
+	}
+	var expPtr *time.Time
+	if currentExpires.Valid {
+		t := currentExpires.Time
+		expPtr = &t
+	}
+	newTier := ResolveUpgradeTier(NormalizeTier(currentTier), tier)
+	newExpires := ExtendPlanExpiry(expPtr, interval)
+
+	_, err = db.Exec(`
+		UPDATE users SET
+			plan_tier = $2,
+			plan_interval = $3,
+			plan_expires_at = $4,
+			plan = $2,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = $1
+	`, userID, newTier, interval, newExpires)
+	return err
+}
+
+// RecordBillScan increments the user's bill scan counter after a successful scan.
+func RecordBillScan(db *sql.DB, userID string) error {
+	_, err := db.Exec(`
+		UPDATE users SET bill_scan_count = bill_scan_count + 1, updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = $1
+	`, userID)
+	return err
+}

@@ -25,6 +25,9 @@ import { useAuth } from '../context/AuthContext';
 import { UserProfile, UserMemory } from '../types';
 import * as api from '../services/api';
 import { layout } from '../theme';
+import { useEntitlements } from '../context/EntitlementsContext';
+import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
+import { PlanSubscriptionSection } from '../components/PlanSubscriptionSection';
 
 const SPICE_LEVELS = ['mild', 'medium', 'spicy', 'extra_spicy'];
 const COOKING_SKILLS = ['beginner', 'intermediate', 'advanced'];
@@ -49,6 +52,13 @@ const SPICE_EMOJI: Record<string, string> = { mild: '🌶', medium: '🌶🌶', 
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
+  const {
+    entitlements,
+    loading: entitlementsLoading,
+    error: entitlementsError,
+    refresh: refreshEntitlements,
+  } = useEntitlements();
+  const { subscribe, syncLastPayment, busy: upgradeBusy, planLabel } = usePlanUpgrade();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,6 +99,10 @@ export function ProfileScreen() {
   }, []);
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  useEffect(() => {
+    if (activeTab === 'settings') void refreshEntitlements();
+  }, [activeTab, refreshEntitlements]);
 
   const handleSave = async () => {
     try {
@@ -414,6 +428,17 @@ export function ProfileScreen() {
       {/* ── SETTINGS ─────────────────────────────────────── */}
       {activeTab === 'settings' && (
         <View style={styles.tabContent}>
+          <PlanSubscriptionSection
+            entitlements={entitlements}
+            planLabel={planLabel}
+            onSubscribe={(tier, interval) => void subscribe(tier, interval)}
+            onSyncPayment={() => void syncLastPayment()}
+            busy={upgradeBusy}
+            loading={entitlementsLoading}
+            loadError={entitlementsError}
+            onRetry={() => void refreshEntitlements()}
+          />
+
           <Surface style={styles.section} elevation={1}>
             <Text variant="titleSmall" style={styles.secTitle}>Account</Text>
             <View style={styles.settRow}>

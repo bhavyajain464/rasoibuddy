@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// DefaultGroqModel is used for meals, bill scan, shelf-life, WhatsApp NLU, and diet analysis.
+const DefaultGroqModel = "llama-3.3-70b-versatile"
+
 type Config struct {
 	Port            string
 	DatabaseURL     string
@@ -15,8 +18,8 @@ type Config struct {
 	GeminiModel     string
 	GroqAPIKey      string
 	GroqModel       string
-	GroqNLUModel    string // small/fast model for WhatsApp NLU (saves TPD vs 70B)
-	GroqVisionModel string
+	GroqNLUModel    string // legacy env GROQ_NLU_MODEL (EffectiveGroqModel uses GROQ_MODEL)
+	GroqVisionModel string // legacy env GROQ_VISION_MODEL (EffectiveGroqModel uses GROQ_MODEL)
 	// LLMProvider is "gemini" or "groq" (default groq). One provider per request — no cross-provider fallback.
 	LLMProvider           string
 	GoogleTranslateKey    string
@@ -61,6 +64,51 @@ type Config struct {
 
 	// Redis (optional): caches per-user cooked dish history (last 15 days).
 	RedisURL string
+
+	// Razorpay premium checkout (RAZORPAY_ENV=staging|production selects key pair).
+	Razorpay RazorpayConfig
+
+	// AdminAPIKey secures /api/v1/admin/* (X-Admin-Key header). Empty disables admin routes.
+	AdminAPIKey string
+
+	// SMTP for nightly diet digest emails (optional).
+	SMTPHost string
+	SMTPPort int
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
+}
+
+// SMTPConfigured reports whether outbound email can be sent.
+func (c *Config) SMTPConfigured() bool {
+	return c != nil && strings.TrimSpace(c.SMTPHost) != "" && strings.TrimSpace(c.SMTPFrom) != ""
+}
+
+// RazorpayConfig holds credentials for the active Razorpay environment.
+type RazorpayConfig struct {
+	// Env is "staging" (test keys) or "production" (live keys).
+	Env string
+	KeyID          string
+	KeySecret      string
+	WebhookSecret  string
+	BillingAmount   int    // legacy env fallback paise (catalog defines real prices)
+	BillingCurrency string
+}
+
+// Enabled reports whether checkout can be offered (key id + secret set).
+func (r RazorpayConfig) Enabled() bool {
+	return strings.TrimSpace(r.KeyID) != "" && strings.TrimSpace(r.KeySecret) != ""
+}
+
+// EffectiveGroqModel returns the primary Groq model (GROQ_MODEL), with a stable default.
+func (c *Config) EffectiveGroqModel() string {
+	if c == nil {
+		return DefaultGroqModel
+	}
+	if m := strings.TrimSpace(c.GroqModel); m != "" {
+		return m
+	}
+	return DefaultGroqModel
 }
 
 func Load() (*Config, error) {
@@ -70,9 +118,9 @@ func Load() (*Config, error) {
 	geminiAPIKey := getEnv("GEMINI_API_KEY", "")
 	geminiModel := getEnv("GEMINI_MODEL", "gemini-1.5-pro")
 	groqAPIKey := getEnv("GROQ_API_KEY", "")
-	groqModel := getEnv("GROQ_MODEL", "groq/compound")
-	groqNLUModel := getEnv("GROQ_NLU_MODEL", "llama-3.1-8b-instant")
-	groqVisionModel := getEnv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+	groqModel := getEnv("GROQ_MODEL", DefaultGroqModel)
+	groqNLUModel := getEnv("GROQ_NLU_MODEL", DefaultGroqModel)
+	groqVisionModel := getEnv("GROQ_VISION_MODEL", DefaultGroqModel)
 	llmProvider := strings.ToLower(strings.TrimSpace(getEnv("LLM_PROVIDER", "groq")))
 	if llmProvider != "gemini" && llmProvider != "groq" {
 		llmProvider = "groq"
@@ -187,6 +235,9 @@ func Load() (*Config, error) {
 		kafkaConsumerPauseBetweenBatchesMs = 0
 	}
 	redisURL := getEnv("REDIS_URL", "")
+	razorpay := loadRazorpayConfig()
+	adminAPIKey := getEnv("ADMIN_API_KEY", "")
+	smtpPort := getEnvInt("SMTP_PORT", 587)
 
 	return &Config{
 		Port:                               port,
@@ -235,7 +286,50 @@ func Load() (*Config, error) {
 		KafkaConsumerGeminiBatchSize:       kafkaConsumerGeminiBatch,
 		KafkaConsumerPauseBetweenBatchesMs: kafkaConsumerPauseBetweenBatchesMs,
 		RedisURL:                           redisURL,
+		Razorpay:                           razorpay,
+		AdminAPIKey:                        adminAPIKey,
+		SMTPHost:                           strings.TrimSpace(getEnv("SMTP_HOST", "")),
+		SMTPPort:                           smtpPort,
+		SMTPUser:                           getEnv("SMTP_USER", ""),
+		SMTPPass:                           getEnv("SMTP_PASS", ""),
+		SMTPFrom:                           strings.TrimSpace(getEnv("SMTP_FROM", "")),
 	}, nil
+}
+
+// loadRazorpayConfig picks staging vs production credentials from RAZORPAY_ENV.
+func loadRazorpayConfig() RazorpayConfig {
+	env := strings.ToLower(strings.TrimSpace(getEnv("RAZORPAY_ENV", "staging")))
+	if env != "production" {
+		env = "staging"
+	}
+	amount := getEnvInt("RAZORPAY_PREMIUM_AMOUNT_PAISE", 49900)
+	if amount < 100 {
+		amount = 100
+	}
+	currency := strings.ToUpper(strings.TrimSpace(getEnv("RAZORPAY_PREMIUM_CURRENCY", "INR")))
+	if currency == "" {
+		currency = "INR"
+	}
+
+	var keyID, keySecret, webhookSecret string
+	if env == "production" {
+		keyID = getEnv("RAZORPAY_KEY_ID_PRODUCTION", "")
+		keySecret = getEnv("RAZORPAY_KEY_SECRET_PRODUCTION", "")
+		webhookSecret = getEnv("RAZORPAY_WEBHOOK_SECRET_PRODUCTION", "")
+	} else {
+		keyID = getEnv("RAZORPAY_KEY_ID_STAGING", "")
+		keySecret = getEnv("RAZORPAY_KEY_SECRET_STAGING", "")
+		webhookSecret = getEnv("RAZORPAY_WEBHOOK_SECRET_STAGING", "")
+	}
+
+	return RazorpayConfig{
+		Env:             env,
+		KeyID:           keyID,
+		KeySecret:       keySecret,
+		WebhookSecret:   webhookSecret,
+		BillingAmount:   amount,
+		BillingCurrency: currency,
+	}
 }
 
 func (c *Config) ValidateKafkaAuth() error {

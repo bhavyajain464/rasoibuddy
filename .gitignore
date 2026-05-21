@@ -45,5 +45,7 @@ ngrok.yml
 # Credentials
 credentials.json
 service-account*.json
+backend/scripts/.catalog_keywords_checkpoint.json
+*.checkpoint.json
 .vercel
 .env*.local

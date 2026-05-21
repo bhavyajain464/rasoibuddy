@@ -48,6 +48,23 @@ upsert_secret "session-token-secret" "$(get_env SESSION_TOKEN_SECRET)"
 upsert_secret "redis-url" "$(get_env REDIS_URL)"
 upsert_secret "kafka-sasl-password" "$(get_env KAFKA_PASSWORD)"
 
+upsert_secret "razorpay-key-id-staging" "$(get_env RAZORPAY_KEY_ID_STAGING)"
+upsert_secret "razorpay-key-secret-staging" "$(get_env RAZORPAY_KEY_SECRET_STAGING)"
+upsert_secret "razorpay-webhook-secret-staging" "$(get_env RAZORPAY_WEBHOOK_SECRET_STAGING)"
+upsert_secret "razorpay-key-id-production" "$(get_env RAZORPAY_KEY_ID_PRODUCTION)"
+upsert_secret "razorpay-key-secret-production" "$(get_env RAZORPAY_KEY_SECRET_PRODUCTION)"
+upsert_secret "razorpay-webhook-secret-production" "$(get_env RAZORPAY_WEBHOOK_SECRET_PRODUCTION)"
+
+smtp_pass="$(get_env SMTP_PASS)"
+if [[ -n "$smtp_pass" ]]; then
+  upsert_secret "smtp-pass" "$smtp_pass"
+fi
+
+admin_key="$(get_env ADMIN_API_KEY)"
+if [[ -n "$admin_key" ]]; then
+  upsert_secret "admin-api-key" "$admin_key"
+fi
+
 translate="$(get_env GOOGLE_TRANSLATE_KEY)"
 if [[ -n "$translate" ]]; then
   upsert_secret "google-translate-key" "$translate"

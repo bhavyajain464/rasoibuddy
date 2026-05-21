@@ -16,37 +16,25 @@ import {
   TextInput,
   IconButton,
   Button,
-  Portal,
-  Modal,
-  Divider,
   Menu,
+  SegmentedButtons,
 } from 'react-native-paper';
+import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
-import { CookedLogEntry } from '../types';
 import { layout } from '../theme';
+import { useEntitlements } from '../context/EntitlementsContext';
+import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
+import { showUpgradeMessage } from '../utils/upgrade';
+import { UpgradeRequiredError } from '../services/api';
 
-const SOURCE_LABELS: Record<string, string> = {
-  manual: 'Logged',
-  'whatsapp-parsed': 'WhatsApp',
-  'cook-reported': 'From cook',
-};
-
-const MEAL_SLOTS = [
-  { id: 'breakfast', label: 'Breakfast' },
-  { id: 'lunch', label: 'Lunch' },
-  { id: 'dinner', label: 'Dinner' },
-  { id: 'snack', label: 'Snack' },
+const MEALS_TABS = [
+  { value: 'suggest', label: 'Suggest meals', icon: 'lightbulb-on-outline' },
+  { value: 'history', label: 'History & diet', icon: 'history' },
 ] as const;
 
-function todayISO(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+type MealsTab = (typeof MEALS_TABS)[number]['value'];
 
 const GRID_GAP = 14;
 const GRID_PAD = 18;
@@ -145,6 +133,7 @@ function CategoryBox({
   subtitle,
   color,
   bg,
+  locked,
   onPress,
 }: {
   icon: string;
@@ -152,11 +141,18 @@ function CategoryBox({
   subtitle: string;
   color: string;
   bg: string;
+  locked?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.gridItem, pressed && { opacity: 0.88 }]}>
       <Surface style={[styles.gridSurface, { backgroundColor: bg }]} elevation={1}>
+        {locked ? (
+          <View style={styles.premiumBadge}>
+            <IconButton icon="lock" size={14} iconColor="#fff" style={{ margin: 0 }} />
+            <Text variant="labelSmall" style={styles.premiumBadgeText}>Pro</Text>
+          </View>
+        ) : null}
         <View style={styles.gridIconWrap}>
           <IconButton icon={icon} iconColor={color} size={28} style={{ margin: 0 }} />
         </View>
@@ -177,79 +173,17 @@ export function MealsScreen() {
   const [userPrompt, setUserPrompt] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState<MealTypeFilterId>('lunch_dinner');
   const [inventoryCount, setInventoryCount] = useState(0);
-  const [mealHistory, setMealHistory] = useState<CookedLogEntry[]>([]);
-  const [addModalVisible, setAddModalVisible] = useState(false);
-  const [addDishName, setAddDishName] = useState('');
-  const [addMealSlot, setAddMealSlot] = useState<string>('');
-  const [addCookedOn, setAddCookedOn] = useState(todayISO);
-  const [addNotes, setAddNotes] = useState('');
-  const [addSaving, setAddSaving] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [mealsTab, setMealsTab] = useState<MealsTab>('suggest');
   const [cookProfileReady, setCookProfileReady] = useState(false);
   const [starringDish, setStarringDish] = useState<string | null>(null);
-
-  const refreshHistory = useCallback(async () => {
-    try {
-      const res = await api.getCookedHistory();
-      setMealHistory(res.entries || []);
-    } catch {
-      setMealHistory([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshHistory();
-  }, [refreshHistory]);
+  const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
+  const { startUpgrade } = usePlanUpgrade();
 
   useEffect(() => {
     api.fetchCookProfile()
       .then((p) => setCookProfileReady(Boolean(p.configured && p.phone_number?.trim())))
       .catch(() => setCookProfileReady(false));
   }, []);
-
-  const openAddMeal = () => {
-    setAddDishName('');
-    setAddMealSlot('');
-    setAddCookedOn(todayISO());
-    setAddNotes('');
-    setAddError(null);
-    setAddModalVisible(true);
-  };
-
-  const closeAddMeal = () => {
-    setAddModalVisible(false);
-    setAddError(null);
-  };
-
-  const handleAddMeal = async () => {
-    const name = addDishName.trim();
-    if (!name) {
-      setAddError('Enter what you ate.');
-      return;
-    }
-    const cookedOn = addCookedOn.trim();
-    if (cookedOn && !/^\d{4}-\d{2}-\d{2}$/.test(cookedOn)) {
-      setAddError('Date must be YYYY-MM-DD.');
-      return;
-    }
-    setAddSaving(true);
-    setAddError(null);
-    try {
-      await api.logCookedDish({
-        dish_name: name,
-        meal_slot: addMealSlot || undefined,
-        source: 'manual',
-        notes: addNotes.trim() || undefined,
-        cooked_on: cookedOn || todayISO(),
-      });
-      closeAddMeal();
-      await refreshHistory();
-    } catch {
-      setAddError('Could not save. Check you are signed in and the backend is running.');
-    } finally {
-      setAddSaving(false);
-    }
-  };
 
   const toggleStar = useCallback(async (mealIndex: number) => {
     const meal = result?.meals?.[mealIndex];
@@ -310,18 +244,38 @@ export function MealsScreen() {
       const match = categories.find((c) => c.id === catId) || categories[0] || null;
       setResult(match);
       setInventoryCount(res.inventory_items_used || 0);
-    } catch (e: any) {
-      setError(e.message || 'Failed to generate suggestions.');
+    } catch (e: unknown) {
+      if (e instanceof UpgradeRequiredError) {
+        showUpgradeMessage(e.message, startUpgrade);
+        setError(null);
+        setSelectedCategory(null);
+        void refreshEntitlements();
+      } else {
+        setError((e as Error).message || 'Failed to generate suggestions.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter]);
+  }, [userPrompt, mealTypeFilter, refreshEntitlements, startUpgrade]);
+
+  const onCategoryPress = useCallback(
+    (catId: string) => {
+      if (!isMealCategoryFree(catId)) {
+        showUpgradeMessage(
+          'Daily meal ideas are free. Rescue, Meal of Day, Healthy, Tasty, and Meal Prep need Pro.',
+          startUpgrade,
+        );
+        return;
+      }
+      void generateForCategory(catId);
+    },
+    [isMealCategoryFree, generateForCategory, startUpgrade],
+  );
 
   const goBack = () => {
     setSelectedCategory(null);
     setResult(null);
     setError(null);
-    refreshHistory();
   };
 
   const activeCat = CATEGORIES.find((c) => c.id === selectedCategory);
@@ -336,7 +290,11 @@ export function MealsScreen() {
         style={[
           styles.header,
           { paddingTop: insets.top + 14 },
-          activeCat ? { backgroundColor: activeCat.color } : {},
+          activeCat
+            ? { backgroundColor: activeCat.color }
+            : mealsTab === 'history'
+              ? { backgroundColor: '#7B1FA2' }
+              : {},
         ]}
       >
         <View style={styles.headerContent}>
@@ -347,15 +305,41 @@ export function MealsScreen() {
             </Pressable>
           )}
           <Text variant="headlineSmall" style={styles.headerTitle}>
-            {activeCat ? activeCat.title : 'Smart Meals'}
+            {activeCat
+              ? activeCat.title
+              : mealsTab === 'history'
+                ? 'History & diet'
+                : 'Smart Meals'}
           </Text>
           <Text variant="bodyMedium" style={styles.headerSub}>
-            {activeCat ? activeCat.subtitle : 'AI-powered meal ideas from your kitchen'}
+            {activeCat
+              ? activeCat.subtitle
+              : mealsTab === 'history'
+                ? 'Log what you ate · nightly diet email'
+                : 'AI-powered meal ideas from your kitchen'}
           </Text>
         </View>
       </View>
 
-      {!selectedCategory && !loading && (
+      {!selectedCategory && (
+        <View style={styles.tabBar}>
+          <SegmentedButtons
+            value={mealsTab}
+            onValueChange={(v) => setMealsTab(v as MealsTab)}
+            buttons={MEALS_TABS.map((t) => ({
+              value: t.value,
+              label: t.label,
+              icon: t.icon,
+              style: mealsTab === t.value ? styles.tabBtnActive : styles.tabBtn,
+            }))}
+            style={styles.segmented}
+          />
+        </View>
+      )}
+
+      {mealsTab === 'history' && !selectedCategory ? <MealsHistoryDietTab /> : null}
+
+      {mealsTab === 'suggest' && !selectedCategory && !loading && (
         <>
           <View style={styles.promptWrap}>
             <TextInput
@@ -385,7 +369,8 @@ export function MealsScreen() {
                 subtitle={cat.subtitle}
                 color={cat.color}
                 bg={cat.bg}
-                onPress={() => generateForCategory(cat.id)}
+                locked={!isMealCategoryFree(cat.id)}
+                onPress={() => onCategoryPress(cat.id)}
               />
             ))}
           </View>
@@ -393,7 +378,7 @@ export function MealsScreen() {
         </>
       )}
 
-      {loading && (
+      {mealsTab === 'suggest' && loading && (
         <View style={styles.loadingWrap}>
           <Surface style={styles.loadingCard} elevation={2}>
             <ActivityIndicator size="large" color={activeCat?.color || '#FF9800'} />
@@ -407,7 +392,7 @@ export function MealsScreen() {
         </View>
       )}
 
-      {error && !loading && (
+      {mealsTab === 'suggest' && error && !loading && (
         <Surface style={styles.errorCard} elevation={1}>
           <IconButton icon="alert-circle" iconColor="#C62828" size={28} style={{ margin: 0 }} />
           <Text variant="bodyMedium" style={styles.errorText}>{error}</Text>
@@ -428,7 +413,7 @@ export function MealsScreen() {
         </Surface>
       )}
 
-      {result && !loading && (
+      {mealsTab === 'suggest' && result && !loading && (
         <View style={styles.resultWrap}>
           <View style={styles.regenRow}>
             <TextInput
@@ -557,135 +542,7 @@ export function MealsScreen() {
         </View>
       )}
 
-      {!loading && (
-        <View style={styles.historySection}>
-          <View style={styles.historyHeader}>
-            <View style={styles.historyHeaderText}>
-              <Text variant="titleMedium" style={styles.historyTitle}>What you ate</Text>
-              <Text variant="bodySmall" style={styles.historySubtitle}>Last 15 days</Text>
-            </View>
-            <Button
-              mode="contained"
-              icon="plus"
-              compact
-              onPress={openAddMeal}
-              buttonColor="#FF9800"
-              style={styles.addMealBtn}
-              contentStyle={styles.addMealBtnContent}
-            >
-              Add meal
-            </Button>
-          </View>
-          {mealHistory.length === 0 ? (
-            <Surface style={styles.historyEmpty} elevation={0}>
-              <IconButton icon="silverware-fork-knife" iconColor="#bbb" size={32} style={{ margin: 0 }} />
-              <Text variant="bodySmall" style={styles.historyEmptyText}>
-                Log what you actually ate — separate from AI meal ideas above.
-              </Text>
-              <Button mode="outlined" icon="plus" onPress={openAddMeal} style={styles.historyEmptyBtn} textColor="#FF9800">
-                Add your first meal
-              </Button>
-            </Surface>
-          ) : (
-            mealHistory.map((entry) => (
-              <Surface key={entry.id} style={styles.historyRow} elevation={0}>
-                <View style={[styles.historyDot, { backgroundColor: '#FF9800' }]} />
-                <View style={styles.historyBody}>
-                  <Text variant="bodyMedium" style={styles.historyName} numberOfLines={1}>
-                    {entry.dish_name}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.historyMeta}>
-                    {entry.cooked_on}
-                    {entry.meal_slot ? ` · ${entry.meal_slot}` : ''}
-                  </Text>
-                </View>
-                {entry.source !== 'manual' ? (
-                  <Chip compact style={styles.sourceChip} textStyle={styles.sourceChipText}>
-                    {SOURCE_LABELS[entry.source] || entry.source}
-                  </Chip>
-                ) : null}
-              </Surface>
-            ))
-          )}
-        </View>
-      )}
-
       <View style={{ height: 32 }} />
-
-      <Portal>
-        <Modal
-          visible={addModalVisible}
-          onDismiss={closeAddMeal}
-          contentContainerStyle={styles.addModal}
-        >
-          <Text variant="titleLarge" style={styles.addModalTitle}>Add meal</Text>
-          <Text variant="bodySmall" style={styles.addModalSub}>
-            What you actually ate — saved for the last 15 days.
-          </Text>
-          <Divider style={styles.addModalDivider} />
-
-          <TextInput
-            label="Dish name"
-            value={addDishName}
-            onChangeText={setAddDishName}
-            mode="outlined"
-            style={styles.addModalInput}
-            placeholder="e.g. Dal, rice & sabzi"
-            autoFocus
-          />
-
-          <Text variant="labelMedium" style={styles.slotLabel}>Meal (optional)</Text>
-          <View style={styles.slotRow}>
-            {MEAL_SLOTS.map((slot) => {
-              const selected = addMealSlot === slot.id;
-              return (
-                <Chip
-                  key={slot.id}
-                  compact
-                  selected={selected}
-                  onPress={() => setAddMealSlot(selected ? '' : slot.id)}
-                  style={[styles.slotChip, selected && styles.slotChipSelected]}
-                  textStyle={selected ? styles.slotChipTextSelected : styles.slotChipText}
-                >
-                  {slot.label}
-                </Chip>
-              );
-            })}
-          </View>
-
-          <TextInput
-            label="Date eaten"
-            value={addCookedOn}
-            onChangeText={setAddCookedOn}
-            mode="outlined"
-            style={styles.addModalInput}
-            placeholder="YYYY-MM-DD"
-          />
-
-          <TextInput
-            label="Notes (optional)"
-            value={addNotes}
-            onChangeText={setAddNotes}
-            mode="outlined"
-            style={styles.addModalInput}
-            placeholder="e.g. light dinner, guest portion"
-            multiline
-          />
-
-          {addError ? (
-            <Text variant="bodySmall" style={styles.addModalError}>{addError}</Text>
-          ) : null}
-
-          <View style={styles.addModalActions}>
-            <Button mode="outlined" onPress={closeAddMeal} disabled={addSaving}>
-              Cancel
-            </Button>
-            <Button mode="contained" onPress={handleAddMeal} loading={addSaving} buttonColor="#FF9800">
-              Save
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
     </ScrollView>
   );
 }
@@ -707,6 +564,11 @@ const styles = StyleSheet.create({
   backText: { color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontSize: 14 },
   headerTitle: { color: '#fff', fontWeight: '800' },
   headerSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+
+  tabBar: { paddingHorizontal: GRID_PAD, paddingTop: 14, paddingBottom: 4 },
+  segmented: { backgroundColor: '#fff' },
+  tabBtn: { backgroundColor: '#fff' },
+  tabBtnActive: { backgroundColor: '#FFF3E0' },
 
   promptWrap: { paddingHorizontal: GRID_PAD, paddingTop: 16, gap: 10 },
   promptInput: { backgroundColor: '#fff' },
@@ -736,7 +598,20 @@ const styles = StyleSheet.create({
     padding: 16,
     minHeight: 128,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  premiumBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 10,
+    paddingRight: 6,
+    zIndex: 1,
+  },
+  premiumBadgeText: { color: '#fff', fontWeight: '700' },
   gridIconWrap: {
     alignSelf: 'flex-start',
     marginBottom: 8,

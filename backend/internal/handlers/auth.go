@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"kitchenai-backend/internal/middleware"
 	"kitchenai-backend/internal/services"
 
 	"github.com/gorilla/mux"
@@ -64,7 +65,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := getAuthSession(r)
+	session := middleware.GetAuthSession(r)
 	if session == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
@@ -129,14 +130,6 @@ func getAuthToken(r *http.Request) string {
 	}
 
 	return ""
-}
-
-func getAuthSession(r *http.Request) *services.AuthSession {
-	// Get session from context (set by auth middleware)
-	if session, ok := r.Context().Value("auth_session").(*services.AuthSession); ok {
-		return session
-	}
-	return nil
 }
 
 // RegisterAuthRoutes registers authentication routes

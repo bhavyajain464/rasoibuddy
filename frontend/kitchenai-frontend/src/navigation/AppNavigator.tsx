@@ -13,6 +13,7 @@ import { ShoppingScreen } from '../screens/ShoppingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
+import { EntitlementsProvider } from '../context/EntitlementsContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -95,6 +96,7 @@ export function AppNavigator() {
   }
 
   return (
+    <EntitlementsProvider>
     <WhatsAppShareProvider>
     <NavigationContainer linking={linking}>
       <Tab.Navigator
@@ -118,6 +120,7 @@ export function AppNavigator() {
       </Tab.Navigator>
     </NavigationContainer>
     </WhatsAppShareProvider>
+    </EntitlementsProvider>
   );
 }
 

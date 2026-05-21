@@ -224,7 +224,7 @@ func EstimateShelfLifeGroq(ctx context.Context, cfg *config.Config, itemNames []
 	}
 	prompt := fmt.Sprintf(`Shelf life in days (Indian home storage) for: %s. JSON array only: [{"name":"...","shelf_life_days":N}]`, strings.Join(itemNames, ", "))
 
-	text, err := groqChat(ctx, cfg.GroqAPIKey, cfg.GroqModel, 0.1, maxOut, []groqMessage{
+	text, err := groqChat(ctx, cfg.GroqAPIKey, cfg.EffectiveGroqModel(), 0.1, maxOut, []groqMessage{
 		{Role: "user", Content: prompt},
 	})
 	if err != nil {
@@ -302,10 +302,7 @@ func ScanBillGroqFromBase64(ctx context.Context, cfg *config.Config, base64Image
 	if cfg.GroqAPIKey == "" {
 		return nil, fmt.Errorf("groq API key not configured")
 	}
-	model := cfg.GroqVisionModel
-	if model == "" {
-		model = "llama-3.2-11b-vision-preview"
-	}
+	model := cfg.EffectiveGroqModel()
 	text, err := GroqChatVision(ctx, cfg.GroqAPIKey, model, 0.1, billScanGroqUserPrompt, imageType, base64Image)
 	if err != nil {
 		return nil, fmt.Errorf("groq bill scan: %w", err)

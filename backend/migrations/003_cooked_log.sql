@@ -1,7 +1,7 @@
--- Cooked dish history (all rows kept in Postgres; API caches last 15 days in Redis).
+-- Cooked dish history (Postgres source of truth; API may cache recent rows in Redis).
 
 CREATE TABLE IF NOT EXISTS cooked_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     dish_name TEXT NOT NULL,
     dish_id UUID,

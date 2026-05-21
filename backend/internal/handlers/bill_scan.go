@@ -13,6 +13,8 @@ import (
 	"kitchenai-backend/pkg/config"
 )
 
+const billScanUserMessage = "We couldn't read this bill. Try a clearer photo with good lighting."
+
 // ScanBillRequest represents the request body for bill scanning
 type ScanBillRequest struct {
 	ImageData string `json:"image_data"` // Base64 encoded image
@@ -34,6 +36,11 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		userID := getUserID(r)
+		if !requireBillScan(db, userID, w) {
 			return
 		}
 
@@ -62,9 +69,14 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 		if err != nil {
 			response := ScanBillResponse{
 				Success: false,
-				Message: fmt.Sprintf("Failed to scan bill: %v", err),
+				Message: billScanUserMessage,
 			}
 			writeJSONResponse(w, http.StatusInternalServerError, response)
+			return
+		}
+
+		if err := services.RecordBillScan(db, userID); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -87,6 +99,9 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 		}
 
 		userID := getUserID(r)
+		if !requireBillScan(db, userID, w) {
+			return
+		}
 
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -127,9 +142,14 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 		if err != nil {
 			response := ScanBillResponse{
 				Success: false,
-				Message: fmt.Sprintf("Failed to scan bill: %v", err),
+				Message: billScanUserMessage,
 			}
 			writeJSONResponse(w, http.StatusInternalServerError, response)
+			return
+		}
+
+		if err := services.RecordBillScan(db, userID); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 

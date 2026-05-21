@@ -6,8 +6,16 @@ import * as api from '../services/api';
 import { ScanResult } from '../types';
 import { colors } from '../theme';
 import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/billImagePicker';
+import { useEntitlements } from '../context/EntitlementsContext';
+import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
+import { showUpgradeMessage } from '../utils/upgrade';
+import { UpgradeRequiredError } from '../services/api';
+import { showAppAlert } from '../utils/alertMessage';
+import { BILL_SCAN_ALERT_MESSAGE, BILL_SCAN_ALERT_TITLE } from '../utils/billScanMessage';
 
 export function ScanScreen() {
+  const { canBillScan, refresh: refreshEntitlements } = useEntitlements();
+  const { startUpgrade } = usePlanUpgrade();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -39,11 +47,16 @@ export function ScanScreen() {
       Alert.alert('No Image', 'Please take a photo or pick one from gallery first.');
       return;
     }
+    if (!canBillScan) {
+      showUpgradeMessage('Free plan includes 5 bill scans (camera or upload).', startUpgrade);
+      return;
+    }
     setScanning(true);
     setResult(null);
 
     try {
       const scanResult = await api.scanBillUpload(imageUri);
+      await refreshEntitlements();
       setResult(scanResult);
       const addedCount = scanResult.added_to_inventory?.length || 0;
       const itemCount = scanResult.items?.length || 0;
@@ -51,9 +64,14 @@ export function ScanScreen() {
         'Bill Scanned!',
         `Found ${itemCount} items, added ${addedCount} to inventory with estimated expiry dates.`,
       );
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Scan error:', e);
-      Alert.alert('Scan Failed', e.message || 'Could not scan bill. Please try again.');
+      if (e instanceof UpgradeRequiredError) {
+        showUpgradeMessage(e.message, startUpgrade);
+        void refreshEntitlements();
+      } else {
+        showAppAlert(BILL_SCAN_ALERT_TITLE, BILL_SCAN_ALERT_MESSAGE);
+      }
     } finally {
       setScanning(false);
     }

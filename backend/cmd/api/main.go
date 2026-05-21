@@ -24,7 +24,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key")
 		w.Header().Set("Access-Control-Max-Age", "300")
 
 		if r.Method == "OPTIONS" {
@@ -48,6 +48,11 @@ func main() {
 	if err := cfg.ValidateKafkaAuth(); err != nil {
 		log.Fatalf("Invalid Kafka config: %v", err)
 	}
+	if cfg.Razorpay.Enabled() {
+		log.Printf("Razorpay billing: env=%s currency=%s", cfg.Razorpay.Env, cfg.Razorpay.BillingCurrency)
+	} else {
+		log.Printf("Razorpay billing: disabled (set RAZORPAY_ENV and matching key pair to enable checkout)")
+	}
 
 	database, err := db.InitDB(
 		cfg.DatabaseURL,
@@ -70,6 +75,8 @@ func main() {
 	redisClient := redislib.New(cfg)
 	defer redisClient.Close()
 	cookedLogSvc := services.NewCookedLogService(sqlDB, redisClient)
+	dietDigestSvc := services.NewDietDigestService(sqlDB, cookedLogSvc, cfg)
+	services.StartNightlyDigestScheduler(dietDigestSvc)
 
 	authService := services.NewAuthService(sqlDB, cfg)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -123,6 +130,29 @@ func main() {
 	// Global dish stars (one star per user per dish)
 	api.Handle("/dishes/star", middleware.RequireAuth(http.HandlerFunc(handlers.StarDish(sqlDB)))).Methods("POST", "OPTIONS")
 
+	// Freemium entitlements (plan, bill scan usage, meal category access)
+	api.Handle("/entitlements", middleware.RequireAuth(http.HandlerFunc(handlers.GetEntitlements(sqlDB)))).Methods("GET", "OPTIONS")
+
+	billingSvc := services.NewBillingService(sqlDB, cfg.Razorpay)
+	billingHandler := handlers.NewBillingHandler(billingSvc, cfg.Razorpay)
+	api.Handle("/billing/config", middleware.RequireAuth(http.HandlerFunc(billingHandler.GetBillingConfig()))).Methods("GET", "OPTIONS")
+	api.Handle("/billing/plans", middleware.RequireAuth(http.HandlerFunc(billingHandler.ListPlans()))).Methods("GET", "OPTIONS")
+	api.Handle("/billing/subscribe/quote", middleware.RequireAuth(http.HandlerFunc(billingHandler.QuoteSubscribe()))).Methods("POST", "OPTIONS")
+	api.Handle("/billing/subscribe/order", middleware.RequireAuth(http.HandlerFunc(billingHandler.CreateSubscribeOrder()))).Methods("POST", "OPTIONS")
+	api.Handle("/billing/subscribe/verify", middleware.RequireAuth(http.HandlerFunc(billingHandler.VerifySubscribePayment()))).Methods("POST", "OPTIONS")
+	api.Handle("/billing/subscribe/sync", middleware.RequireAuth(http.HandlerFunc(billingHandler.SyncSubscribePayment()))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/v1/billing/razorpay/webhook", billingHandler.RazorpayWebhook()).Methods("POST")
+
+	// Admin (X-Admin-Key / Bearer ADMIN_API_KEY — not user session auth)
+	admin := router.PathPrefix("/api/v1/admin").Subrouter()
+	admin.Use(middleware.RequireAdmin(cfg.AdminAPIKey))
+	admin.HandleFunc("/subscriptions/cancel", handlers.CancelSubscription(sqlDB)).Methods("POST", "OPTIONS")
+	if cfg.AdminAPIKey != "" {
+		log.Printf("Admin API enabled at /api/v1/admin/*")
+	} else {
+		log.Printf("Admin API disabled (set ADMIN_API_KEY to enable)")
+	}
+
 	// Bill scanning
 	api.Handle("/bill/scan", middleware.RequireAuth(http.HandlerFunc(handlers.ScanBill(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/bill/scan/upload", middleware.RequireAuth(http.HandlerFunc(handlers.ScanBillMultipart(sqlDB, cfg)))).Methods("POST", "OPTIONS")
@@ -141,6 +171,9 @@ func main() {
 	api.Handle("/meals/smart", middleware.RequireAuth(http.HandlerFunc(handlers.GetSmartMeals(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked-history", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookedHistory(cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked", middleware.RequireAuth(http.HandlerFunc(handlers.LogCookedDish(cookedLogSvc)))).Methods("POST", "OPTIONS")
+	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.GetDietAnalysisSettings(dietDigestSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.UpdateDietAnalysisSettings(dietDigestSvc)))).Methods("PUT", "OPTIONS")
+	api.Handle("/meals/diet-analysis/send-test", middleware.RequireAuth(http.HandlerFunc(handlers.SendDietDigestTest(dietDigestSvc)))).Methods("POST", "OPTIONS")
 
 	// Legacy rescue meals
 	api.Handle("/rescue-meal/suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetRescueMealSuggestions(sqlDB)))).Methods("GET", "POST", "OPTIONS")

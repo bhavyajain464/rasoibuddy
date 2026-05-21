@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
 import {
   clampWhatsAppMessageText,
   logImportError,
@@ -26,8 +27,15 @@ import {
   UpdateProfileRequest,
   UserMemory,
   CookedLogEntry,
+  DietAnalysisSettings,
   CookedHistoryResponse,
+  Entitlements,
+  BillingConfig,
+  PlanProduct,
+  CheckoutOrderResponse,
+  VerifyCheckoutRequest,
 } from '../types';
+import { imageUriToBase64 } from '../utils/imageToBase64';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
 
@@ -76,6 +84,125 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
     }
   }
   return res;
+}
+
+export class UpgradeRequiredError extends Error {
+  feature: string;
+
+  constructor(message: string, feature: string) {
+    super(message);
+    this.name = 'UpgradeRequiredError';
+    this.feature = feature;
+  }
+}
+
+async function parseApiError(res: Response, fallback: string): Promise<never> {
+  let message = fallback;
+  try {
+    const body = await res.json();
+    if (body?.error === 'upgrade_required' && body?.message) {
+      throw new UpgradeRequiredError(body.message, body.feature || 'unknown');
+    }
+    if (typeof body?.message === 'string' && body.message) {
+      message = body.message;
+    }
+  } catch (e) {
+    if (e instanceof UpgradeRequiredError) {
+      throw e;
+    }
+  }
+  throw new Error(message);
+}
+
+// ─── Entitlements (freemium) ──────────────────────────────────
+
+/** Maps API payload to current shape (plan_tier + is_pro only). */
+function normalizeEntitlements(raw: Record<string, unknown>): Entitlements {
+  const legacyPlan = typeof raw.plan === 'string' ? raw.plan : '';
+  const tier =
+    (typeof raw.plan_tier === 'string' && raw.plan_tier) ||
+    (legacyPlan === 'pro' || legacyPlan === 'elite' ? legacyPlan : 'free');
+  const isPro = Boolean(
+    raw.is_pro ??
+      ((tier === 'pro' || tier === 'elite') || raw.is_premium === true),
+  );
+  const proMeals =
+    (raw.pro_meal_categories as string[] | undefined) ??
+    (raw.premium_meal_categories as string[] | undefined) ??
+    [];
+  return {
+    plan_tier: tier,
+    plan_interval: raw.plan_interval as string | undefined,
+    plan_expires_at: raw.plan_expires_at as string | undefined,
+    is_pro: isPro,
+    is_elite: Boolean(raw.is_elite ?? tier === 'elite'),
+    has_diet_analysis: Boolean(raw.has_diet_analysis),
+    bill_scans_used: Number(raw.bill_scans_used ?? 0),
+    bill_scan_limit: Number(raw.bill_scan_limit ?? (isPro ? -1 : 5)),
+    bill_scans_remaining: Number(raw.bill_scans_remaining ?? (isPro ? -1 : 5)),
+    free_meal_categories: (raw.free_meal_categories as string[]) ?? ['daily'],
+    pro_meal_categories: proMeals,
+    available_plans: raw.available_plans as Entitlements['available_plans'],
+    upgrade_options: raw.upgrade_options as Entitlements['upgrade_options'],
+  };
+}
+
+export async function getEntitlements(): Promise<Entitlements> {
+  const res = await authFetch(`${API_BASE_URL}/entitlements`);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(
+      `Plan status request failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 120)}` : ''}`,
+    );
+  }
+  const raw = (await res.json()) as Record<string, unknown>;
+  return normalizeEntitlements(raw);
+}
+
+// ─── Billing (Razorpay subscriptions) ───────────────────────
+
+export async function getBillingConfig(): Promise<BillingConfig> {
+  const res = await authFetch(`${API_BASE_URL}/billing/config`);
+  if (!res.ok) await parseApiError(res, 'Failed to load billing config');
+  return res.json();
+}
+
+export async function createSubscribeOrder(
+  planTier: string,
+  planInterval: string,
+): Promise<CheckoutOrderResponse> {
+  const res = await authFetch(`${API_BASE_URL}/billing/subscribe/order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan_tier: planTier, plan_interval: planInterval }),
+  });
+  if (!res.ok) await parseApiError(res, 'Failed to start checkout');
+  return res.json();
+}
+
+export async function verifySubscribePayment(body: VerifyCheckoutRequest): Promise<void> {
+  const res = await authFetch(`${API_BASE_URL}/billing/subscribe/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) await parseApiError(res, 'Payment verification failed');
+}
+
+export async function syncSubscribeOrder(orderId: string): Promise<{ is_pro: boolean }> {
+  const res = await authFetch(`${API_BASE_URL}/billing/subscribe/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: orderId }),
+  });
+  if (res.status === 402) {
+    return { is_pro: false };
+  }
+  if (!res.ok) await parseApiError(res, 'Could not confirm payment');
+  const data = await res.json();
+  return {
+    is_pro: Boolean(data.is_pro) || data.status === 'active',
+  };
 }
 
 // ─── Inventory ───────────────────────────────────────────────
@@ -160,30 +287,7 @@ export async function scanBillTest(): Promise<ScanResult> {
 }
 
 export async function scanBillUpload(imageUri: string): Promise<ScanResult> {
-  const filename = imageUri.split('/').pop() || 'bill.jpg';
-  const ext = filename.split('.').pop()?.toLowerCase() || 'jpeg';
-  const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-
-  let base64Data: string;
-
-  if (Platform.OS === 'web') {
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-    base64Data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        resolve(dataUrl.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } else {
-    const FileSystem = require('expo-file-system');
-    base64Data = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-  }
+  const { base64: base64Data, mimeType } = await imageUriToBase64(imageUri);
 
   const res = await authFetch(`${API_BASE_URL}/bill/scan`, {
     method: 'POST',
@@ -193,11 +297,28 @@ export async function scanBillUpload(imageUri: string): Promise<ScanResult> {
       image_type: mimeType,
     }),
   });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`HTTP ${res.status}: ${errorText}`);
+
+  let body: ScanResult & { error?: string; feature?: string; message?: string };
+  try {
+    body = await res.json();
+  } catch {
+    if (!res.ok) throw new Error(BILL_SCAN_ALERT_MESSAGE);
+    throw new Error(BILL_SCAN_ALERT_MESSAGE);
   }
-  return res.json();
+
+  if (
+    body?.error === 'upgrade_required' &&
+    typeof body.message === 'string' &&
+    body.message
+  ) {
+    throw new UpgradeRequiredError(body.message, body.feature || 'bill_scan');
+  }
+
+  if (!res.ok || body.success === false) {
+    throw new Error(BILL_SCAN_ALERT_MESSAGE);
+  }
+
+  return body;
 }
 
 // ─── WhatsApp ────────────────────────────────────────────────
@@ -511,7 +632,23 @@ export async function getSmartMeals(
   if (userPrompt) qp.set('prompt', userPrompt);
   if (excludeDish?.trim()) qp.set('exclude', excludeDish.trim());
   const res = await authFetch(`${API_BASE_URL}/meals/smart?${qp.toString()}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) await parseApiError(res, `HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getDietAnalysisSettings(): Promise<DietAnalysisSettings> {
+  const res = await authFetch(`${API_BASE_URL}/meals/diet-analysis`);
+  if (!res.ok) await parseApiError(res, 'Failed to load diet analysis settings');
+  return res.json();
+}
+
+export async function updateDietAnalysisSettings(emailEnabled: boolean): Promise<DietAnalysisSettings> {
+  const res = await authFetch(`${API_BASE_URL}/meals/diet-analysis`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email_enabled: emailEnabled }),
+  });
+  if (!res.ok) await parseApiError(res, 'Failed to update diet analysis');
   return res.json();
 }
 

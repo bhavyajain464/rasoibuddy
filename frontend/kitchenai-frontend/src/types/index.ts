@@ -168,6 +168,16 @@ export interface CookedLogEntry {
   created_at: string;
 }
 
+export interface DietAnalysisSettings {
+  eligible: boolean;
+  email_enabled: boolean;
+  email?: string;
+  smtp_configured: boolean;
+  delivery_hour: number;
+  delivery_timezone: string;
+  delivery_summary: string;
+}
+
 export interface CookedHistoryResponse {
   entries: CookedLogEntry[];
   days: number;
@@ -238,6 +248,85 @@ export interface CookInfo {
   dishes_known: string[];
   preferred_lang: string;
   phone_number?: string;
+}
+
+export interface UpgradeQuote {
+  target: PlanProduct;
+  list_price_paise: number;
+  credit_paise: number;
+  amount_paise: number;
+  is_upgrade: boolean;
+  is_renewal: boolean;
+  days_remaining: number;
+  days_in_period: number;
+  credit_summary: string;
+  amount_label: string;
+}
+
+export interface PlanProduct {
+  tier: string;
+  interval: string;
+  amount_paise: number;
+  currency: string;
+  display_name: string;
+  price_label: string;
+  description: string;
+  features: string[];
+  available_for_purchase: boolean;
+}
+
+export interface Entitlements {
+  plan_tier: 'free' | 'pro' | 'elite' | string;
+  plan_interval?: string;
+  plan_expires_at?: string;
+  is_pro: boolean;
+  is_elite: boolean;
+  has_diet_analysis: boolean;
+  bill_scans_used: number;
+  bill_scan_limit: number;
+  bill_scans_remaining: number;
+  free_meal_categories: string[];
+  pro_meal_categories: string[];
+  available_plans?: PlanProduct[];
+  upgrade_options?: UpgradeQuote[];
+}
+
+export interface BillingConfig {
+  enabled: boolean;
+  razorpay_env: 'staging' | 'production' | string;
+  key_id: string;
+  currency: string;
+  plans: PlanProduct[];
+}
+
+export interface CheckoutOrderResponse {
+  key_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  razorpay_env: string;
+  name: string;
+  description: string;
+  prefill_email?: string;
+  plan_tier: string;
+  plan_interval: string;
+  price_label: string;
+  list_price_paise?: number;
+  credit_paise?: number;
+  is_upgrade?: boolean;
+  credit_summary?: string;
+}
+
+export interface VerifyCheckoutRequest {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+export interface UpgradeRequiredPayload {
+  error: string;
+  feature: string;
+  message: string;
 }
 
 export interface CookProfile {
