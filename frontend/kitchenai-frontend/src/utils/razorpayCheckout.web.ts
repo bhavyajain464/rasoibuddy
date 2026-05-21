@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { CheckoutOrderResponse, VerifyCheckoutRequest } from '../types';
 
 type RazorpayFailureResponse = {
@@ -23,9 +22,6 @@ declare global {
 let scriptLoading: Promise<void> | null = null;
 
 function loadRazorpayScript(): Promise<void> {
-  if (Platform.OS !== 'web') {
-    return Promise.reject(new Error('Razorpay Checkout is supported on web only for now.'));
-  }
   if (typeof window !== 'undefined' && window.Razorpay) {
     return Promise.resolve();
   }
@@ -74,7 +70,6 @@ export async function openRazorpayCheckout(
   return new Promise((resolve, reject) => {
     const options: Record<string, unknown> = {
       key: order.key_id,
-      // Must match order amount exactly (Razorpay expects string in checkout.js).
       amount: String(order.amount),
       currency: order.currency,
       name: order.name,

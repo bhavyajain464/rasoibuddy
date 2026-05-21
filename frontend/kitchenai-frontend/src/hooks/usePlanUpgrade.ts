@@ -1,53 +1,32 @@
 import { useCallback, useState } from 'react';
-import { Platform } from 'react-native';
 import * as api from '../services/api';
 import { CheckoutOrderResponse } from '../types';
 import { openRazorpayCheckout } from '../utils/razorpayCheckout';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 
-type CheckoutOutcome =
-  | { ok: true }
-  | { ok: false; reason: 'cancelled' | 'failed' | 'unconfirmed' };
+async function completeCheckout(order: CheckoutOrderResponse): Promise<void> {
+  const payment = await openRazorpayCheckout(order);
+  await api.verifySubscribePayment(payment);
+}
 
-async function completeCheckout(order: CheckoutOrderResponse): Promise<CheckoutOutcome> {
-  try {
-    const payment = await openRazorpayCheckout(order);
-    await api.verifySubscribePayment(payment);
-    return { ok: true };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : '';
-    if (msg === 'Payment cancelled') {
-      return { ok: false, reason: 'cancelled' };
-    }
-    try {
-      const synced = await api.syncSubscribeOrder(order.order_id);
-      if (synced.is_pro) return { ok: true };
-    } catch {
-      /* sync is best-effort after Razorpay errors */
-    }
-    if (
-      msg.includes('Payment failed') ||
-      msg.includes('International') ||
-      msg.includes('Razorpay')
-    ) {
-      return { ok: false, reason: 'failed' };
-    }
-    return { ok: false, reason: 'unconfirmed' };
-  }
+function checkoutErrorMessage(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  return 'Could not complete checkout. Please try again.';
+}
+
+export function planCheckoutKey(tier: string, interval: string) {
+  return `${tier}-${interval}`;
 }
 
 export function usePlanUpgrade() {
   const { entitlements, isPro, refresh } = useEntitlements();
-  const [busy, setBusy] = useState(false);
+  /** Which plan button is active, or "sync" during payment sync. */
+  const [busyPlanKey, setBusyPlanKey] = useState<string | null>(null);
 
   const subscribe = useCallback(
     async (planTier: string, planInterval: string) => {
-      if (Platform.OS !== 'web') {
-        showAppInfo('Subscriptions are available in the web app for now.');
-        return;
-      }
-      setBusy(true);
+      setBusyPlanKey(planCheckoutKey(planTier, planInterval));
       try {
         const config = await api.getBillingConfig();
         if (!config.enabled) {
@@ -55,14 +34,22 @@ export function usePlanUpgrade() {
           return;
         }
         const order = await api.createSubscribeOrder(planTier, planInterval);
-        const outcome = await completeCheckout(order);
-        if (!outcome.ok) {
-          if (outcome.reason === 'cancelled' || outcome.reason === 'failed') {
-            return;
+        try {
+          await completeCheckout(order);
+        } catch (e) {
+          const msg = checkoutErrorMessage(e);
+          if (msg === 'Payment cancelled') return;
+          try {
+            const synced = await api.syncSubscribeOrder(order.order_id);
+            if (synced.is_pro) {
+              await refresh();
+              showAppSuccess('Your plan is active.');
+              return;
+            }
+          } catch {
+            /* ignore sync failure */
           }
-          showAppInfo(
-            'If you completed payment, tap Sync payment below to activate your plan.',
-          );
+          showAppError(msg);
           return;
         }
         await refresh();
@@ -72,11 +59,11 @@ export function usePlanUpgrade() {
             : '';
         showAppSuccess(`Your plan is active — ${order.price_label}${creditNote}`);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Upgrade failed';
+        const msg = checkoutErrorMessage(e);
         if (msg === 'Payment cancelled') return;
-        showAppError('Something went wrong with checkout. Please try again.');
+        showAppError(msg);
       } finally {
-        setBusy(false);
+        setBusyPlanKey(null);
       }
     },
     [refresh],
@@ -86,8 +73,7 @@ export function usePlanUpgrade() {
 
   const syncLastPayment = useCallback(
     async () => {
-      if (Platform.OS !== 'web') return;
-      setBusy(true);
+      setBusyPlanKey('sync');
       try {
         const synced = await api.syncSubscribeOrder('');
         await refresh();
@@ -99,7 +85,7 @@ export function usePlanUpgrade() {
       } catch {
         showAppError('Could not sync payment. Try again in a moment.');
       } finally {
-        setBusy(false);
+        setBusyPlanKey(null);
       }
     },
     [refresh],
@@ -117,7 +103,8 @@ export function usePlanUpgrade() {
     subscribe,
     startUpgrade,
     syncLastPayment,
-    busy,
+    busy: busyPlanKey != null,
+    busyPlanKey,
     isPro,
     entitlements,
     planLabel,

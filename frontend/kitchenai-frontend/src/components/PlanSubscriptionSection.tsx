@@ -1,7 +1,18 @@
-import React from 'react';
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import { Text, Button, ActivityIndicator, Icon } from 'react-native-paper';
 import { Entitlements, PlanProduct, UpgradeQuote } from '../types';
+
+type TierKey = 'free' | 'pro' | 'elite';
 
 const PRO_FEATURES = [
   'Unlimited bill scans',
@@ -15,12 +26,39 @@ const ELITE_FEATURES = [
   'AI nutrition insights',
 ];
 
+const TIER_ORDER: TierKey[] = ['free', 'pro', 'elite'];
+
+const TIER_META: Record<
+  TierKey,
+  { label: string; icon: 'account' | 'star' | 'crown'; features: string[]; tagline: string }
+> = {
+  free: {
+    label: 'Free',
+    icon: 'account',
+    features: FREE_FEATURES,
+    tagline: 'Get started with daily meal ideas and limited scans.',
+  },
+  pro: {
+    label: 'Pro',
+    icon: 'star',
+    features: PRO_FEATURES,
+    tagline: 'Unlimited scans and every smart meal mode.',
+  },
+  elite: {
+    label: 'Elite',
+    icon: 'crown',
+    features: ELITE_FEATURES,
+    tagline: 'Pro plus diet digest and nutrition insights.',
+  },
+};
+
 type Props = {
   entitlements: Entitlements | null;
   planLabel: () => string;
   onSubscribe: (tier: string, interval: string) => void;
   onSyncPayment: () => void;
   busy: boolean;
+  busyPlanKey: string | null;
   loading?: boolean;
   loadError?: string | null;
   onRetry?: () => void;
@@ -41,13 +79,16 @@ function formatScanUsage(ent: Entitlements | null) {
   };
 }
 
-function tierTheme(tier: string) {
+function tierTheme(tier: TierKey | string) {
   if (tier === 'elite') {
     return {
       hero: '#6A1B9A',
       heroSoft: '#F3E5F5',
       accent: '#9C27B0',
       icon: 'crown' as const,
+      cardBg: '#F3E5F5',
+      cardBorder: '#E1BEE7',
+      labelColor: '#6A1B9A',
     };
   }
   if (tier === 'pro') {
@@ -56,6 +97,9 @@ function tierTheme(tier: string) {
       heroSoft: '#E8F5E9',
       accent: '#4CAF50',
       icon: 'star' as const,
+      cardBg: '#E8F5E9',
+      cardBorder: '#C8E6C9',
+      labelColor: '#2E7D32',
     };
   }
   return {
@@ -63,6 +107,9 @@ function tierTheme(tier: string) {
     heroSoft: '#ECEFF1',
     accent: '#607D8B',
     icon: 'account' as const,
+    cardBg: '#F8F9FA',
+    cardBorder: '#E0E0E0',
+    labelColor: '#455A64',
   };
 }
 
@@ -70,26 +117,30 @@ function PlanPricingCard({
   plan,
   highlighted,
   onSelect,
-  busy,
+  checkoutBusy,
+  loading,
+  accentColor,
 }: {
   plan: PlanProduct;
   highlighted?: boolean;
   onSelect: () => void;
-  busy: boolean;
+  checkoutBusy: boolean;
+  loading: boolean;
+  accentColor: string;
 }) {
   const isYearly = plan.interval === 'yearly';
   return (
     <Pressable
       onPress={onSelect}
-      disabled={busy}
+      disabled={checkoutBusy}
       style={({ pressed }) => [
         styles.priceCard,
-        highlighted && styles.priceCardHighlight,
+        highlighted && { borderColor: accentColor, borderWidth: 2, backgroundColor: '#FAFFFA' },
         pressed && styles.priceCardPressed,
       ]}
     >
       {isYearly ? (
-        <View style={styles.saveBadge}>
+        <View style={[styles.saveBadge, { backgroundColor: accentColor }]}>
           <Text style={styles.saveBadgeText}>Best value</Text>
         </View>
       ) : null}
@@ -98,24 +149,16 @@ function PlanPricingCard({
         {plan.price_label.replace('/month', '').replace('/year', '')}
       </Text>
       <Text style={styles.priceInterval}>{isYearly ? 'per year' : 'per month'}</Text>
-      <View style={styles.priceFeatureList}>
-        {plan.features.slice(0, 2).map((f) => (
-          <View key={f} style={styles.priceFeatureRow}>
-            <Icon source="check-circle" size={14} color="#4CAF50" />
-            <Text style={styles.priceFeatureText}>{f}</Text>
-          </View>
-        ))}
-      </View>
       <Button
         mode="contained"
         onPress={onSelect}
-        loading={busy}
-        disabled={busy}
+        loading={loading}
+        disabled={checkoutBusy}
         style={styles.priceBtn}
-        buttonColor={highlighted ? '#2E7D32' : '#4CAF50'}
+        buttonColor={accentColor}
         labelStyle={styles.priceBtnLabel}
       >
-        Choose {isYearly ? 'Yearly' : 'Monthly'}
+        Pay {isYearly ? 'yearly' : 'monthly'}
       </Button>
     </Pressable>
   );
@@ -124,13 +167,16 @@ function PlanPricingCard({
 function UpgradeOptionCard({
   opt,
   onSelect,
-  busy,
+  checkoutBusy,
+  loading,
 }: {
   opt: UpgradeQuote;
   onSelect: () => void;
-  busy: boolean;
+  checkoutBusy: boolean;
+  loading: boolean;
 }) {
   const isYearly = opt.target.interval === 'yearly';
+  const accent = tierTheme(opt.target.tier).accent;
   return (
     <View style={styles.upgradeCard}>
       <View style={styles.upgradeCardHeader}>
@@ -141,7 +187,7 @@ function UpgradeOptionCard({
           <Text style={styles.upgradeListPrice}>{opt.target.price_label}</Text>
         </View>
         <View style={styles.upgradePricePill}>
-          <Text style={styles.upgradePriceNow}>
+          <Text style={[styles.upgradePriceNow, { color: accent }]}>
             ₹{(opt.amount_paise / 100).toFixed(0)}
           </Text>
           <Text style={styles.upgradePriceSub}>due today</Text>
@@ -157,9 +203,9 @@ function UpgradeOptionCard({
         mode="contained"
         icon="arrow-up-bold"
         onPress={onSelect}
-        loading={busy}
-        disabled={busy}
-        buttonColor="#2E7D32"
+        loading={loading}
+        disabled={checkoutBusy}
+        buttonColor={accent}
         style={styles.upgradeBtn}
       >
         Upgrade now
@@ -168,15 +214,174 @@ function UpgradeOptionCard({
   );
 }
 
-function FeatureChecklist({ items, muted }: { items: string[]; muted?: boolean }) {
+function FeatureChecklist({
+  items,
+  muted,
+  accentColor,
+}: {
+  items: string[];
+  muted?: boolean;
+  accentColor?: string;
+}) {
+  const checkColor = muted ? '#9E9E9E' : accentColor ?? '#4CAF50';
   return (
     <View style={styles.checkList}>
       {items.map((item) => (
         <View key={item} style={styles.checkRow}>
-          <Icon source="check" size={16} color={muted ? '#9E9E9E' : '#4CAF50'} />
+          <Icon source="check" size={16} color={checkColor} />
           <Text style={[styles.checkText, muted && styles.checkTextMuted]}>{item}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function TierFeaturePanel({
+  tier,
+  selected,
+  width,
+  onPress,
+}: {
+  tier: TierKey;
+  selected: boolean;
+  width: number;
+  onPress: () => void;
+}) {
+  const meta = TIER_META[tier];
+  const theme = tierTheme(tier);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.tierPanel,
+        { width, backgroundColor: theme.cardBg, borderColor: selected ? theme.accent : theme.cardBorder },
+        selected && styles.tierPanelSelected,
+      ]}
+    >
+      <View style={styles.tierPanelHeader}>
+        <View style={[styles.tierIconCircle, { backgroundColor: theme.hero }]}>
+          <Icon source={meta.icon} size={20} color="#fff" />
+        </View>
+        <Text style={[styles.tierPanelLabel, { color: theme.labelColor }]}>{meta.label}</Text>
+        {selected ? (
+          <View style={[styles.selectedDot, { backgroundColor: theme.accent }]}>
+            <Icon source="check" size={12} color="#fff" />
+          </View>
+        ) : null}
+      </View>
+      <Text style={styles.tierTagline}>{meta.tagline}</Text>
+      <FeatureChecklist items={meta.features} muted={!selected} accentColor={theme.accent} />
+    </Pressable>
+  );
+}
+
+function PlanTierPicker({
+  selectedTier,
+  onSelectTier,
+  eliteAvailable,
+}: {
+  selectedTier: TierKey;
+  onSelectTier: (tier: TierKey, index: number) => void;
+  eliteAvailable: boolean;
+}) {
+  const { width } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const isCompact = Platform.OS !== 'web' || width < 720;
+  const horizontalPadding = 16;
+  const gap = 10;
+  const panelWidth = isCompact ? width - horizontalPadding * 2 : (width - horizontalPadding * 2 - gap * 2) / 3;
+  const snapInterval = panelWidth + gap;
+
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      scrollRef.current?.scrollTo({ x: index * snapInterval, animated: true });
+    },
+    [snapInterval],
+  );
+
+  const visibleTiers = TIER_ORDER.filter((t) => t !== 'elite' || eliteAvailable);
+
+  // Carousel starts at x=0 (Free) while selectedTier may be Pro — align scroll on load.
+  useEffect(() => {
+    if (!isCompact) return;
+    const idx = visibleTiers.indexOf(selectedTier);
+    if (idx < 0) return;
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollTo({ x: idx * snapInterval, animated: false });
+    }, 0);
+    return () => clearTimeout(id);
+  }, [isCompact, selectedTier, snapInterval, eliteAvailable]);
+
+  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / snapInterval);
+    const tier = visibleTiers[Math.min(Math.max(0, idx), visibleTiers.length - 1)];
+    if (tier && tier !== selectedTier) onSelectTier(tier, idx);
+  };
+
+  return (
+    <View style={styles.pickerWrap}>
+      <Text style={styles.compareTitle}>What you get</Text>
+      <Text style={styles.pickerHint}>
+        {isCompact ? 'Swipe or tap a plan to compare' : 'Tap a plan to see pricing'}
+      </Text>
+
+      {isCompact ? (
+        <>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={snapInterval}
+            snapToAlignment="start"
+            contentContainerStyle={{ paddingHorizontal: horizontalPadding, gap }}
+            onMomentumScrollEnd={handleScrollEnd}
+          >
+            {visibleTiers.map((tier, index) => (
+              <TierFeaturePanel
+                key={tier}
+                tier={tier}
+                selected={selectedTier === tier}
+                width={panelWidth}
+                onPress={() => {
+                  onSelectTier(tier, index);
+                  scrollToIndex(index);
+                }}
+              />
+            ))}
+          </ScrollView>
+          <View style={styles.dotRow}>
+            {visibleTiers.map((tier, index) => {
+              const dotTheme = tierTheme(tier);
+              return (
+                <Pressable
+                  key={tier}
+                  onPress={() => {
+                    onSelectTier(tier, index);
+                    scrollToIndex(index);
+                  }}
+                  style={[
+                    styles.dot,
+                    selectedTier === tier && { backgroundColor: dotTheme.accent, width: 20 },
+                  ]}
+                />
+              );
+            })}
+          </View>
+        </>
+      ) : (
+        <View style={[styles.tierRowWeb, { paddingHorizontal: horizontalPadding }]}>
+          {visibleTiers.map((tier, index) => (
+            <TierFeaturePanel
+              key={tier}
+              tier={tier}
+              selected={selectedTier === tier}
+              width={panelWidth}
+              onPress={() => onSelectTier(tier, index)}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -187,10 +392,23 @@ export function PlanSubscriptionSection({
   onSubscribe,
   onSyncPayment,
   busy,
+  busyPlanKey,
   loading = false,
   loadError = null,
   onRetry,
 }: Props) {
+  const [selectedTier, setSelectedTier] = useState<TierKey>('pro');
+  const purchasableEarly = (entitlements?.available_plans ?? []).filter((p) => p.available_for_purchase);
+  const eliteAvailableEarly =
+    purchasableEarly.some((p) => p.tier === 'elite') ||
+    (entitlements?.available_plans ?? []).some((p) => p.tier === 'elite');
+
+  useEffect(() => {
+    if (!eliteAvailableEarly && selectedTier === 'elite') {
+      setSelectedTier('pro');
+    }
+  }, [eliteAvailableEarly, selectedTier]);
+
   if (loading && !entitlements) {
     return (
       <View style={[styles.wrap, styles.statusBox]}>
@@ -222,14 +440,22 @@ export function PlanSubscriptionSection({
   const theme = tierTheme(isActiveElite ? 'elite' : isActivePro ? 'pro' : 'free');
   const scan = formatScanUsage(entitlements);
   const purchasable = (entitlements?.available_plans ?? []).filter((p) => p.available_for_purchase);
-  const proPlans = purchasable.filter((p) => p.tier === 'pro');
-  const elitePlans = purchasable.filter((p) => p.tier === 'elite');
-  const comingSoon = (entitlements?.available_plans ?? []).filter((p) => !p.available_for_purchase);
+  const plansForTier = purchasable.filter((p) => p.tier === selectedTier);
+  const eliteAvailable =
+    purchasable.some((p) => p.tier === 'elite') ||
+    (entitlements?.available_plans ?? []).some((p) => p.tier === 'elite');
+  const eliteComingSoon =
+    !purchasable.some((p) => p.tier === 'elite') &&
+    (entitlements?.available_plans ?? []).some((p) => p.tier === 'elite' && !p.available_for_purchase);
   const upgrades = entitlements?.upgrade_options ?? [];
+  const selectedTheme = tierTheme(selectedTier);
+
+  const handleSelectTier = (tier: TierKey) => {
+    setSelectedTier(tier);
+  };
 
   return (
     <View style={styles.wrap}>
-      {/* Current plan hero */}
       <View style={[styles.hero, { backgroundColor: theme.hero }]}>
         <View style={styles.heroTop}>
           <View>
@@ -262,7 +488,10 @@ export function PlanSubscriptionSection({
               <View
                 style={[
                   styles.usageFill,
-                  { width: `${Math.min(100, scan.pct)}%` as `${number}%`, backgroundColor: scan.pct >= 90 ? '#FF9800' : '#A5D6A7' },
+                  {
+                    width: `${Math.min(100, scan.pct)}%` as `${number}%`,
+                    backgroundColor: scan.pct >= 90 ? '#FF9800' : '#A5D6A7',
+                  },
                 ]}
               />
             </View>
@@ -275,74 +504,54 @@ export function PlanSubscriptionSection({
         )}
       </View>
 
-      {/* Free user: pick a plan */}
       {!isActivePro ? (
         <>
-          <Text style={styles.sectionHeading}>Choose Pro</Text>
-          <Text style={styles.sectionSub}>
-            Smarter meals, every mode, and scans without limits.
-          </Text>
-          <View style={styles.priceRow}>
-            {proPlans.map((p) => (
-              <PlanPricingCard
-                key={`${p.tier}-${p.interval}`}
-                plan={p}
-                highlighted={p.interval === 'yearly'}
-                onSelect={() => onSubscribe(p.tier, p.interval)}
-                busy={busy}
-              />
-            ))}
-          </View>
+          <PlanTierPicker
+            selectedTier={selectedTier}
+            onSelectTier={(tier) => handleSelectTier(tier)}
+            eliteAvailable={eliteAvailable || eliteComingSoon}
+          />
 
-          {elitePlans.length > 0 ? (
-            <>
-              <Text style={[styles.sectionHeading, { marginTop: 8 }]}>Or go Elite</Text>
-              <Text style={styles.sectionSub}>
-                Adds nightly diet digest and nutrition insights on top of Pro.
+          <Text style={styles.sectionHeading}>
+            {selectedTier === 'free'
+              ? 'Free plan'
+              : `${TIER_META[selectedTier].label} pricing`}
+          </Text>
+
+          {selectedTier === 'free' ? (
+            <View style={styles.freePricingNote}>
+              <Text style={styles.freePricingText}>
+                You are on Free. Tap Pro or Elite above to see monthly and yearly pay options.
               </Text>
-              <View style={styles.priceRow}>
-                {elitePlans.map((p) => (
+            </View>
+          ) : eliteComingSoon && selectedTier === 'elite' ? (
+            <View style={styles.freePricingNote}>
+              <Text style={styles.freePricingText}>Elite is coming soon. Pro is available now.</Text>
+            </View>
+          ) : plansForTier.length > 0 ? (
+            <View style={styles.priceRow}>
+              {plansForTier
+                .sort((a, b) => (a.interval === 'monthly' ? -1 : 1) - (b.interval === 'monthly' ? -1 : 1))
+                .map((p) => (
                   <PlanPricingCard
                     key={`${p.tier}-${p.interval}`}
                     plan={p}
                     highlighted={p.interval === 'yearly'}
                     onSelect={() => onSubscribe(p.tier, p.interval)}
-                    busy={busy}
+                    checkoutBusy={busy}
+                    loading={busyPlanKey === `${p.tier}-${p.interval}`}
+                    accentColor={selectedTheme.accent}
                   />
                 ))}
-              </View>
-            </>
-          ) : null}
-
-          <View style={styles.compareCard}>
-            <Text style={styles.compareTitle}>What you get</Text>
-            <View style={styles.compareColumns}>
-              <View style={styles.compareCol}>
-                <Text style={styles.compareColLabel}>Free</Text>
-                <FeatureChecklist items={FREE_FEATURES} muted />
-              </View>
-              <View style={[styles.compareCol, styles.compareColPro]}>
-                <Text style={[styles.compareColLabel, { color: '#2E7D32' }]}>Pro</Text>
-                <FeatureChecklist items={PRO_FEATURES} />
-              </View>
             </View>
-          </View>
-
-          {comingSoon.length > 0 ? (
-            <View style={styles.eliteTeaser}>
-              <View style={styles.eliteTeaserHeader}>
-                <Icon source="crown" size={22} color="#7B1FA2" />
-                <View style={styles.eliteTeaserText}>
-                  <Text style={styles.eliteTeaserTitle}>Elite</Text>
-                  <Text style={styles.eliteTeaserBadge}>Coming soon</Text>
-                </View>
-              </View>
-              <FeatureChecklist items={ELITE_FEATURES} muted />
+          ) : (
+            <View style={styles.freePricingNote}>
+              <Text style={styles.freePricingText}>No checkout options for this plan right now.</Text>
             </View>
-          ) : null}
+          )}
 
           <Pressable onPress={onSyncPayment} disabled={busy} style={styles.syncLink}>
-            {busy ? (
+            {busyPlanKey === 'sync' ? (
               <ActivityIndicator size="small" color="#607D8B" />
             ) : (
               <Text style={styles.syncLinkText}>Already paid? Activate your plan</Text>
@@ -352,13 +561,16 @@ export function PlanSubscriptionSection({
       ) : (
         <>
           <View style={[styles.activeBenefits, { backgroundColor: theme.heroSoft }]}>
-            <Text style={styles.activeBenefitsTitle}>Included in your plan</Text>
+            <Text style={[styles.activeBenefitsTitle, { color: theme.labelColor }]}>
+              Included in your plan
+            </Text>
             <FeatureChecklist
               items={
                 entitlements?.is_elite
                   ? [...PRO_FEATURES, 'Nightly diet email', 'AI nutrition insights']
                   : PRO_FEATURES
               }
+              accentColor={theme.accent}
             />
           </View>
 
@@ -373,7 +585,8 @@ export function PlanSubscriptionSection({
                   key={`${opt.target.tier}-${opt.target.interval}`}
                   opt={opt}
                   onSelect={() => onSubscribe(opt.target.tier, opt.target.interval)}
-                  busy={busy}
+                  checkoutBusy={busy}
+                  loading={busyPlanKey === `${opt.target.tier}-${opt.target.interval}`}
                 />
               ))}
             </>
@@ -448,94 +661,118 @@ const styles = StyleSheet.create({
   },
   unlimitedText: { color: '#E8F5E9', fontWeight: '600', fontSize: 13 },
 
-  sectionHeading: { fontSize: 18, fontWeight: '800', color: '#1C1B1F', marginBottom: 4 },
-  sectionSub: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 16 },
+  pickerWrap: { marginBottom: 8 },
+  compareTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 4, paddingHorizontal: 16 },
+  pickerHint: { fontSize: 12, color: '#888', marginBottom: 12, paddingHorizontal: 16 },
+  tierRowWeb: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  tierPanel: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 2,
+    minHeight: 200,
+  },
+  tierPanelSelected: {
+    ...Platform.select({
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } as object,
+      default: { elevation: 3 },
+    }),
+  },
+  tierPanelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  tierIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tierPanelLabel: { fontSize: 18, fontWeight: '800', flex: 1 },
+  selectedDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tierTagline: { fontSize: 12, color: '#666', lineHeight: 17, marginBottom: 12 },
+  dotRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12, marginBottom: 4 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D0D0D0',
+  },
+
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1C1B1F',
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+  sectionSub: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 16, paddingHorizontal: 16 },
 
   priceRow: {
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-    gap: 12,
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 16,
+    paddingHorizontal: 16,
+    alignItems: 'stretch',
   },
   priceCard: {
-    flex: Platform.OS === 'web' ? 1 : undefined,
+    flex: 1,
+    minWidth: 0,
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E8E8E8',
     position: 'relative',
     overflow: 'hidden',
-  },
-  priceCardHighlight: {
-    borderColor: '#4CAF50',
-    borderWidth: 2,
-    backgroundColor: '#FAFFF9',
   },
   priceCardPressed: { opacity: 0.92 },
   saveBadge: {
     position: 'absolute',
     top: 0,
     right: 0,
-    backgroundColor: '#FF9800',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderBottomLeftRadius: 10,
   },
   saveBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   priceTier: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
-  priceAmount: { fontSize: 28, fontWeight: '800', color: '#1C1B1F', marginTop: 4 },
-  priceInterval: { fontSize: 13, color: '#888', marginBottom: 12 },
-  priceFeatureList: { gap: 6, marginBottom: 14 },
-  priceFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  priceFeatureText: { fontSize: 12, color: '#555', flex: 1 },
+  priceAmount: { fontSize: 22, fontWeight: '800', color: '#1C1B1F', marginTop: 4 },
+  priceInterval: { fontSize: 13, color: '#888', marginBottom: 14 },
   priceBtn: { borderRadius: 12 },
-  priceBtnLabel: { fontSize: 13, fontWeight: '700' },
+  priceBtnLabel: { fontSize: 12, fontWeight: '700' },
 
-  compareCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#EEEEEE',
-    marginBottom: 14,
+  freePricingNote: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
   },
-  compareTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 12 },
-  compareColumns: { flexDirection: 'row', gap: 12 },
-  compareCol: { flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#F8F9FA' },
-  compareColPro: { backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#C8E6C9' },
-  compareColLabel: { fontSize: 12, fontWeight: '800', color: '#888', marginBottom: 8, textTransform: 'uppercase' },
+  freePricingText: { fontSize: 14, color: '#555', lineHeight: 20 },
 
   checkList: { gap: 8 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkText: { fontSize: 13, color: '#333', flex: 1, lineHeight: 18 },
   checkTextMuted: { color: '#777' },
 
-  eliteTeaser: {
-    backgroundColor: '#FAF5FC',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E1BEE7',
-    marginBottom: 12,
-  },
-  eliteTeaserHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  eliteTeaserText: { flex: 1 },
-  eliteTeaserTitle: { fontSize: 17, fontWeight: '800', color: '#6A1B9A' },
-  eliteTeaserBadge: { fontSize: 11, color: '#9C27B0', fontWeight: '700', marginTop: 2 },
-
   syncLink: { alignItems: 'center', paddingVertical: 14 },
   syncLinkText: { color: '#607D8B', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
 
-  activeBenefits: { borderRadius: 16, padding: 16, marginBottom: 16 },
-  activeBenefitsTitle: { fontSize: 14, fontWeight: '700', color: '#2E7D32', marginBottom: 10 },
+  activeBenefits: { borderRadius: 16, padding: 16, marginBottom: 16, marginHorizontal: 16 },
+  activeBenefitsTitle: { fontSize: 14, fontWeight: '700', marginBottom: 10 },
 
   upgradeCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    marginHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#C8E6C9',
+    borderColor: '#E8E8E8',
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
   },
@@ -543,13 +780,13 @@ const styles = StyleSheet.create({
   upgradeTitle: { fontSize: 16, fontWeight: '800', color: '#1C1B1F' },
   upgradeListPrice: { fontSize: 13, color: '#888', marginTop: 2, textDecorationLine: 'line-through' },
   upgradePricePill: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#F5F5F5',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     alignItems: 'flex-end',
   },
-  upgradePriceNow: { fontSize: 20, fontWeight: '800', color: '#2E7D32' },
+  upgradePriceNow: { fontSize: 20, fontWeight: '800' },
   upgradePriceSub: { fontSize: 10, color: '#558B2F', fontWeight: '600' },
   creditBanner: {
     flexDirection: 'row',

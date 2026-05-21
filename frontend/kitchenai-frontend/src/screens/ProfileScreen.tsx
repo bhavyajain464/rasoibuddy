@@ -59,7 +59,13 @@ export function ProfileScreen() {
     error: entitlementsError,
     refresh: refreshEntitlements,
   } = useEntitlements();
-  const { subscribe, syncLastPayment, busy: upgradeBusy, planLabel } = usePlanUpgrade();
+  const {
+    subscribe,
+    syncLastPayment,
+    busy: upgradeBusy,
+    busyPlanKey: upgradeBusyPlanKey,
+    planLabel,
+  } = usePlanUpgrade();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -431,6 +437,7 @@ export function ProfileScreen() {
             onSubscribe={(tier, interval) => void subscribe(tier, interval)}
             onSyncPayment={() => void syncLastPayment()}
             busy={upgradeBusy}
+            busyPlanKey={upgradeBusyPlanKey}
             loading={entitlementsLoading}
             loadError={entitlementsError}
             onRetry={() => void refreshEntitlements()}
