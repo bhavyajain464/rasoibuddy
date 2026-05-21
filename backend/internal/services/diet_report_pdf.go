@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	pdfMarginL = 16.0
-	pdfMarginT = 14.0
-	pdfMarginR = 16.0
+	pdfMarginL  = 16.0
+	pdfMarginT  = 14.0
+	pdfMarginR  = 16.0
 	pdfContentW = 210.0 - pdfMarginL - pdfMarginR // A4 width mm
 )
 
@@ -334,8 +334,8 @@ func renderMacroBarPNG(t DietMacroTotals) (*bytes.Reader, error) {
 		maxG = 100
 	}
 	bar := chart.BarChart{
-		Title: "Macros (grams)",
-		Width: 480,
+		Title:  "Macros (grams)",
+		Width:  480,
 		Height: 360,
 		Background: chart.Style{
 			Padding: chart.Box{Top: 40, Left: 25, Right: 15, Bottom: 25},
@@ -371,14 +371,14 @@ func renderMealCaloriesPNG(meals []DietMealBreakdown) (*bytes.Reader, error) {
 		})
 	}
 	bar := chart.BarChart{
-		Title: "Calories per logged meal",
+		Title:  "Calories per logged meal",
 		Width:  700,
 		Height: 300,
 		Background: chart.Style{
 			Padding: chart.Box{Top: 45, Left: 30, Right: 20, Bottom: 35},
 		},
 		YAxis: chart.YAxis{Name: "kcal", Style: chart.Style{FontSize: 9}},
-		Bars: vals,
+		Bars:  vals,
 	}
 	return renderChartPNG(bar.Render)
 }
