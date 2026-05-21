@@ -120,6 +120,9 @@ func main() {
 	api.Handle("/cook/profile", middleware.RequireAuth(http.HandlerFunc(handlers.UpdateCookProfile(sqlDB)))).Methods("PUT", "OPTIONS")
 	api.Handle("/cook/messages", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookMessages(cookedLogSvc)))).Methods("GET", "OPTIONS")
 
+	// Global dish stars (one star per user per dish)
+	api.Handle("/dishes/star", middleware.RequireAuth(http.HandlerFunc(handlers.StarDish(sqlDB)))).Methods("POST", "OPTIONS")
+
 	// Bill scanning
 	api.Handle("/bill/scan", middleware.RequireAuth(http.HandlerFunc(handlers.ScanBill(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/bill/scan/upload", middleware.RequireAuth(http.HandlerFunc(handlers.ScanBillMultipart(sqlDB, cfg)))).Methods("POST", "OPTIONS")

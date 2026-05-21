@@ -59,6 +59,19 @@ func (d CatalogDish) NormalizedDiet() string {
 	return strings.ToLower(strings.TrimSpace(d.Diet))
 }
 
+// GlobalStarCount is how many users have starred this dish.
+func (d CatalogDish) GlobalStarCount(globalStars map[string]int) int {
+	if globalStars == nil {
+		return 0
+	}
+	return globalStars[NormalizeDishName(d.Name)]
+}
+
+// RetrievalStarScore is the global star count used for ranking (0 when unstarred by everyone).
+func (d CatalogDish) RetrievalStarScore(globalStars map[string]int) float64 {
+	return float64(d.GlobalStarCount(globalStars))
+}
+
 func (d CatalogDish) featureTokens() map[string]struct{} {
 	tokens := map[string]struct{}{}
 	add := func(s string) {
@@ -157,6 +170,65 @@ func (d CatalogDish) DishHasMealType(slot string) bool {
 		}
 	}
 	return false
+}
+
+var dessertPromptTokens = []string{
+	"dessert", "sweet", "sweets", "mithai", "halwa", "kheer", "ladoo",
+	"gulab", "jamun", "jalebi", "barfi", "peda", "rasgulla", "pudding", "cake",
+	"cookie", "brownie", "icecream", "ice", "chocolate", "pastry", "laddu",
+}
+
+// PromptImpliesDessert is true when the user explicitly asks for sweets/dessert in free text.
+func PromptImpliesDessert(prompt string) bool {
+	blob := strings.ToLower(prompt)
+	for _, t := range dessertPromptTokens {
+		if strings.Contains(blob, t) {
+			return true
+		}
+	}
+	return false
+}
+
+// ResolveEffectiveMealTypeFilter applies UI selection; default lunch/dinner unless prompt asks for dessert.
+func ResolveEffectiveMealTypeFilter(param, userPrompt string) string {
+	param = strings.ToLower(strings.TrimSpace(param))
+	if param == "" {
+		param = "lunch_dinner"
+	}
+	if param == "lunch_dinner" && PromptImpliesDessert(userPrompt) {
+		return "dessert"
+	}
+	return param
+}
+
+// DishMatchesMealTypeFilter limits catalog rows by meal slot (lunch_dinner = lunch or dinner only).
+func DishMatchesMealTypeFilter(d CatalogDish, filter string) bool {
+	switch strings.ToLower(strings.TrimSpace(filter)) {
+	case "", "all":
+		return true
+	case "lunch_dinner":
+		return d.DishHasMealType("lunch") || d.DishHasMealType("dinner")
+	case "breakfast", "lunch", "dinner", "snack", "dessert", "side":
+		return d.DishHasMealType(filter)
+	default:
+		return d.DishHasMealType("lunch") || d.DishHasMealType("dinner")
+	}
+}
+
+// MealTypeFilterLabel is a short phrase for Groq prompts (pass the effective filter).
+func MealTypeFilterLabel(filter string) string {
+	switch strings.ToLower(strings.TrimSpace(filter)) {
+	case "breakfast":
+		return "breakfast"
+	case "snack":
+		return "snack"
+	case "dessert":
+		return "dessert or sweets"
+	case "all":
+		return "any meal slot"
+	default:
+		return "lunch or dinner (main meals, not dessert-only)"
+	}
 }
 
 // DishMatchesUICategory maps Meals-screen category ids to catalog meal_type tags.

@@ -19,6 +19,7 @@ import {
   Portal,
   Modal,
   Divider,
+  Menu,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,6 +60,8 @@ interface SmartMeal {
   difficulty: string;
   why_this_meal: string;
   nutrition_notes?: string;
+  star_count?: number;
+  user_starred?: boolean;
 }
 
 interface MealCategory {
@@ -82,6 +85,59 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   medium: '#FF9800',
   hard: '#F44336',
 };
+
+const MEAL_TYPE_FILTERS = [
+  { id: 'lunch_dinner', label: 'Lunch / Dinner' },
+  { id: 'breakfast', label: 'Breakfast' },
+  { id: 'snack', label: 'Snack' },
+  { id: 'dessert', label: 'Dessert / Sweets' },
+  { id: 'all', label: 'Any meal' },
+] as const;
+
+type MealTypeFilterId = (typeof MEAL_TYPE_FILTERS)[number]['id'];
+
+function MealTypeDropdown({
+  value,
+  onChange,
+}: {
+  value: MealTypeFilterId;
+  onChange: (id: MealTypeFilterId) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = MEAL_TYPE_FILTERS.find((o) => o.id === value) ?? MEAL_TYPE_FILTERS[0];
+
+  return (
+    <Menu
+      visible={open}
+      onDismiss={() => setOpen(false)}
+      anchor={
+        <Button
+          mode="outlined"
+          onPress={() => setOpen(true)}
+          icon="chevron-down"
+          style={styles.mealTypeBtn}
+          contentStyle={styles.mealTypeBtnContent}
+          textColor="#444"
+          compact
+        >
+          {selected.label}
+        </Button>
+      }
+    >
+      {MEAL_TYPE_FILTERS.map((opt) => (
+        <Menu.Item
+          key={opt.id}
+          title={opt.label}
+          leadingIcon={value === opt.id ? 'check' : undefined}
+          onPress={() => {
+            onChange(opt.id);
+            setOpen(false);
+          }}
+        />
+      ))}
+    </Menu>
+  );
+}
 
 function CategoryBox({
   icon,
@@ -119,6 +175,7 @@ export function MealsScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userPrompt, setUserPrompt] = useState('');
+  const [mealTypeFilter, setMealTypeFilter] = useState<MealTypeFilterId>('lunch_dinner');
   const [inventoryCount, setInventoryCount] = useState(0);
   const [mealHistory, setMealHistory] = useState<CookedLogEntry[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -129,6 +186,7 @@ export function MealsScreen() {
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [cookProfileReady, setCookProfileReady] = useState(false);
+  const [starringDish, setStarringDish] = useState<string | null>(null);
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -193,6 +251,31 @@ export function MealsScreen() {
     }
   };
 
+  const toggleStar = useCallback(async (mealIndex: number) => {
+    const meal = result?.meals?.[mealIndex];
+    if (!meal?.name?.trim()) return;
+
+    setStarringDish(meal.name);
+    try {
+      const res = await api.starDish(meal.name);
+      setResult((prev) => {
+        if (!prev) return prev;
+        const meals = [...prev.meals];
+        meals[mealIndex] = {
+          ...meals[mealIndex],
+          star_count: res.star_count,
+          user_starred: res.user_starred,
+        };
+        return { ...prev, meals };
+      });
+    } catch {
+      const msg = 'Could not update star.';
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+    } finally {
+      setStarringDish(null);
+    }
+  }, [result]);
+
   const sendToCook = (meal: SmartMeal) => {
     if (!cookProfileReady) {
       const msg = 'Add your cook profile with a WhatsApp number on the Cook tab before sending messages.';
@@ -221,6 +304,7 @@ export function MealsScreen() {
         catId,
         userPrompt.trim() || undefined,
         excludeDish,
+        mealTypeFilter,
       );
       const categories: MealCategory[] = res.categories || [];
       const match = categories.find((c) => c.id === catId) || categories[0] || null;
@@ -231,7 +315,7 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userPrompt]);
+  }, [userPrompt, mealTypeFilter]);
 
   const goBack = () => {
     setSelectedCategory(null);
@@ -286,6 +370,8 @@ export function MealsScreen() {
               dense
               left={<TextInput.Icon icon="message-text-outline" color="#bbb" />}
             />
+            <Text variant="labelMedium" style={styles.mealTypeLabel}>Meal type</Text>
+            <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
           </View>
 
           <Text variant="titleMedium" style={styles.sectionLabel}>What are you looking for?</Text>
@@ -366,6 +452,7 @@ export function MealsScreen() {
                 />
               }
             />
+            <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
           </View>
 
           {inventoryCount > 0 && (
@@ -379,10 +466,29 @@ export function MealsScreen() {
               <Card.Content>
                 <View style={styles.mealHeader}>
                   <Text variant="titleMedium" style={styles.mealName}>{meal.name}</Text>
-                  <View style={[styles.diffBadge, { backgroundColor: (DIFFICULTY_COLORS[meal.difficulty] || '#888') + '18' }]}>
-                    <Text style={[styles.diffText, { color: DIFFICULTY_COLORS[meal.difficulty] || '#888' }]}>
-                      {meal.difficulty}
-                    </Text>
+                  <View style={styles.mealHeaderRight}>
+                    <View style={styles.starWrap}>
+                      <IconButton
+                        icon={meal.user_starred ? 'star' : 'star-outline'}
+                        iconColor={meal.user_starred ? '#F5A623' : '#212121'}
+                        size={26}
+                        style={styles.starBtn}
+                        onPress={() => void toggleStar(idx)}
+                        disabled={starringDish === meal.name}
+                        loading={starringDish === meal.name}
+                        accessibilityLabel={
+                          meal.user_starred ? 'Remove your star' : 'Star this dish for everyone'
+                        }
+                      />
+                      <Text variant="labelMedium" style={styles.starCountText}>
+                        {meal.star_count ?? 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.diffBadge, { backgroundColor: (DIFFICULTY_COLORS[meal.difficulty] || '#888') + '18' }]}>
+                      <Text style={[styles.diffText, { color: DIFFICULTY_COLORS[meal.difficulty] || '#888' }]}>
+                        {meal.difficulty}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -602,8 +708,11 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontWeight: '800' },
   headerSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4 },
 
-  promptWrap: { paddingHorizontal: GRID_PAD, paddingTop: 16 },
+  promptWrap: { paddingHorizontal: GRID_PAD, paddingTop: 16, gap: 10 },
   promptInput: { backgroundColor: '#fff' },
+  mealTypeLabel: { color: '#666', marginTop: 4 },
+  mealTypeBtn: { alignSelf: 'flex-start', backgroundColor: '#fff', borderColor: '#E0E0E0' },
+  mealTypeBtnContent: { flexDirection: 'row-reverse' },
 
   sectionLabel: {
     fontWeight: '700',
@@ -809,13 +918,17 @@ const styles = StyleSheet.create({
   errorActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
 
   resultWrap: { paddingHorizontal: GRID_PAD, paddingTop: 4 },
-  regenRow: { marginBottom: 12 },
+  regenRow: { marginBottom: 12, gap: 10 },
   regenInput: { backgroundColor: '#fff' },
   invChip: { alignSelf: 'flex-start', marginBottom: 12, backgroundColor: '#E8F5E9' },
 
   mealCard: { marginBottom: 14, borderRadius: 16 },
   mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   mealName: { fontWeight: '700', color: '#333', flex: 1 },
+  mealHeaderRight: { flexDirection: 'row', alignItems: 'center' },
+  starWrap: { flexDirection: 'row', alignItems: 'center', marginRight: 4 },
+  starBtn: { margin: 0 },
+  starCountText: { color: '#555', fontWeight: '700', minWidth: 18, marginLeft: -6 },
   diffBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   diffText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
   mealDesc: { color: '#555', lineHeight: 20, marginBottom: 12 },

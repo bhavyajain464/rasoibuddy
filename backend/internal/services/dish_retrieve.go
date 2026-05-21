@@ -17,14 +17,16 @@ const (
 type DishRetrieveInput struct {
 	Category       string
 	UserPrompt     string
+	MealTypeFilter string // lunch_dinner (default), breakfast, snack, dessert, all
 	DietaryTags    []string
 	Allergies      []string
 	Dislikes       []string
 	FavCuisines    []string
 	Memories       []string
-	RecentDishes   []string
-	InventoryNames []string
-	TopK           int
+	RecentDishes      []string
+	InventoryNames    []string
+	GlobalStarCounts  map[string]int // dish_name (normalized) -> total stars from all users
+	TopK              int
 }
 
 // RankedDish is a catalog dish with retrieval score.
@@ -46,10 +48,12 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 	}
 
 	userVec := buildUserFeatureVector(in)
+	signal := userSignalStrength(in, userVec)
 	recent := map[string]bool{}
 	for _, d := range in.RecentDishes {
 		recent[strings.ToLower(strings.TrimSpace(d))] = true
 	}
+	mealFilter := ResolveEffectiveMealTypeFilter(in.MealTypeFilter, in.UserPrompt)
 
 	var scored []RankedDish
 	for _, dish := range catalog {
@@ -65,7 +69,10 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 		if in.Category != "" && !DishMatchesUICategory(dish, in.Category) {
 			continue
 		}
-		score := scoreDish(dish, userVec, in)
+		if !DishMatchesMealTypeFilter(dish, mealFilter) {
+			continue
+		}
+		score := scoreDish(dish, userVec, in) + popularityBoost(dish, in.GlobalStarCounts, signal)
 		if recent[strings.ToLower(dish.Name)] {
 			score *= 0.35
 		}
@@ -83,6 +90,7 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 		scored = scored[:topK]
 	}
 	if len(scored) == 0 {
+		var pool []RankedDish
 		for _, dish := range catalog {
 			if !DishAllowedForUserDiet(dish, in.DietaryTags) {
 				continue
@@ -90,15 +98,22 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 			if in.Category != "" && !DishMatchesUICategory(dish, in.Category) {
 				continue
 			}
-			scored = append(scored, RankedDish{Dish: dish, Score: 0.1})
-			if len(scored) >= topK {
-				break
+			if !DishMatchesMealTypeFilter(dish, mealFilter) {
+				continue
 			}
+			pool = append(pool, RankedDish{Dish: dish, Score: dish.RetrievalStarScore(in.GlobalStarCounts)})
 		}
+		sort.Slice(pool, func(i, j int) bool {
+			return pool[i].Score > pool[j].Score
+		})
+		if len(pool) > topK {
+			pool = pool[:topK]
+		}
+		scored = pool
 	}
 
-	log.Printf("[dish_retrieve] word-match top %d/%d dishes (category=%q, userTokens=%d)",
-		len(scored), len(catalog), in.Category, len(userVec))
+	log.Printf("[dish_retrieve] word-match top %d/%d dishes (category=%q, mealFilter=%q, userTokens=%d, signal=%d)",
+		len(scored), len(catalog), in.Category, mealFilter, len(userVec), signal)
 
 	return scored
 }
@@ -188,6 +203,40 @@ func buildUserFeatureVector(in DishRetrieveInput) map[string]float64 {
 		addText(d, -3.0)
 	}
 	return vec
+}
+
+// userSignalStrength estimates how much preference/prompt/inventory context we have (higher = richer input).
+func userSignalStrength(in DishRetrieveInput, userVec map[string]float64) int {
+	n := len(userVec)
+	if strings.TrimSpace(in.UserPrompt) != "" {
+		n += 3
+	}
+	if len(in.FavCuisines) > 0 {
+		n += 2
+	}
+	if len(in.Memories) > 0 {
+		n += len(in.Memories)
+	}
+	if len(in.InventoryNames) > 0 {
+		n += min(len(in.InventoryNames), 8)
+	}
+	if in.Category != "" && in.Category != "daily" {
+		n += 1
+	}
+	return n
+}
+
+// popularityBoost uses global star counts when the user gave little context.
+func popularityBoost(dish CatalogDish, globalStars map[string]int, signal int) float64 {
+	base := dish.RetrievalStarScore(globalStars) * 0.35
+	switch {
+	case signal < 4:
+		return base * 2.8
+	case signal < 10:
+		return base * 1.4
+	default:
+		return base * 0.5
+	}
 }
 
 func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInput) float64 {
@@ -301,7 +350,7 @@ func dishBlockedByAllergies(d CatalogDish, allergies []string) bool {
 	return false
 }
 
-func FormatCandidateList(ranked []RankedDish) string {
+func FormatCandidateList(ranked []RankedDish, globalStars map[string]int) string {
 	if len(ranked) == 0 {
 		return ""
 	}
@@ -321,6 +370,9 @@ func FormatCandidateList(ranked []RankedDish) string {
 		}
 		if len(r.Dish.Ingredients) > 0 {
 			meta = append(meta, "ing: "+strings.Join(r.Dish.Ingredients, ", "))
+		}
+		if n := r.Dish.GlobalStarCount(globalStars); n > 0 {
+			meta = append(meta, fmt.Sprintf("%d stars", n))
 		}
 		if len(meta) > 0 {
 			b.WriteString(" [" + strings.Join(meta, " | ") + "]")

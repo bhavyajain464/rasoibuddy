@@ -250,3 +250,4 @@ export interface CookProfile {
   created_at?: string;
   updated_at?: string;
 }
+

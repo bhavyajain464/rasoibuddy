@@ -34,6 +34,8 @@ type SmartMeal struct {
 	Difficulty     string   `json:"difficulty"`
 	WhyThisMeal    string   `json:"why_this_meal"`
 	NutritionNotes string   `json:"nutrition_notes,omitempty"`
+	StarCount      int      `json:"star_count,omitempty"`   // global stars from all users
+	UserStarred    bool     `json:"user_starred,omitempty"` // this user already starred (one star per user)
 }
 
 type SmartMealsResponse struct {
@@ -69,8 +71,11 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 		userID := getUserID(r)
 		userPrompt := r.URL.Query().Get("prompt")
 		category := r.URL.Query().Get("category")
+		mealType := r.URL.Query().Get("meal_type")
 		exclude := parseExcludeDishes(r.URL.Query().Get("exclude"))
-		log.Printf("SmartMeals request: userID=%s, category=%q, userPrompt=%q, exclude=%v", userID, category, userPrompt, exclude)
+		effectiveMeal := services.ResolveEffectiveMealTypeFilter(mealType, userPrompt)
+		log.Printf("SmartMeals request: userID=%s, category=%q, mealType=%q (effective=%q), userPrompt=%q, exclude=%v",
+			userID, category, mealType, effectiveMeal, userPrompt, exclude)
 
 		inventory := fetchUserInventory(db, userID)
 		userPrefs := fetchUserPreferences(db, userID)
@@ -108,6 +113,7 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 		retrieveIn := services.DishRetrieveInput{
 			Category:       category,
 			UserPrompt:     userPrompt,
+			MealTypeFilter: mealType,
 			RecentDishes:   recentDishes,
 			InventoryNames: invNames,
 			TopK:           services.CatalogRetrieveTopK,
@@ -119,6 +125,9 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 			retrieveIn.FavCuisines = userPrefs.FavCuisines
 			retrieveIn.Memories = userPrefs.Memories
 		}
+		globalStars, _ := services.LoadGlobalStarCounts(db)
+		userStarred, _ := services.LoadUserStarredDishes(db, userID)
+		retrieveIn.GlobalStarCounts = globalStars
 		// Stage 1: word-match catalog (prefs, memories, prompt, inventory) — no Groq.
 		candidates := services.RetrieveDishes(retrieveIn)
 		log.Printf("[meal_pipeline] stage1 word-match: %d candidates (top %d)", len(candidates), services.CatalogRetrieveTopK)
@@ -143,19 +152,19 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 			meals = fallbackMeals(inventory)
 		} else {
 			// Stage 2: Groq picks one dish from shortlist + JSON details.
-			prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, recentDishes, candidates, exclude)
+			prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, effectiveMeal, recentDishes, candidates, exclude, retrieveIn.GlobalStarCounts)
 			prompt += mealVarietySuffix(candidates, userPrompt, exclude)
 			log.Printf("[meal_pipeline] stage2 groq filter from %d candidates", len(candidates))
 			meals, err = callLLMFilterMeals(cfg, prompt)
 			if err == nil {
-				meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, exclude)
+				meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, exclude, globalStars, userStarred)
 			}
 		}
 		if err != nil {
 			log.Printf("meal suggestion LLM error (using random from shortlist): %v", err)
 			source = "fallback"
 			if len(candidates) > 0 {
-				meals = fallbackMealsFromCandidates(candidates, category, inventory, userPrompt, exclude)
+				meals = fallbackMealsFromCandidates(candidates, category, inventory, userPrompt, exclude, globalStars, userStarred)
 			} else {
 				meals = fallbackMeals(inventory)
 			}
@@ -285,7 +294,7 @@ func parseExcludeDishes(raw string) []string {
 }
 
 // buildGroqFilterPrompt is stage 2 only: prefs/memories/prompt were already used in word-match retrieval.
-func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsData, userPrompt string, category string, recentDishes []string, candidates []services.RankedDish, exclude []string) string {
+func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsData, userPrompt string, category string, mealTypeFilter string, recentDishes []string, candidates []services.RankedDish, exclude []string, globalStars map[string]int) string {
 	var sb strings.Builder
 
 	if category != "" {
@@ -299,7 +308,9 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 		sb.WriteString("Stage 2 — filter shortlist into 6 categories. Use only candidate dish names.\n")
 	}
 
-	sb.WriteString(services.FormatCandidateList(candidates))
+	sb.WriteString(services.FormatCandidateList(candidates, globalStars))
+	sb.WriteString(fmt.Sprintf("Meal slot: prefer %s.\n", services.MealTypeFilterLabel(mealTypeFilter)))
+	sb.WriteString("Star counts are global (all KitchenAI users). Prefer dishes with more stars when the request is vague.\n")
 
 	appendHardConstraints(&sb, prefs)
 
@@ -561,7 +572,7 @@ func filterInventoryByDiet(inventory []inventoryRow, dietaryTags []string) []inv
 const maxMealsPerCategory = 1
 
 // finalizeMealCategories keeps one meal per category; randomizes within the prompt-matched shortlist.
-func finalizeMealCategories(categories []MealCategory, category, userPrompt string, candidates []services.RankedDish, inventory []inventoryRow, exclude []string) []MealCategory {
+func finalizeMealCategories(categories []MealCategory, category, userPrompt string, candidates []services.RankedDish, inventory []inventoryRow, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
 	invNames := inventoryNames(inventory)
 	out := make([]MealCategory, 0, len(categories))
 	for _, cat := range categories {
@@ -571,7 +582,7 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 		}
 		var meals []SmartMeal
 		if pick, ok := services.RandomCandidateForPrompt(candidates, userPrompt, exclude); ok {
-			meal := smartMealFromCatalog(pick.Dish, invNames, catID)
+			meal := smartMealFromCatalog(pick.Dish, invNames, catID, globalStars, userStarred)
 			if groq := firstGroqMealMatching(cat.Meals, userPrompt, pick.Dish.Name); groq != nil {
 				meal = mergeGroqMeal(meal, *groq)
 			}
@@ -653,7 +664,7 @@ func mealNameMatchesPrompt(name string, tokens []string) bool {
 }
 
 // fallbackMealsFromCandidates picks one random dish from the stage-1 shortlist.
-func fallbackMealsFromCandidates(candidates []services.RankedDish, category string, inventory []inventoryRow, userPrompt string, exclude []string) []MealCategory {
+func fallbackMealsFromCandidates(candidates []services.RankedDish, category string, inventory []inventoryRow, userPrompt string, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
 	if len(candidates) == 0 {
 		return fallbackMeals(inventory)
 	}
@@ -673,7 +684,7 @@ func fallbackMealsFromCandidates(candidates []services.RankedDish, category stri
 		ID:          category,
 		Title:       meta.Title,
 		Description: meta.Desc,
-		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, invNames, category)},
+		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, invNames, category, globalStars, userStarred)},
 	}}
 }
 
@@ -685,12 +696,13 @@ func inventoryNames(inventory []inventoryRow) []string {
 	return names
 }
 
-func smartMealFromCatalog(d services.CatalogDish, invNames []string, category string) SmartMeal {
+func smartMealFromCatalog(d services.CatalogDish, invNames []string, category string, globalStars map[string]int, userStarred map[string]bool) SmartMeal {
 	ing := catalogIngredientHints(d, invNames, category)
 	why := "Picked from your personalized dish shortlist."
 	if c := strings.TrimSpace(d.Cuisine); c != "" {
 		why = fmt.Sprintf("From your %s shortlist.", strings.ReplaceAll(c, "-", " "))
 	}
+	key := services.NormalizeDishName(d.Name)
 	return SmartMeal{
 		Name:        d.Name,
 		Description: "A home-style option from your personalized shortlist.",
@@ -698,6 +710,8 @@ func smartMealFromCatalog(d services.CatalogDish, invNames []string, category st
 		CookingTime: 30,
 		Difficulty:  "easy",
 		WhyThisMeal: why,
+		StarCount:   d.GlobalStarCount(globalStars),
+		UserStarred: userStarred[key],
 	}
 }
 

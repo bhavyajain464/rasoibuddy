@@ -503,9 +503,11 @@ export async function getSmartMeals(
   category: string,
   userPrompt?: string,
   excludeDish?: string,
+  mealType: string = 'lunch_dinner',
 ): Promise<any> {
   const qp = new URLSearchParams();
   qp.set('category', category);
+  qp.set('meal_type', mealType || 'lunch_dinner');
   if (userPrompt) qp.set('prompt', userPrompt);
   if (excludeDish?.trim()) qp.set('exclude', excludeDish.trim());
   const res = await authFetch(`${API_BASE_URL}/meals/smart?${qp.toString()}`);
@@ -562,6 +564,21 @@ export async function updateCookProfile(profile: {
     body: JSON.stringify(profile),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+// ─── Global dish stars (one star per user per dish) ───────────
+
+/** Toggle global star for a dish (+1 / -1); returns updated total star count. */
+export async function starDish(
+  dishName: string,
+): Promise<{ star_count: number; user_starred: boolean }> {
+  const res = await authFetch(`${API_BASE_URL}/dishes/star`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dish_name: dishName.trim() }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // ─── Onboarding ───────────────────────────────────────────────
