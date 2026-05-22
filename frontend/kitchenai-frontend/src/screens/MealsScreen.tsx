@@ -48,6 +48,7 @@ interface SmartMeal {
   cooking_time_mins: number;
   difficulty: string;
   why_this_meal: string;
+  pairs_with?: string[];
   nutrition_notes?: string;
   star_count?: number;
   user_starred?: boolean;
@@ -221,6 +222,9 @@ export function MealsScreen() {
       `Ingredients: ${(meal.ingredients || []).join(', ')}`,
       `Cooking time: ${meal.cooking_time_mins} min`,
       meal.why_this_meal ? `Note: ${meal.why_this_meal}` : '',
+      meal.pairs_with?.length
+        ? `Pairs well with: ${meal.pairs_with.join(', ')}`
+        : '',
     ].filter(Boolean).join('\n');
     navigation.navigate('Cook', { dishName: meal.name, instructions });
   };
@@ -491,6 +495,25 @@ export function MealsScreen() {
                     <Chip key={i} compact style={styles.ingChip} textStyle={styles.ingChipText}>{ing}</Chip>
                   ))}
                 </View>
+
+                {meal.pairs_with && meal.pairs_with.length > 0 ? (
+                  <>
+                    <Text variant="labelSmall" style={styles.pairsLabel}>Pairs well with</Text>
+                    <View style={styles.chipWrap}>
+                      {meal.pairs_with.map((item, i) => (
+                        <Chip
+                          key={i}
+                          compact
+                          icon="silverware-fork-knife"
+                          style={styles.pairsChip}
+                          textStyle={styles.pairsChipText}
+                        >
+                          {item}
+                        </Chip>
+                      ))}
+                    </View>
+                  </>
+                ) : null}
 
                 {meal.items_to_order && meal.items_to_order.length > 0 && (
                   <>
@@ -815,6 +838,10 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   ingChip: { height: 28, backgroundColor: '#E8F5E9' },
   ingChipText: { fontSize: 11, color: '#2E7D32' },
+
+  pairsLabel: { color: '#5D4037', fontWeight: '700', marginBottom: 6 },
+  pairsChip: { height: 28, backgroundColor: '#EFEBE9' },
+  pairsChipText: { fontSize: 11, color: '#5D4037' },
 
   orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
   orderChip: { height: 28, backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },

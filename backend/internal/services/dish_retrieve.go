@@ -5,6 +5,7 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"time"
 )
 
 const (
@@ -23,10 +24,12 @@ type DishRetrieveInput struct {
 	Dislikes       []string
 	FavCuisines    []string
 	Memories       []string
-	RecentDishes      []string
-	InventoryNames    []string
-	GlobalStarCounts  map[string]int // dish_name (normalized) -> total stars from all users
-	TopK              int
+	CookedDaysAgo      map[string]int // catalog key -> days since last eaten
+	SuggestedDaysAgo map[string]int // catalog key -> days since last AI suggestion
+	InventoryNames     []string
+	GlobalStarCounts   map[string]int // dish_name (normalized) -> total stars from all users
+	TopK               int
+	Now                time.Time // zero = time.Now()
 }
 
 // RankedDish is a catalog dish with retrieval score.
@@ -47,14 +50,40 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 		topK = defaultRetrieveTopK
 	}
 
+	now := in.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
 	userVec := buildUserFeatureVector(in)
 	signal := userSignalStrength(in, userVec)
-	recent := map[string]bool{}
-	for _, d := range in.RecentDishes {
-		recent[strings.ToLower(strings.TrimSpace(d))] = true
-	}
 	mealFilter := ResolveEffectiveMealTypeFilter(in.MealTypeFilter, in.UserPrompt)
+	suggestCtx := DeriveSuggestionContext(now, in.Category)
 
+	scored := rankDishesForRetrieve(catalog, in, userVec, signal, mealFilter, suggestCtx, topK)
+	if len(scored) == 0 && suggestCtx.WeekdayMode {
+		relaxed := RelaxedSuggestionContext(suggestCtx)
+		scored = rankDishesForRetrieve(catalog, in, userVec, signal, mealFilter, relaxed, topK)
+	}
+	if len(scored) == 0 {
+		scored = rankDishesForRetrieve(catalog, in, userVec, signal, mealFilter, SuggestionContext{}, topK)
+	}
+
+	log.Printf("[dish_retrieve] word-match top %d/%d dishes (category=%q, mealFilter=%q, weekdayMode=%v, maxCook=%d, userTokens=%d, signal=%d)",
+		len(scored), len(catalog), in.Category, mealFilter, suggestCtx.WeekdayMode, suggestCtx.MaxCookMins, len(userVec), signal)
+
+	return scored
+}
+
+func rankDishesForRetrieve(
+	catalog []CatalogDish,
+	in DishRetrieveInput,
+	userVec map[string]float64,
+	signal int,
+	mealFilter string,
+	suggestCtx SuggestionContext,
+	topK int,
+) []RankedDish {
+	useContext := suggestCtx.MaxCookMins > 0 || suggestCtx.WeekdayMode
 	var scored []RankedDish
 	for _, dish := range catalog {
 		if !DishAllowedForUserDiet(dish, in.DietaryTags) {
@@ -72,10 +101,15 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 		if !DishMatchesMealTypeFilter(dish, mealFilter) {
 			continue
 		}
-		score := scoreDish(dish, userVec, in) + popularityBoost(dish, in.GlobalStarCounts, signal)
-		if recent[strings.ToLower(dish.Name)] {
-			score *= 0.35
+		if useContext && !DishMatchesSuggestionContext(dish, suggestCtx) {
+			continue
 		}
+		score := scoreDish(dish, userVec, in) + popularityBoost(dish, in.GlobalStarCounts, signal)
+		if useContext {
+			score += CatalogContextBoost(dish, suggestCtx, in.Category)
+		}
+		days := DaysSinceLastExposure(dish, in.CookedDaysAgo, in.SuggestedDaysAgo)
+		score *= CatalogRecencyWeight(dish, days)
 		if score <= 0 {
 			continue
 		}
@@ -85,36 +119,9 @@ func RetrieveDishes(in DishRetrieveInput) []RankedDish {
 	sort.Slice(scored, func(i, j int) bool {
 		return scored[i].Score > scored[j].Score
 	})
-
 	if len(scored) > topK {
 		scored = scored[:topK]
 	}
-	if len(scored) == 0 {
-		var pool []RankedDish
-		for _, dish := range catalog {
-			if !DishAllowedForUserDiet(dish, in.DietaryTags) {
-				continue
-			}
-			if in.Category != "" && !DishMatchesUICategory(dish, in.Category) {
-				continue
-			}
-			if !DishMatchesMealTypeFilter(dish, mealFilter) {
-				continue
-			}
-			pool = append(pool, RankedDish{Dish: dish, Score: dish.RetrievalStarScore(in.GlobalStarCounts)})
-		}
-		sort.Slice(pool, func(i, j int) bool {
-			return pool[i].Score > pool[j].Score
-		})
-		if len(pool) > topK {
-			pool = pool[:topK]
-		}
-		scored = pool
-	}
-
-	log.Printf("[dish_retrieve] word-match top %d/%d dishes (category=%q, mealFilter=%q, userTokens=%d, signal=%d)",
-		len(scored), len(catalog), in.Category, mealFilter, len(userVec), signal)
-
 	return scored
 }
 
@@ -284,31 +291,35 @@ func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInpu
 	return dot
 }
 
-// uiCategoryStyleBoost nudges dishes for tasty / healthy / meal-prep style categories (name heuristics).
+// uiCategoryStyleBoost nudges dishes for tasty / healthy / meal-prep style categories.
 func uiCategoryStyleBoost(dish CatalogDish, uiCategory string) float64 {
-	name := strings.ToLower(dish.Name)
+	name := strings.ToLower(dish.DisplayLabel())
+	effort := strings.ToLower(strings.TrimSpace(dish.Effort))
 	switch strings.ToLower(strings.TrimSpace(uiCategory)) {
 	case "most_tasty":
+		if effort == "medium" || effort == "high" {
+			return 1.5
+		}
 		if strings.Contains(name, "butter") || strings.Contains(name, "tikka") ||
-			strings.Contains(name, "masala") || strings.Contains(name, "fried") {
-			return 2.0
+			strings.Contains(name, "masala") {
+			return 1.2
 		}
 	case "most_healthy":
 		if strings.Contains(name, "dal") || strings.Contains(name, "sabzi") ||
-			strings.Contains(name, "rasam") || strings.Contains(name, "steamed") {
+			strings.Contains(name, "rasam") || strings.Contains(name, "khichdi") {
 			return 2.0
 		}
 		if dish.NormalizedDiet() == "vegan" || dish.NormalizedDiet() == "vegetarian" {
 			return 0.8
 		}
 	case "long_lasting":
-		if strings.Contains(name, "biryani") || strings.Contains(name, "khichdi") ||
+		if dish.OnePot || strings.Contains(name, "biryani") || strings.Contains(name, "khichdi") ||
 			strings.Contains(name, "rajma") || strings.Contains(name, "chole") {
 			return 2.0
 		}
 	case "rescue_meal":
-		if strings.Contains(name, "quick") || strings.Contains(name, "stir") {
-			return 1.2
+		if dish.Effort == "low" || dish.CookTimeMinutes > 0 && dish.CookTimeMinutes <= 30 {
+			return 1.5
 		}
 	}
 	return 0
@@ -359,17 +370,38 @@ func FormatCandidateList(ranked []RankedDish, globalStars map[string]int) string
 	for i, r := range ranked {
 		b.WriteString(fmt.Sprintf("%d. %s", i+1, r.Dish.Name))
 		var meta []string
+		if label := r.Dish.DisplayLabel(); label != r.Dish.Name {
+			meta = append(meta, "display: "+label)
+		}
 		if c := strings.TrimSpace(r.Dish.Cuisine); c != "" {
 			meta = append(meta, c)
 		}
 		if d := r.Dish.NormalizedDiet(); d != "" {
 			meta = append(meta, d)
 		}
+		if e := strings.TrimSpace(r.Dish.Effort); e != "" {
+			meta = append(meta, e+" effort")
+		}
+		if r.Dish.CookTimeMinutes > 0 {
+			meta = append(meta, fmt.Sprintf("%d min", r.Dish.CookTimeMinutes))
+		}
+		if r.Dish.WeekdayFriendly {
+			meta = append(meta, "weekday")
+		}
 		if len(r.Dish.MealType) > 0 {
 			meta = append(meta, strings.Join(r.Dish.MealType, ", "))
 		}
-		if len(r.Dish.Ingredients) > 0 {
-			meta = append(meta, "ing: "+strings.Join(r.Dish.Ingredients, ", "))
+		if ing := r.Dish.CatalogIngredients(); len(ing) > 0 {
+			meta = append(meta, "ing: "+strings.Join(ing, ", "))
+		}
+		if len(r.Dish.PairsWith) > 0 {
+			meta = append(meta, "pairs: "+strings.Join(r.Dish.PairsWith, ", "))
+		}
+		if len(r.Dish.PairsWith) > 0 {
+			meta = append(meta, "pairs: "+strings.Join(r.Dish.PairsWith, ", "))
+		}
+		if r.Dish.HalfLifeDays > 0 {
+			meta = append(meta, fmt.Sprintf("half-life %dd", r.Dish.HalfLifeDays))
 		}
 		if n := r.Dish.GlobalStarCount(globalStars); n > 0 {
 			meta = append(meta, fmt.Sprintf("%d stars", n))

@@ -33,6 +33,7 @@ type SmartMeal struct {
 	CookingTime    int      `json:"cooking_time_mins"`
 	Difficulty     string   `json:"difficulty"`
 	WhyThisMeal    string   `json:"why_this_meal"`
+	PairsWith      []string `json:"pairs_with,omitempty"`
 	NutritionNotes string   `json:"nutrition_notes,omitempty"`
 	StarCount      int      `json:"star_count,omitempty"`   // global stars from all users
 	UserStarred    bool     `json:"user_starred,omitempty"` // this user already starred (one star per user)
@@ -114,13 +115,25 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 			invNames = append(invNames, item.Name)
 		}
 
+		var cookedDays, suggestedDays map[string]int
+		if cookedLog != nil {
+			if m, err := cookedLog.ListRecentEatenDays(r.Context(), userID, services.CookedHistoryDays); err == nil {
+				cookedDays = m
+			}
+			if m, err := cookedLog.ListRecentMealSuggestionDays(r.Context(), userID, 14); err == nil {
+				suggestedDays = m
+			}
+		}
+
 		retrieveIn := services.DishRetrieveInput{
-			Category:       category,
-			UserPrompt:     userPrompt,
-			MealTypeFilter: mealType,
-			RecentDishes:   recentDishes,
-			InventoryNames: invNames,
-			TopK:           services.CatalogRetrieveTopK,
+			Category:           category,
+			UserPrompt:         userPrompt,
+			MealTypeFilter:     mealType,
+			CookedDaysAgo:      cookedDays,
+			SuggestedDaysAgo:   suggestedDays,
+			InventoryNames:     invNames,
+			TopK:               services.CatalogRetrieveTopK,
+			Now:                time.Now(),
 		}
 		if userPrefs != nil {
 			retrieveIn.DietaryTags = userPrefs.DietaryTags
@@ -174,6 +187,8 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 			}
 		}
 
+		recordMealSuggestions(r.Context(), cookedLog, userID, meals)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(SmartMealsResponse{
 			Categories:    meals,
@@ -181,6 +196,27 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 			GeneratedAt:   time.Now().Format(time.RFC3339),
 			Source:        source,
 		})
+	}
+}
+
+func recordMealSuggestions(ctx context.Context, cookedLog *services.CookedLogService, userID string, categories []MealCategory) {
+	if cookedLog == nil {
+		return
+	}
+	seen := map[string]bool{}
+	for _, cat := range categories {
+		for _, meal := range cat.Meals {
+			name := strings.TrimSpace(meal.Name)
+			if name == "" {
+				continue
+			}
+			key := services.NormalizeDishName(name)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			cookedLog.LogDishName(ctx, userID, name, services.CookedSourceMealSuggested)
+		}
 	}
 }
 
@@ -314,7 +350,13 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 
 	sb.WriteString(services.FormatCandidateList(candidates, globalStars))
 	sb.WriteString(fmt.Sprintf("Meal slot: prefer %s.\n", services.MealTypeFilterLabel(mealTypeFilter)))
-	sb.WriteString("Star counts are global (all KitchenAI users). Prefer dishes with more stars when the request is vague.\n")
+	ctx := services.DeriveSuggestionContext(time.Now(), category)
+	if ctx.WeekdayMode {
+		sb.WriteString(fmt.Sprintf("Context: weekday home cooking — prefer weekday-friendly dishes under ~%d minutes, low/medium effort.\n", ctx.MaxCookMins))
+	} else {
+		sb.WriteString("Context: weekend — slightly more ambitious dishes are OK.\n")
+	}
+	sb.WriteString("Use the exact shortlist dish name in JSON. Star counts are global (all KitchenAI users). Prefer dishes with more stars when the request is vague.\n")
 
 	appendHardConstraints(&sb, prefs)
 
@@ -638,6 +680,9 @@ func mergeGroqMeal(base, groq SmartMeal) SmartMeal {
 	if w := strings.TrimSpace(groq.WhyThisMeal); w != "" {
 		base.WhyThisMeal = w
 	}
+	if len(base.PairsWith) == 0 && len(groq.PairsWith) > 0 {
+		base.PairsWith = groq.PairsWith
+	}
 	if n := strings.TrimSpace(groq.NutritionNotes); n != "" {
 		base.NutritionNotes = n
 	}
@@ -706,27 +751,52 @@ func smartMealFromCatalog(d services.CatalogDish, invNames []string, category st
 	if c := strings.TrimSpace(d.Cuisine); c != "" {
 		why = fmt.Sprintf("From your %s shortlist.", strings.ReplaceAll(c, "-", " "))
 	}
+	if d.WeekdayFriendly && d.CookTimeMinutes > 0 {
+		why = fmt.Sprintf("Practical weeknight option (~%d min).", d.CookTimeMinutes)
+	}
 	key := services.NormalizeDishName(d.Name)
+	cookMins := d.CookTimeMinutes
+	if cookMins <= 0 {
+		cookMins = 30
+	}
+	difficulty := catalogDifficulty(d.Effort)
+	pairs := d.PairsWith
+	if len(pairs) > 6 {
+		pairs = pairs[:6]
+	}
 	return SmartMeal{
-		Name:        d.Name,
+		Name:        d.DisplayLabel(),
 		Description: "A home-style option from your personalized shortlist.",
 		Ingredients: ing,
-		CookingTime: 30,
-		Difficulty:  "easy",
+		PairsWith:   pairs,
+		CookingTime: cookMins,
+		Difficulty:  difficulty,
 		WhyThisMeal: why,
 		StarCount:   d.GlobalStarCount(globalStars),
 		UserStarred: userStarred[key],
 	}
 }
 
+func catalogDifficulty(effort string) string {
+	switch strings.ToLower(strings.TrimSpace(effort)) {
+	case "high":
+		return "hard"
+	case "medium":
+		return "medium"
+	default:
+		return "easy"
+	}
+}
+
 func catalogIngredientHints(d services.CatalogDish, invNames []string, category string) []string {
-	if len(d.Ingredients) > 0 {
-		n := len(d.Ingredients)
+	ings := d.CatalogIngredients()
+	if len(ings) > 0 {
+		n := len(ings)
 		if n > 8 {
 			n = 8
 		}
 		out := make([]string, n)
-		for i, ing := range d.Ingredients[:n] {
+		for i, ing := range ings[:n] {
 			out[i] = titleIngredientToken(ing)
 		}
 		return out

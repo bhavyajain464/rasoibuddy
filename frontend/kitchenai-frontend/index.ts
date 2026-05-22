@@ -1,5 +1,9 @@
-import 'expo-dev-client';
+import { Platform } from 'react-native';
 import { registerRootComponent } from 'expo';
+
+if (Platform.OS !== 'web') {
+  require('expo-dev-client');
+}
 
 import App from './App';
 

@@ -14,11 +14,43 @@ import (
 // meal_type: breakfast | lunch | dinner | snack | dessert | side
 // ingredients: top important ingredient tokens for matching and display.
 type CatalogDish struct {
-	Name        string   `json:"name"`
-	Cuisine     string   `json:"cuisine,omitempty"`
-	Diet        string   `json:"diet,omitempty"`
-	MealType    []string `json:"meal_type,omitempty"`
-	Ingredients []string `json:"ingredients,omitempty"`
+	ID              string   `json:"id,omitempty"`
+	Name            string   `json:"name"`
+	DisplayName     string   `json:"display_name,omitempty"`
+	Cuisine         string   `json:"cuisine,omitempty"`
+	Diet            string   `json:"diet,omitempty"`
+	MealType        []string `json:"meal_type,omitempty"`
+	KeyIngredients  []string `json:"key_ingredients,omitempty"`
+	Ingredients     []string `json:"ingredients,omitempty"` // legacy alias
+	Effort          string   `json:"effort,omitempty"`      // low | medium | high
+	CookTimeMinutes int      `json:"cook_time_minutes,omitempty"`
+	WeekdayFriendly bool     `json:"weekday_friendly,omitempty"`
+	OnePot          bool     `json:"one_pot,omitempty"`
+	PairsWith       []string `json:"pairs_with,omitempty"`
+	FrequencyClass  string   `json:"frequency_class,omitempty"` // daily | weekly | special
+	HalfLifeDays    int      `json:"half_life_days,omitempty"`
+	Tags            []string `json:"tags,omitempty"`
+}
+
+// CatalogIngredients returns key_ingredients (or legacy ingredients).
+func (d CatalogDish) CatalogIngredients() []string {
+	if len(d.KeyIngredients) > 0 {
+		return d.KeyIngredients
+	}
+	return d.Ingredients
+}
+
+// HasPracticalMeta is true when effort/time/weekday fields were populated in catalog v2.
+func (d CatalogDish) HasPracticalMeta() bool {
+	return d.CookTimeMinutes > 0 || strings.TrimSpace(d.Effort) != ""
+}
+
+// DisplayLabel is the household-facing name (falls back to name).
+func (d CatalogDish) DisplayLabel() string {
+	if s := strings.TrimSpace(d.DisplayName); s != "" {
+		return s
+	}
+	return strings.TrimSpace(d.Name)
 }
 
 //go:embed dishes/catalog.json
@@ -80,21 +112,26 @@ func (d CatalogDish) featureTokens() map[string]struct{} {
 		}
 	}
 	add(d.Name)
-	add(d.Cuisine)
+	add(d.DisplayLabel())
+	add(d.Effort)
 	add(d.NormalizedDiet())
 	for _, m := range d.MealType {
 		add(m)
 	}
-	for _, ing := range d.Ingredients {
+	for _, ing := range d.CatalogIngredients() {
 		add(ing)
+	}
+	for _, tag := range d.Tags {
+		add(tag)
 	}
 	return tokens
 }
 
 func (d CatalogDish) searchBlob() string {
-	parts := []string{d.Name, d.Cuisine, d.NormalizedDiet()}
+	parts := []string{d.Name, d.DisplayLabel(), d.Cuisine, d.NormalizedDiet(), d.Effort, d.FrequencyClass}
 	parts = append(parts, d.MealType...)
-	parts = append(parts, d.Ingredients...)
+	parts = append(parts, d.CatalogIngredients()...)
+	parts = append(parts, d.Tags...)
 	return strings.ToLower(strings.Join(parts, " "))
 }
 
@@ -261,12 +298,14 @@ func BestCandidateForPrompt(candidates []RankedDish, prompt string) (RankedDish,
 }
 
 func excludeDishSet(exclude []string) map[string]bool {
-	set := make(map[string]bool, len(exclude))
+	set := make(map[string]bool, len(exclude)*2)
 	for _, name := range exclude {
-		key := strings.ToLower(strings.TrimSpace(name))
-		if key != "" {
-			set[key] = true
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
 		}
+		set[strings.ToLower(name)] = true
+		set[NormalizeDishName(name)] = true
 	}
 	return set
 }
@@ -283,7 +322,8 @@ func MatchingCandidatesForPrompt(candidates []RankedDish, prompt string, exclude
 		if len(tokens) > 0 && !DishMatchesPrompt(c.Dish, tokens) {
 			continue
 		}
-		if ex[strings.ToLower(strings.TrimSpace(c.Dish.Name))] {
+		key := NormalizeDishName(c.Dish.Name)
+		if ex[key] || ex[strings.ToLower(strings.TrimSpace(c.Dish.Name))] || ex[strings.ToLower(strings.TrimSpace(c.Dish.DisplayLabel()))] {
 			continue
 		}
 		out = append(out, c)
@@ -300,7 +340,8 @@ func RandomCandidateForPrompt(candidates []RankedDish, prompt string, exclude []
 	if len(pool) == 0 {
 		ex := excludeDishSet(exclude)
 		for _, c := range candidates {
-			if !ex[strings.ToLower(strings.TrimSpace(c.Dish.Name))] {
+			key := NormalizeDishName(c.Dish.Name)
+			if !ex[key] && !ex[strings.ToLower(strings.TrimSpace(c.Dish.Name))] && !ex[strings.ToLower(strings.TrimSpace(c.Dish.DisplayLabel()))] {
 				pool = append(pool, c)
 			}
 		}

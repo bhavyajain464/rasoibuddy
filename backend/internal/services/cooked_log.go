@@ -25,6 +25,7 @@ var cookedLogNonEatenSources = map[string]bool{
 	CookedSourceCookSent: true,
 	CookedSourceMealSent: true,
 	"ai-suggested":       true,
+	CookedSourceMealSuggested: true,
 }
 
 // IsEatenLogSource reports whether a cooked_log row belongs in meal / diet history.
@@ -264,9 +265,79 @@ func (s *CookedLogService) LogDishName(ctx context.Context, userID, dishName, so
 }
 
 const (
-	CookedSourceCookSent  = "cook-sent"
-	CookedSourceMealSent  = "meal-sent"
+	CookedSourceCookSent      = "cook-sent"
+	CookedSourceMealSent      = "meal-sent"
+	CookedSourceMealSuggested = "meal-suggested"
 )
+
+// ListRecentEatenDays returns days since each dish was last eaten (excludes drafts / suggestions).
+func (s *CookedLogService) ListRecentEatenDays(ctx context.Context, userID string, withinDays int) (map[string]int, error) {
+	entries, _, err := s.ListEatenLast15Days(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if withinDays <= 0 {
+		withinDays = CookedHistoryDays
+	}
+	now := time.Now().UTC()
+	out := map[string]int{}
+	for _, e := range entries {
+		cookedOn, err := time.Parse("2006-01-02", e.CookedOn)
+		if err != nil {
+			continue
+		}
+		days := int(now.Sub(cookedOn).Hours() / 24)
+		if days < 0 {
+			days = 0
+		}
+		if days > withinDays {
+			continue
+		}
+		key := NormalizeDishName(e.DishName)
+		if prev, ok := out[key]; !ok || days < prev {
+			out[key] = days
+		}
+	}
+	return out, nil
+}
+
+// ListRecentMealSuggestionDays returns days since each dish was last suggested (AI smart meals).
+func (s *CookedLogService) ListRecentMealSuggestionDays(ctx context.Context, userID string, withinDays int) (map[string]int, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, fmt.Errorf("user_id is required")
+	}
+	if withinDays <= 0 {
+		withinDays = 14
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT dish_name, MAX(created_at) AS last_at
+		FROM cooked_log
+		WHERE user_id = $1 AND source = $2
+		  AND created_at >= NOW() - ($3::int * INTERVAL '1 day')
+		GROUP BY dish_name
+	`, userID, CookedSourceMealSuggested, withinDays)
+	if err != nil {
+		return nil, fmt.Errorf("query meal suggestions: %w", err)
+	}
+	defer rows.Close()
+
+	now := time.Now()
+	out := map[string]int{}
+	for rows.Next() {
+		var name string
+		var lastAt time.Time
+		if err := rows.Scan(&name, &lastAt); err != nil {
+			return nil, err
+		}
+		days := int(now.Sub(lastAt).Hours() / 24)
+		if days < 0 {
+			days = 0
+		}
+		out[NormalizeDishName(name)] = days
+	}
+	return out, rows.Err()
+}
 
 // LogCookMessage records an outbound WhatsApp draft to the cook (excluded from "What you ate").
 func (s *CookedLogService) LogCookMessage(ctx context.Context, userID, source, dishName, body string) {
