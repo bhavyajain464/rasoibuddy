@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text as RNText, Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -14,8 +14,14 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
+import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
 
 const Tab = createBottomTabNavigator();
+
+export const navigationRef = createNavigationContainerRef<{
+  Meals: { openLog?: boolean } | undefined;
+  [key: string]: object | undefined;
+}>();
 
 const linking = {
   prefixes: [Platform.OS === 'web' ? window.location.origin : 'kitchenai://'],
@@ -98,7 +104,8 @@ export function AppNavigator() {
   return (
     <EntitlementsProvider>
     <WhatsAppShareProvider>
-    <NavigationContainer linking={linking}>
+    <MealLogNotificationProvider navigationRef={navigationRef}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused }) => (
@@ -119,6 +126,7 @@ export function AppNavigator() {
         <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
       </Tab.Navigator>
     </NavigationContainer>
+    </MealLogNotificationProvider>
     </WhatsAppShareProvider>
     </EntitlementsProvider>
   );

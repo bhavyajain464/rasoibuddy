@@ -38,7 +38,12 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function MealsHistoryDietTab() {
+type Props = {
+  openAddOnMount?: boolean;
+  onAddModalOpened?: () => void;
+};
+
+export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props) {
   const { entitlements } = useEntitlements();
   const { subscribe, busy: upgradeBusy } = usePlanUpgrade();
   const [mealHistory, setMealHistory] = useState<CookedLogEntry[]>([]);
@@ -78,6 +83,13 @@ export function MealsHistoryDietTab() {
     void refreshHistory();
     void refreshDiet();
   }, [refreshHistory, refreshDiet]);
+
+  useEffect(() => {
+    if (openAddOnMount) {
+      setAddModalVisible(true);
+      onAddModalOpened?.();
+    }
+  }, [openAddOnMount, onAddModalOpened]);
 
   const openAddMeal = () => {
     setAddDishName('');

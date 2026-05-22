@@ -20,7 +20,7 @@ import {
   SegmentedButtons,
 } from 'react-native-paper';
 import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
@@ -165,8 +165,11 @@ function CategoryBox({
   );
 }
 
+type MealsRouteParams = { openLog?: boolean };
+
 export function MealsScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<{ Meals: MealsRouteParams }, 'Meals'>>();
   const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [result, setResult] = useState<MealCategory | null>(null);
@@ -176,6 +179,7 @@ export function MealsScreen() {
   const [mealTypeFilter, setMealTypeFilter] = useState<MealTypeFilterId>('lunch_dinner');
   const [inventoryCount, setInventoryCount] = useState(0);
   const [mealsTab, setMealsTab] = useState<MealsTab>('suggest');
+  const [openLogFromNotification, setOpenLogFromNotification] = useState(false);
   const [cookProfileReady, setCookProfileReady] = useState(false);
   const [starringDish, setStarringDish] = useState<string | null>(null);
   const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
@@ -186,6 +190,15 @@ export function MealsScreen() {
       .then((p) => setCookProfileReady(Boolean(p.configured && p.phone_number?.trim())))
       .catch(() => setCookProfileReady(false));
   }, []);
+
+  useEffect(() => {
+    if (route.params?.openLog) {
+      setMealsTab('history');
+      setSelectedCategory(null);
+      setOpenLogFromNotification(true);
+      navigation.setParams({ openLog: undefined });
+    }
+  }, [route.params?.openLog, navigation]);
 
   const toggleStar = useCallback(async (mealIndex: number) => {
     const meal = result?.meals?.[mealIndex];
@@ -340,7 +353,12 @@ export function MealsScreen() {
         </View>
       )}
 
-      {mealsTab === 'history' && !selectedCategory ? <MealsHistoryDietTab /> : null}
+      {mealsTab === 'history' && !selectedCategory ? (
+        <MealsHistoryDietTab
+          openAddOnMount={openLogFromNotification}
+          onAddModalOpened={() => setOpenLogFromNotification(false)}
+        />
+      ) : null}
 
       {mealsTab === 'suggest' && !selectedCategory && !loading && (
         <>

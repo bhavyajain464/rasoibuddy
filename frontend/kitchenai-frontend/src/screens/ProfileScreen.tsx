@@ -7,6 +7,7 @@ import {
   Platform,
   Image,
   Pressable,
+  Linking,
 } from 'react-native';
 import {
   Text,
@@ -19,6 +20,7 @@ import {
   ActivityIndicator,
   SegmentedButtons,
   Surface,
+  Switch,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +30,12 @@ import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { PlanSubscriptionSection } from '../components/PlanSubscriptionSection';
-import { showAppError, showAppSuccess } from '../utils/alertMessage';
+import { showAppError, showAppSuccess, showAppInfo } from '../utils/alertMessage';
+import {
+  getMealLogRemindersEnabled,
+  setMealLogRemindersEnabled,
+  isMealLogNotificationSupported,
+} from '../services/mealLogNotifications';
 
 const SPICE_LEVELS = ['mild', 'medium', 'spicy', 'extra_spicy'];
 const COOKING_SKILLS = ['beginner', 'intermediate', 'advanced'];
@@ -85,6 +92,56 @@ export function ProfileScreen() {
   const [memoryContent, setMemoryContent] = useState('');
   const [memoryCategory, setMemoryCategory] = useState('general');
   const [addingMemory, setAddingMemory] = useState(false);
+  const [mealLogReminders, setMealLogReminders] = useState(false);
+  const [mealLogRemindersLoading, setMealLogRemindersLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isMealLogNotificationSupported()) return;
+    void getMealLogRemindersEnabled().then(setMealLogReminders);
+  }, []);
+
+  const onToggleMealLogReminders = useCallback(async (enabled: boolean) => {
+    if (!isMealLogNotificationSupported()) {
+      showAppInfo('Meal log reminders are available on the iOS and Android app.');
+      return;
+    }
+    setMealLogRemindersLoading(true);
+    setMealLogReminders(enabled);
+    try {
+      const result = await setMealLogRemindersEnabled(enabled);
+      const on = await getMealLogRemindersEnabled();
+      setMealLogReminders(on);
+      if (result.ok) {
+        if (enabled) {
+          showAppSuccess(
+            'Reminders on — lunch ~1:30 PM and dinner ~8:00 PM. You should get a short confirmation in a few seconds.',
+          );
+        }
+      } else {
+        showAppError(result.message);
+        if (result.reason === 'permission_denied') {
+          Alert.alert(
+            'Notifications blocked',
+            result.message,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  void Linking.openSettings();
+                },
+              },
+            ],
+          );
+        }
+      }
+    } catch {
+      showAppError('Could not update notification settings.');
+      setMealLogReminders(await getMealLogRemindersEnabled());
+    } finally {
+      setMealLogRemindersLoading(false);
+    }
+  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -443,6 +500,29 @@ export function ProfileScreen() {
             onRetry={() => void refreshEntitlements()}
           />
 
+          {isMealLogNotificationSupported() ? (
+            <Surface style={styles.section} elevation={1}>
+              <Text variant="titleSmall" style={styles.secTitle}>Meal log reminders</Text>
+              <Text variant="bodySmall" style={styles.reminderHint}>
+                Local notifications only — we ask you to log what you ate. No promos or other alerts.
+              </Text>
+              <View style={styles.settRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text variant="bodyMedium" style={styles.settLabel}>Daily reminders</Text>
+                  <Text variant="bodySmall" style={styles.reminderSub}>
+                    1:30 PM & 8:00 PM · opens meal log when tapped
+                  </Text>
+                </View>
+                <Switch
+                  value={mealLogReminders}
+                  onValueChange={(v) => void onToggleMealLogReminders(v)}
+                  disabled={mealLogRemindersLoading}
+                  color="#4CAF50"
+                />
+              </View>
+            </Surface>
+          ) : null}
+
           <Surface style={styles.section} elevation={1}>
             <Text variant="titleSmall" style={styles.secTitle}>Account</Text>
             <View style={styles.settRow}>
@@ -570,5 +650,7 @@ const styles = StyleSheet.create({
   settLabel: { color: '#888' },
   settVal: { color: '#555', fontWeight: '500' },
   settDivider: { marginVertical: 2 },
+  reminderHint: { color: '#666', marginBottom: 12, lineHeight: 18 },
+  reminderSub: { color: '#888', marginTop: 2 },
   signOutBtn: { borderRadius: 14, marginTop: 8 },
 });
