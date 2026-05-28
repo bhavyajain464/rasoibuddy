@@ -5,7 +5,6 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
-  Dimensions,
 } from 'react-native';
 import {
   Text,
@@ -14,14 +13,13 @@ import {
   ActivityIndicator,
   Badge,
   IconButton,
+  Icon,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem } from '../types';
 import { MessageImportCard } from '../components/MessageImportCard';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -30,14 +28,22 @@ function getGreeting(): string {
   return 'Good Evening';
 }
 
-function getDaysLeft(expiry: string | undefined): number | null {
-  if (!expiry) return null;
-  const e = new Date(expiry);
-  const t = new Date();
-  e.setHours(0, 0, 0, 0);
-  t.setHours(0, 0, 0, 0);
-  return Math.round((e.getTime() - t.getTime()) / 86400000);
+function formatItemName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 }
+
+function expiringDaysLabel(days: number): { text: string; urgent: boolean } {
+  if (days <= 0) return { text: 'Today', urgent: true };
+  if (days === 1) return { text: '1 day', urgent: true };
+  if (days <= 2) return { text: `${days} days`, urgent: true };
+  return { text: `${days} days`, urgent: false };
+}
+
+const EXPIRING_PREVIEW = 4;
 
 export function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -92,7 +98,7 @@ export function HomeScreen({ navigation }: any) {
       showsVerticalScrollIndicator={false}
     >
       {/* ── Hero Header ──────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerText}>
             <Text variant="bodyMedium" style={styles.greeting}>{getGreeting()},</Text>
@@ -173,34 +179,12 @@ export function HomeScreen({ navigation }: any) {
             />
           </View>
 
-          {/* ── Expiring Soon ─────────────────────────────── */}
-          {expiringItems.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text variant="titleMedium" style={styles.sectionTitle}>Expiring Soon</Text>
-                <Pressable onPress={() => navigation.navigate('Inventory')}>
-                  <Text style={styles.seeAll}>See all</Text>
-                </Pressable>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hScroll} contentContainerStyle={styles.hScrollContent}>
-                {expiringItems.map((item) => (
-                  <Surface key={item.item_id} style={styles.expiryCard} elevation={2}>
-                    <View style={styles.expiryBadge}>
-                      <Text style={styles.expiryBadgeText}>
-                        {item.days_until_expiry <= 0 ? 'Today' : `${item.days_until_expiry}d`}
-                      </Text>
-                    </View>
-                    <Text variant="titleSmall" style={styles.expiryName} numberOfLines={1}>{item.canonical_name}</Text>
-                    <Text variant="bodySmall" style={styles.expiryQty}>{item.qty} {item.unit}</Text>
-                  </Surface>
-                ))}
-              </ScrollView>
-            </>
-          )}
-
           {/* ── Expired Items Alert ───────────────────────── */}
           {expiredItems.length > 0 && (
-            <Pressable onPress={() => navigation.navigate('Inventory')} style={styles.expiredBanner}>
+            <Pressable
+              onPress={() => navigation.navigate('Inventory', { tab: 'expired' })}
+              style={styles.expiredBanner}
+            >
               <View style={styles.expiredBannerIcon}>
                 <IconButton icon="alert-circle" iconColor="#C62828" size={24} style={{ margin: 0 }} />
               </View>
@@ -216,50 +200,113 @@ export function HomeScreen({ navigation }: any) {
             </Pressable>
           )}
 
-          {/* ── Recent Inventory ──────────────────────────── */}
-          <View style={styles.sectionHeader}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Recent Items</Text>
-            <Pressable onPress={() => navigation.navigate('Inventory')}>
-              <Text style={styles.seeAll}>View all</Text>
-            </Pressable>
-          </View>
-
-          {inventory.length === 0 ? (
-            <Surface style={styles.emptyCard} elevation={1}>
-              <IconButton icon="fridge-outline" size={36} iconColor="#bbb" style={{ margin: 0 }} />
-              <Text variant="bodyMedium" style={styles.emptyText}>
-                Your kitchen is empty!
-              </Text>
-              <Text variant="bodySmall" style={styles.emptySubtext}>
-                Scan a grocery bill or add items manually
-              </Text>
-            </Surface>
-          ) : (
-            <View style={styles.recentList}>
-              {inventory.slice(0, 6).map((item) => {
-                const dl = getDaysLeft(item.estimated_expiry);
-                const urgent = dl !== null && dl <= 2;
-                return (
-                  <Surface key={item.item_id} style={styles.recentItem} elevation={1}>
-                    <View style={[styles.recentDot, { backgroundColor: urgent ? '#FF9800' : '#4CAF50' }]} />
-                    <View style={styles.recentInfo}>
-                      <Text variant="bodyMedium" style={styles.recentName}>{item.canonical_name}</Text>
-                      <Text variant="bodySmall" style={styles.recentQty}>{item.qty} {item.unit}</Text>
+          {/* ── Expiring Soon ─────────────────────────────── */}
+          {expiringItems.length > 0 && (
+            <View
+              style={[
+                styles.expiringSection,
+                expiredItems.length === 0 && styles.expiringSectionStandalone,
+              ]}
+            >
+              <Surface style={styles.expiringPanel} elevation={1}>
+                <Pressable
+                  onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
+                  style={({ pressed }) => [styles.expiringPanelHeader, pressed && { opacity: 0.92 }]}
+                >
+                  <View style={styles.expiringTitleRow}>
+                    <View style={styles.expiringIconWrap}>
+                      <Icon source="clock-alert-outline" size={20} color="#E65100" />
                     </View>
-                    {dl !== null && (
-                      <View style={[styles.daysChip, urgent && styles.daysChipUrgent]}>
-                        <Text style={[styles.daysChipText, urgent && styles.daysChipTextUrgent]}>
-                          {dl === 0 ? 'Today' : dl === 1 ? '1d' : `${dl}d`}
-                        </Text>
-                      </View>
-                    )}
-                  </Surface>
-                );
-              })}
+                    <Text variant="titleSmall" style={styles.expiringPanelTitle}>
+                      Expiring soon
+                    </Text>
+                    <View style={styles.expiringCountPill}>
+                      <Text style={styles.expiringCountText}>{expiringItems.length}</Text>
+                    </View>
+                  </View>
+                  <Icon source="chevron-right" size={22} color="#BF360C" />
+                </Pressable>
+
+                <View style={styles.expiringList}>
+                  {expiringItems.slice(0, EXPIRING_PREVIEW).map((item, index, preview) => {
+                    const { text: daysText, urgent } = expiringDaysLabel(item.days_until_expiry);
+                    const isLast = index === preview.length - 1;
+                    return (
+                      <Pressable
+                        key={item.item_id}
+                        onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
+                        style={({ pressed }) => [
+                          styles.expiringRow,
+                          !isLast && styles.expiringRowBorder,
+                          pressed && styles.expiringRowPressed,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.expiringRowAccent,
+                            urgent ? styles.expiringRowAccentUrgent : styles.expiringRowAccentWarn,
+                          ]}
+                        />
+                        <View style={styles.expiringRowBody}>
+                          <Text variant="bodyMedium" style={styles.expiringRowName} numberOfLines={1}>
+                            {formatItemName(item.canonical_name)}
+                          </Text>
+                          <Text variant="bodySmall" style={styles.expiringRowQty} numberOfLines={1}>
+                            {item.qty} {item.unit}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.expiringDaysPill,
+                            urgent ? styles.expiringDaysPillUrgent : styles.expiringDaysPillWarn,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.expiringDaysText,
+                              urgent ? styles.expiringDaysTextUrgent : styles.expiringDaysTextWarn,
+                            ]}
+                          >
+                            {daysText}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {expiringItems.length > EXPIRING_PREVIEW ? (
+                  <Pressable
+                    onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
+                    style={({ pressed }) => [styles.expiringMoreBtn, pressed && { opacity: 0.85 }]}
+                  >
+                    <Text style={styles.expiringMoreText}>
+                      +{expiringItems.length - EXPIRING_PREVIEW} more · View all
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </Surface>
             </View>
           )}
 
-          <View style={styles.bottomSpacer} />
+          {inventory.length === 0 &&
+          expiringItems.length === 0 &&
+          expiredItems.length === 0 ? (
+            <Pressable
+              onPress={() => navigation.navigate('Inventory')}
+              style={styles.emptyPantry}
+            >
+              <Surface style={styles.emptyPantryCard} elevation={1}>
+                <IconButton icon="fridge-outline" size={32} iconColor="#81C784" style={{ margin: 0 }} />
+                <Text variant="titleSmall" style={styles.emptyPantryTitle}>
+                  Your kitchen is empty
+                </Text>
+                <Text variant="bodySmall" style={styles.emptyPantrySub}>
+                  Scan a bill or add items to get meal ideas
+                </Text>
+              </Surface>
+            </Pressable>
+          ) : null}
         </>
       )}
     </ScrollView>
@@ -306,7 +353,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#4CAF50',
     paddingHorizontal: 24,
-    paddingBottom: 28,
+    paddingBottom: 34,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -370,17 +417,138 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     color: '#333',
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingRight: 24,
+  expiringSection: {
+    marginHorizontal: 24,
+    marginTop: 12,
+    marginBottom: 20,
   },
-  seeAll: {
-    color: '#4CAF50',
-    fontWeight: '600',
+  expiringSectionStandalone: {
+    marginTop: 20,
+  },
+  expiringPanel: {
+    borderRadius: 16,
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+    overflow: 'hidden',
+  },
+  expiringPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 152, 0, 0.2)',
+  },
+  expiringTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  expiringIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#FFE0B2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expiringPanelTitle: {
+    fontWeight: '800',
+    color: '#BF360C',
+    flex: 1,
+  },
+  expiringCountPill: {
+    backgroundColor: '#FF9800',
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  expiringCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  expiringList: {
+    backgroundColor: '#fff',
+  },
+  expiringRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingRight: 14,
+    paddingLeft: 0,
+    backgroundColor: '#fff',
+  },
+  expiringRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F0F0F0',
+  },
+  expiringRowPressed: {
+    backgroundColor: '#FFFDE7',
+  },
+  expiringRowAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    marginRight: 12,
+    borderRadius: 2,
+  },
+  expiringRowAccentUrgent: {
+    backgroundColor: '#FF5722',
+  },
+  expiringRowAccentWarn: {
+    backgroundColor: '#FFB74D',
+  },
+  expiringRowBody: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
+  },
+  expiringRowName: {
+    fontWeight: '700',
+    color: '#212121',
+  },
+  expiringRowQty: {
+    color: '#757575',
+    marginTop: 2,
+  },
+  expiringDaysPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  expiringDaysPillUrgent: {
+    backgroundColor: '#FFEBEE',
+  },
+  expiringDaysPillWarn: {
+    backgroundColor: '#FFF3E0',
+  },
+  expiringDaysText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  expiringDaysTextUrgent: {
+    color: '#D84315',
+  },
+  expiringDaysTextWarn: {
+    color: '#E65100',
+  },
+  expiringMoreBtn: {
+    paddingVertical: 11,
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#FFE0B2',
+  },
+  expiringMoreText: {
+    color: '#E65100',
+    fontWeight: '700',
     fontSize: 13,
-    marginTop: 24,
   },
 
   // Action grid
@@ -422,51 +590,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Expiring horizontal
-  hScroll: {
-    marginTop: 8,
-  },
-  hScrollContent: {
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  expiryCard: {
-    width: 130,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    position: 'relative',
-  },
-  expiryBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  expiryBadgeText: {
-    color: '#E65100',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  expiryName: {
-    fontWeight: '600',
-    marginTop: 4,
-    color: '#333',
-  },
-  expiryQty: {
-    color: '#888',
-    marginTop: 4,
-  },
-
   // Expired banner
   expiredBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 24,
-    marginTop: 16,
+    marginTop: 20,
+    marginBottom: 0,
     backgroundColor: '#FFEBEE',
     borderRadius: 16,
     padding: 12,
@@ -478,74 +608,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Recent items
-  recentList: {
-    paddingHorizontal: 24,
-    marginTop: 10,
-    gap: 8,
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-  },
-  recentDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-  },
-  recentInfo: {
-    flex: 1,
-  },
-  recentName: {
-    fontWeight: '600',
-    color: '#333',
-  },
-  recentQty: {
-    color: '#888',
-    marginTop: 1,
-  },
-  daysChip: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  daysChipUrgent: {
-    backgroundColor: '#FFF3E0',
-  },
-  daysChipText: {
-    color: '#2E7D32',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  daysChipTextUrgent: {
-    color: '#E65100',
-  },
-
-  // Empty state
-  emptyCard: {
+  emptyPantry: {
     marginHorizontal: 24,
-    marginTop: 8,
-    borderRadius: 18,
-    padding: 28,
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  emptyPantryCard: {
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E8F5E9',
   },
-  emptyText: {
-    color: '#888',
-    marginTop: 8,
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    color: '#bbb',
+  emptyPantryTitle: {
+    fontWeight: '700',
+    color: '#333',
     marginTop: 4,
   },
-
-  bottomSpacer: {
-    height: 8,
+  emptyPantrySub: {
+    color: '#888',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

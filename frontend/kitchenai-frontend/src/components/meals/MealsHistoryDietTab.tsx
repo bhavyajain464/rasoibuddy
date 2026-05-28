@@ -16,8 +16,7 @@ import {
 } from 'react-native-paper';
 import * as api from '../../services/api';
 import { CookedLogEntry, DietAnalysisSettings } from '../../types';
-import { useEntitlements } from '../../context/EntitlementsContext';
-import { usePlanUpgrade } from '../../hooks/usePlanUpgrade';
+import { useUpgradePaywall } from '../../context/UpgradePaywallContext';
 import { showAppError } from '../../utils/alertMessage';
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -44,8 +43,7 @@ type Props = {
 };
 
 export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props) {
-  const { entitlements } = useEntitlements();
-  const { subscribe, busy: upgradeBusy } = usePlanUpgrade();
+  const { openUpgrade } = useUpgradePaywall();
   const [mealHistory, setMealHistory] = useState<CookedLogEntry[]>([]);
   const [dietSettings, setDietSettings] = useState<DietAnalysisSettings | null>(null);
   const [dietLoading, setDietLoading] = useState(true);
@@ -137,10 +135,9 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
     }
   };
 
-  const eliteUpgrades = (entitlements?.upgrade_options ?? []).filter((o) => o.target.tier === 'elite');
-  const elitePlans = (entitlements?.available_plans ?? []).filter(
-    (p) => p.tier === 'elite' && p.available_for_purchase,
-  );
+  const openDietUpgrade = () => {
+    openUpgrade({ source: 'diet_analysis', preferredTier: 'elite', preferredInterval: 'monthly' });
+  };
 
   return (
     <View style={styles.wrap}>
@@ -183,35 +180,15 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
             <Text variant="bodySmall" style={styles.dietMeta}>
               Upgrade to Elite for AI diet insights and the nightly digest. Pro covers meal suggestions only.
             </Text>
-            {eliteUpgrades.length > 0
-              ? eliteUpgrades.map((opt) => (
-                  <Button
-                    key={`${opt.target.tier}-${opt.target.interval}`}
-                    mode="contained"
-                    icon="crown"
-                    onPress={() => void subscribe(opt.target.tier, opt.target.interval)}
-                    loading={upgradeBusy}
-                    disabled={upgradeBusy}
-                    style={styles.eliteBtn}
-                    buttonColor="#6A1B9A"
-                  >
-                    {`Upgrade to Elite · ${opt.amount_label || opt.target.price_label}`}
-                  </Button>
-                ))
-              : elitePlans.map((p) => (
-                  <Button
-                    key={`${p.tier}-${p.interval}`}
-                    mode="contained"
-                    icon="crown"
-                    onPress={() => void subscribe(p.tier, p.interval)}
-                    loading={upgradeBusy}
-                    disabled={upgradeBusy}
-                    style={styles.eliteBtn}
-                    buttonColor="#6A1B9A"
-                  >
-                    {`Upgrade to Elite · ${p.price_label}`}
-                  </Button>
-                ))}
+            <Button
+              mode="contained"
+              icon="crown"
+              onPress={openDietUpgrade}
+              style={styles.eliteBtn}
+              buttonColor="#6A1B9A"
+            >
+              Upgrade to Elite
+            </Button>
           </>
         )}
       </Surface>

@@ -1,18 +1,31 @@
 package services
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 )
 
 func TestCanBillScanFreeTier(t *testing.T) {
-	ent := buildEntitlements(TierFree, "", nil, 4)
+	ent := buildEntitlements(TierFree, "", nil, 1)
 	if ok, _ := CanBillScan(ent); !ok {
-		t.Fatal("expected scan allowed at 4/5")
+		t.Fatal("expected scan allowed at 1/2")
 	}
-	ent.BillScansUsed = 5
+	ent.BillScansUsed = 2
 	if ok, _ := CanBillScan(ent); ok {
-		t.Fatal("expected block at 5/5")
+		t.Fatal("expected block at 2/2")
+	}
+}
+
+func TestEffectiveBillScansUsedResetsOnNewDay(t *testing.T) {
+	loc, _ := time.LoadLocation(billScanTimezone)
+	yesterday := time.Now().In(loc).AddDate(0, 0, -1)
+	if got := effectiveBillScansUsed(5, sql.NullTime{Time: yesterday, Valid: true}); got != 0 {
+		t.Fatalf("expected 0 scans after day change, got %d", got)
+	}
+	today := time.Now().In(loc)
+	if got := effectiveBillScansUsed(2, sql.NullTime{Time: today, Valid: true}); got != 2 {
+		t.Fatalf("expected 2 scans today, got %d", got)
 	}
 }
 

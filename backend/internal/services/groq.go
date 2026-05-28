@@ -28,7 +28,8 @@ const (
 	groqMaxTokensMeals    = 2400 // 3 meals JSON; 1400 caused truncation → silent fallback in UI
 	groqMaxTokensNLU      = 220
 	groqMaxTokensShelfLife = 512
-	groqMaxTokensBillScan = 1800
+	groqMaxTokensBillScan     = 1800
+	groqMaxTokensOrderSuggest = 720
 
 	nluSystemPrompt = "Classify Indian kitchen WhatsApp. One JSON object only, no markdown."
 )
@@ -176,6 +177,15 @@ func GroqChatTextMeals(ctx context.Context, apiKey, model, user string) (string,
 func GroqChatFilterMeals(ctx context.Context, apiKey, model, user string) (string, error) {
 	return groqChatWithSampling(ctx, apiKey, model, 0.55, nil, nil, groqMaxTokensMeals, []groqMessage{
 		{Role: "system", Content: mealFilterSystemPrompt},
+		{Role: "user", Content: user},
+	})
+}
+
+// GroqChatOrderSuggest proposes groceries missing from pantry for frequent meals.
+func GroqChatOrderSuggest(ctx context.Context, apiKey, model, user string, seed *int64) (string, error) {
+	topP := 0.92
+	return groqChatWithSampling(ctx, apiKey, model, 0.8, &topP, seed, groqMaxTokensOrderSuggest, []groqMessage{
+		{Role: "system", Content: orderSuggestSystemPrompt},
 		{Role: "user", Content: user},
 	})
 }

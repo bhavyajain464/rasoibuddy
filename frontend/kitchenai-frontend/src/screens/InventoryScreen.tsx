@@ -4,7 +4,6 @@ import {
   View,
   FlatList,
   RefreshControl,
-  Alert,
   Image,
   ScrollView,
   Platform,
@@ -27,9 +26,18 @@ import {
   Snackbar,
   Menu,
 } from 'react-native-paper';
+import {
+  useIsFocused,
+  useRoute,
+  useNavigation,
+  useFocusEffect,
+  RouteProp,
+} from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { BillCameraModal } from '../components/BillCameraModal';
 import { InventoryItemCard } from '../components/InventoryItemCard';
+import { DEFAULT_UNIT, UnitDropdown } from '../components/UnitDropdown';
 import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/billImagePicker';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, ScanResult } from '../types';
@@ -44,8 +52,16 @@ import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage
 
 type TabValue = 'all' | 'expired';
 
+type InventoryRouteParams = {
+  tab?: TabValue;
+  expiringSoon?: boolean;
+};
+
 export function InventoryScreen() {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<{ Inventory: InventoryRouteParams }, 'Inventory'>>();
   const { entitlements, canBillScan, refresh: refreshEntitlements } = useEntitlements();
   const { startUpgrade } = usePlanUpgrade();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -68,7 +84,7 @@ export function InventoryScreen() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
   const [newQty, setNewQty] = useState('');
-  const [newUnit, setNewUnit] = useState('');
+  const [newUnit, setNewUnit] = useState(DEFAULT_UNIT);
   const [newExpiry, setNewExpiry] = useState('');
   const [adding, setAdding] = useState(false);
 
@@ -85,6 +101,17 @@ export function InventoryScreen() {
   const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({});
   const [addingScanned, setAddingScanned] = useState(false);
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    warning?: boolean;
+    icon?: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -110,6 +137,21 @@ export function InventoryScreen() {
     loadData();
   }, [loadData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params;
+      if (!params?.tab && !params?.expiringSoon) return;
+      if (params.tab === 'expired') {
+        setTab('expired');
+        setExpiringSoonFilter(false);
+      } else if (params.expiringSoon) {
+        setTab('all');
+        setExpiringSoonFilter(true);
+      }
+      navigation.setParams({ tab: undefined, expiringSoon: undefined });
+    }, [route.params, navigation]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadData();
@@ -124,8 +166,8 @@ export function InventoryScreen() {
   // ── Manual Add ────────────────────────────────────────────
 
   const handleAddItem = async () => {
-    if (!newName.trim() || !newQty.trim() || !newUnit.trim()) {
-      showAppInfo('Please fill in name, quantity, and unit.');
+    if (!newName.trim() || !newQty.trim()) {
+      showAppInfo('Please fill in name and quantity.');
       return;
     }
     setAdding(true);
@@ -150,7 +192,7 @@ export function InventoryScreen() {
   const resetAddForm = () => {
     setNewName('');
     setNewQty('');
-    setNewUnit('');
+    setNewUnit(DEFAULT_UNIT);
     setNewExpiry('');
   };
 
@@ -195,25 +237,19 @@ export function InventoryScreen() {
 
   // ── Mark as Expired ──────────────────────────────────────────
 
-  const handleExpireItem = async (item: InventoryItem) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Mark "${item.canonical_name}" as expired?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert('Mark Expired', `Move "${item.canonical_name}" to expired items?`, [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Expire', style: 'destructive', onPress: () => resolve(true) },
-          ]);
-        });
-
-    if (!confirmed) return;
-
-    try {
-      await api.expireInventoryItem(item.item_id);
-      await loadData();
-      showSnack(`"${item.canonical_name}" moved to expired`);
-    } catch {
-      showAppError('Could not mark item as expired.');
-    }
+  const handleExpireItem = (item: InventoryItem) => {
+    setConfirmDialog({
+      title: 'Mark as expired?',
+      message: `"${item.canonical_name}" will move to the Expired tab. You can add it to shopping or remove it later.`,
+      confirmLabel: 'Mark expired',
+      warning: true,
+      icon: 'clock-alert-outline',
+      onConfirm: async () => {
+        await api.expireInventoryItem(item.item_id);
+        await loadData();
+        showSnack(`"${item.canonical_name}" moved to expired`);
+      },
+    });
   };
 
   // ── Expired → Shopping ────────────────────────────────────
@@ -227,23 +263,30 @@ export function InventoryScreen() {
     }
   };
 
-  const handleDeleteExpired = async (item: ExpiringItem) => {
-    const confirmed = Platform.OS === 'web'
-      ? window.confirm(`Remove expired "${item.canonical_name}" from inventory?`)
-      : await new Promise<boolean>((resolve) => {
-          Alert.alert('Remove Expired', `Remove "${item.canonical_name}" from inventory?`, [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
-          ]);
-        });
+  const handleDeleteExpired = (item: ExpiringItem) => {
+    setConfirmDialog({
+      title: 'Remove from inventory?',
+      message: `"${item.canonical_name}" will be deleted permanently. This cannot be undone.`,
+      confirmLabel: 'Remove',
+      destructive: true,
+      onConfirm: async () => {
+        await api.deleteInventoryItem(item.item_id);
+        await loadData();
+        showSnack(`"${item.canonical_name}" removed`);
+      },
+    });
+  };
 
-    if (!confirmed) return;
-
+  const handleConfirmDialog = async () => {
+    if (!confirmDialog) return;
+    setConfirmLoading(true);
     try {
-      await api.deleteInventoryItem(item.item_id);
-      await loadData();
+      await confirmDialog.onConfirm();
+      setConfirmDialog(null);
     } catch {
-      showAppError('Could not delete item.');
+      showAppError('Something went wrong. Try again.');
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -253,8 +296,8 @@ export function InventoryScreen() {
     if (!canBillScan) {
       showUpgradeMessage(
         entitlements?.bill_scans_used != null
-          ? `You've used all ${entitlements.bill_scan_limit} free bill scans.`
-          : 'Bill scan limit reached on the free plan.',
+          ? `You've used all ${entitlements.bill_scan_limit} free bill scans for today.`
+          : 'Daily bill scan limit reached on the free plan.',
         startUpgrade,
       );
       return;
@@ -357,7 +400,7 @@ export function InventoryScreen() {
       return;
     }
     if (!canBillScan) {
-      showUpgradeMessage('Free plan includes 5 bill scans (camera or upload).', startUpgrade);
+      showUpgradeMessage('Free plan includes 2 bill scans per day (camera or upload).', startUpgrade);
       return;
     }
     setScanning(true);
@@ -546,7 +589,7 @@ export function InventoryScreen() {
           On native we use FAB.Group (renders as Views).
           On web we use FAB + Menu — FAB.Group emits nested <button> on RNW,
           which produces a React DOM hydration warning. */}
-      {Platform.OS === 'web' ? (
+      {isFocused && (Platform.OS === 'web' ? (
         <View
           style={[
             styles.webFabWrap,
@@ -612,7 +655,7 @@ export function InventoryScreen() {
             style={{ paddingBottom: layout.tabBarHeight + insets.bottom + 8 }}
           />
         </Portal>
-      )}
+      ))}
 
       {/* ── Manual Add Modal ─────────────────────────────────── */}
       <Portal>
@@ -644,14 +687,9 @@ export function InventoryScreen() {
               keyboardType="numeric"
               placeholder="e.g. 5"
             />
-            <TextInput
-              label="Unit"
-              value={newUnit}
-              onChangeText={setNewUnit}
-              mode="outlined"
-              style={[styles.input, styles.halfInput]}
-              placeholder="e.g. kg"
-            />
+            <View style={[styles.halfInput, styles.unitField]}>
+              <UnitDropdown label="Unit" value={newUnit} onChange={setNewUnit} />
+            </View>
           </View>
           <TextInput
             label="Expiry Date (optional)"
@@ -741,7 +779,7 @@ export function InventoryScreen() {
                 </Text>
                 {entitlements && !entitlements.is_pro ? (
                   <Text variant="labelMedium" style={styles.scanQuota}>
-                    Free plan: {entitlements.bill_scans_remaining} of {entitlements.bill_scan_limit} bill scans left
+                    Free plan: {entitlements.bill_scans_remaining} of {entitlements.bill_scan_limit} bill scans left today
                   </Text>
                 ) : null}
 
@@ -878,6 +916,19 @@ export function InventoryScreen() {
           </ScrollView>
         </Modal>
       </Portal>
+
+      <AppConfirmDialog
+        visible={confirmDialog != null}
+        title={confirmDialog?.title ?? ''}
+        message={confirmDialog?.message ?? ''}
+        confirmLabel={confirmDialog?.confirmLabel}
+        destructive={confirmDialog?.destructive}
+        warning={confirmDialog?.warning}
+        icon={confirmDialog?.icon}
+        loading={confirmLoading}
+        onDismiss={() => !confirmLoading && setConfirmDialog(null)}
+        onConfirm={() => void handleConfirmDialog()}
+      />
 
       <Snackbar
         visible={snackVisible}
@@ -1032,6 +1083,10 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     flex: 1,
+  },
+  unitField: {
+    justifyContent: 'flex-end',
+    paddingBottom: 4,
   },
 
   // Scan modal

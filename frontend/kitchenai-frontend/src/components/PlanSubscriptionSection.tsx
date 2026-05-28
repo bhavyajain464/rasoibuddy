@@ -19,7 +19,7 @@ const PRO_FEATURES = [
   'Rescue & Meal of the Day',
   'Healthy, Tasty & Meal Prep modes',
 ];
-const FREE_FEATURES = ['Daily meal ideas', '5 bill scans per account'];
+const FREE_FEATURES = ['Daily meal ideas', '2 bill scans per day'];
 const ELITE_FEATURES = [
   'Everything in Pro',
   'Nightly diet email from your meal log',
@@ -73,7 +73,7 @@ function formatScanUsage(ent: Entitlements | null) {
   const limit = Math.max(1, ent.bill_scan_limit);
   const used = Math.min(ent.bill_scans_used, limit);
   return {
-    label: `${used} of ${limit} used`,
+    label: `${used} of ${limit} used today`,
     pct: Math.round((used / limit) * 100),
     unlimited: false,
   };

@@ -58,7 +58,7 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
   const canBillScan =
     isPro ||
     (entitlements?.bill_scans_remaining ?? 0) > 0 ||
-    (entitlements?.bill_scan_limit ?? 5) < 0;
+    (entitlements?.bill_scan_limit ?? 2) < 0;
 
   const isMealCategoryFree = useCallback(
     (categoryId: string) => {

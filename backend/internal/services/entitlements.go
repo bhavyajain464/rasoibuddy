@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	FreeBillScanLimit = 5
-	FreeMealCategory  = "daily"
+	FreeBillScanLimit  = 2
+	billScanTimezone   = "Asia/Kolkata"
+	FreeMealCategory   = "daily"
 )
 
 // ProMealCategories are smart-meal category ids beyond the free tier.
@@ -43,12 +44,13 @@ func GetEntitlements(db *sql.DB, userID string) (Entitlements, error) {
 	var interval sql.NullString
 	var expires sql.NullTime
 	var scans int
+	var scanDate sql.NullTime
 
 	err := db.QueryRow(`
 		SELECT COALESCE(plan_tier, 'free'), plan_interval, plan_expires_at,
-		       COALESCE(bill_scan_count, 0)
+		       COALESCE(bill_scan_count, 0), bill_scan_count_date
 		FROM users WHERE user_id = $1
-	`, userID).Scan(&tier, &interval, &expires, &scans)
+	`, userID).Scan(&tier, &interval, &expires, &scans, &scanDate)
 	if err != nil {
 		return Entitlements{}, err
 	}
@@ -61,7 +63,37 @@ func GetEntitlements(db *sql.DB, userID string) (Entitlements, error) {
 	if interval.Valid {
 		intervalStr = interval.String
 	}
-	return buildEntitlements(tier, intervalStr, expPtr, scans), nil
+	return buildEntitlements(tier, intervalStr, expPtr, effectiveBillScansUsed(scans, scanDate)), nil
+}
+
+func billScanLocation() *time.Location {
+	loc, err := time.LoadLocation(billScanTimezone)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}
+
+func billScanDayKey(t time.Time) string {
+	return t.In(billScanLocation()).Format("2006-01-02")
+}
+
+func billScanCalendarDate(now time.Time) time.Time {
+	loc := billScanLocation()
+	n := now.In(loc)
+	y, m, d := n.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, loc)
+}
+
+// effectiveBillScansUsed returns today's scan count (resets when the calendar day changes in IST).
+func effectiveBillScansUsed(count int, countDate sql.NullTime) int {
+	if !countDate.Valid {
+		return 0
+	}
+	if billScanDayKey(countDate.Time) != billScanDayKey(time.Now()) {
+		return 0
+	}
+	return count
 }
 
 func buildEntitlements(tier, interval string, expiresAt *time.Time, scans int) Entitlements {
@@ -114,7 +146,7 @@ func CanBillScan(ent Entitlements) (bool, string) {
 		return true, ""
 	}
 	if ent.BillScansUsed >= FreeBillScanLimit {
-		return false, "Free plan includes 5 bill scans. Upgrade to Pro for unlimited scanning."
+		return false, "Free plan includes 2 bill scans per day. Upgrade to Pro for unlimited scanning."
 	}
 	return true, ""
 }
@@ -181,11 +213,18 @@ func ActivateSubscription(db *sql.DB, userID, tier, interval string) error {
 	return err
 }
 
-// RecordBillScan increments the user's bill scan counter after a successful scan.
+// RecordBillScan increments today's bill scan counter (resets at midnight IST).
 func RecordBillScan(db *sql.DB, userID string) error {
+	today := billScanCalendarDate(time.Now())
 	_, err := db.Exec(`
-		UPDATE users SET bill_scan_count = bill_scan_count + 1, updated_at = CURRENT_TIMESTAMP
+		UPDATE users SET
+			bill_scan_count = CASE
+				WHEN bill_scan_count_date IS NULL OR bill_scan_count_date <> $2::date THEN 1
+				ELSE bill_scan_count + 1
+			END,
+			bill_scan_count_date = $2::date,
+			updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = $1
-	`, userID)
+	`, userID, today)
 	return err
 }

@@ -26,8 +26,7 @@ import * as api from '../services/api';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
 import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
-import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
-import { showUpgradeMessage } from '../utils/upgrade';
+import { navigateToUpgradePlan } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
 
 const MEALS_TABS = [
@@ -181,9 +180,9 @@ export function MealsScreen() {
   const [mealsTab, setMealsTab] = useState<MealsTab>('suggest');
   const [openLogFromNotification, setOpenLogFromNotification] = useState(false);
   const [cookProfileReady, setCookProfileReady] = useState(false);
+  const [selectedPairsByMeal, setSelectedPairsByMeal] = useState<Record<number, string[]>>({});
   const [starringDish, setStarringDish] = useState<string | null>(null);
   const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
-  const { startUpgrade } = usePlanUpgrade();
 
   useEffect(() => {
     api.fetchCookProfile()
@@ -199,6 +198,10 @@ export function MealsScreen() {
       navigation.setParams({ openLog: undefined });
     }
   }, [route.params?.openLog, navigation]);
+
+  useEffect(() => {
+    setSelectedPairsByMeal({});
+  }, [result, selectedCategory]);
 
   const toggleStar = useCallback(async (mealIndex: number) => {
     const meal = result?.meals?.[mealIndex];
@@ -224,22 +227,29 @@ export function MealsScreen() {
     }
   }, [result]);
 
-  const sendToCook = (meal: SmartMeal) => {
+  const togglePairSelection = (mealIndex: number, item: string) => {
+    setSelectedPairsByMeal((prev) => {
+      const current = new Set(prev[mealIndex] ?? []);
+      if (current.has(item)) {
+        current.delete(item);
+      } else {
+        current.add(item);
+      }
+      return { ...prev, [mealIndex]: Array.from(current) };
+    });
+  };
+
+  const cookSendItemCount = (mealIndex: number) =>
+    1 + (selectedPairsByMeal[mealIndex]?.length ?? 0);
+
+  const sendToCook = (meal: SmartMeal, mealIndex: number) => {
     if (!cookProfileReady) {
       showAppInfo('Add your cook profile with a WhatsApp number on the Cook tab first.');
       navigation.navigate('Cook');
       return;
     }
-    const instructions = [
-      meal.description,
-      `Ingredients: ${(meal.ingredients || []).join(', ')}`,
-      `Cooking time: ${meal.cooking_time_mins} min`,
-      meal.why_this_meal ? `Note: ${meal.why_this_meal}` : '',
-      meal.pairs_with?.length
-        ? `Pairs well with: ${meal.pairs_with.join(', ')}`
-        : '',
-    ].filter(Boolean).join('\n');
-    navigation.navigate('Cook', { dishName: meal.name, instructions });
+    const pairs = selectedPairsByMeal[mealIndex] ?? [];
+    navigation.navigate('Cook', { dishItems: [meal.name, ...pairs] });
   };
 
   const generateForCategory = useCallback(async (catId: string, excludeDish?: string) => {
@@ -262,7 +272,12 @@ export function MealsScreen() {
       setInventoryCount(res.inventory_items_used || 0);
     } catch (e: unknown) {
       if (e instanceof UpgradeRequiredError) {
-        showUpgradeMessage(e.message, startUpgrade);
+        navigateToUpgradePlan(navigation, {
+          source: 'locked_meal',
+          mealCategoryId: catId,
+          preferredTier: 'pro',
+          preferredInterval: 'monthly',
+        });
         setError(null);
         setSelectedCategory(null);
         void refreshEntitlements();
@@ -272,20 +287,22 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter, refreshEntitlements, startUpgrade]);
+  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation]);
 
   const onCategoryPress = useCallback(
     (catId: string) => {
       if (!isMealCategoryFree(catId)) {
-        showUpgradeMessage(
-          'Daily meal ideas are free. Rescue, Meal of Day, Healthy, Tasty, and Meal Prep need Pro.',
-          startUpgrade,
-        );
+        navigateToUpgradePlan(navigation, {
+          source: 'locked_meal',
+          mealCategoryId: catId,
+          preferredTier: 'pro',
+          preferredInterval: 'monthly',
+        });
         return;
       }
       void generateForCategory(catId);
     },
-    [isMealCategoryFree, generateForCategory, startUpgrade],
+    [isMealCategoryFree, generateForCategory, navigation],
   );
 
   const goBack = () => {
@@ -516,19 +533,33 @@ export function MealsScreen() {
 
                 {meal.pairs_with && meal.pairs_with.length > 0 ? (
                   <>
-                    <Text variant="labelSmall" style={styles.pairsLabel}>Pairs well with</Text>
+                    <Text variant="labelSmall" style={styles.pairsLabel}>
+                      Pairs well with — tap to include with message
+                    </Text>
                     <View style={styles.chipWrap}>
-                      {meal.pairs_with.map((item, i) => (
-                        <Chip
-                          key={i}
-                          compact
-                          icon="silverware-fork-knife"
-                          style={styles.pairsChip}
-                          textStyle={styles.pairsChipText}
-                        >
-                          {item}
-                        </Chip>
-                      ))}
+                      {meal.pairs_with.map((item, i) => {
+                        const pairSelected = (selectedPairsByMeal[idx] ?? []).includes(item);
+                        return (
+                          <Chip
+                            key={i}
+                            compact
+                            icon={pairSelected ? 'check' : 'silverware-fork-knife'}
+                            selected={pairSelected}
+                            showSelectedOverlay
+                            onPress={() => togglePairSelection(idx, item)}
+                            style={[
+                              styles.pairsChip,
+                              pairSelected && styles.pairsChipSelected,
+                            ]}
+                            textStyle={[
+                              styles.pairsChipText,
+                              pairSelected && styles.pairsChipTextSelected,
+                            ]}
+                          >
+                            {item}
+                          </Chip>
+                        );
+                      })}
                     </View>
                   </>
                 ) : null}
@@ -557,13 +588,17 @@ export function MealsScreen() {
                   mode="contained"
                   icon="chef-hat"
                   compact
-                  onPress={() => sendToCook(meal)}
+                  onPress={() => sendToCook(meal, idx)}
                   style={styles.cookBtn}
                   buttonColor={cookProfileReady ? '#25D366' : '#9E9E9E'}
                   contentStyle={{ paddingVertical: 2 }}
                   disabled={!cookProfileReady}
                 >
-                  {cookProfileReady ? 'Send to Cook' : 'Set up Cook profile'}
+                  {cookProfileReady
+                    ? cookSendItemCount(idx) > 1
+                      ? `Send to Cook (${cookSendItemCount(idx)} items)`
+                      : 'Send to Cook'
+                    : 'Set up Cook profile'}
                 </Button>
               </Card.Content>
             </Card>
@@ -858,8 +893,10 @@ const styles = StyleSheet.create({
   ingChipText: { fontSize: 11, color: '#2E7D32' },
 
   pairsLabel: { color: '#5D4037', fontWeight: '700', marginBottom: 6 },
-  pairsChip: { height: 28, backgroundColor: '#EFEBE9' },
+  pairsChip: { height: 30, backgroundColor: '#EFEBE9' },
+  pairsChipSelected: { backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#2E7D32' },
   pairsChipText: { fontSize: 11, color: '#5D4037' },
+  pairsChipTextSelected: { color: '#1B5E20', fontWeight: '600' },
 
   orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
   orderChip: { height: 28, backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },

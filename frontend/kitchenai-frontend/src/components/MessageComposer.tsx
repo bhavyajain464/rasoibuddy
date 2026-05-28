@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Pressable, ActivityIndicator } from 'react-native';
 import { TextInput, Icon } from 'react-native-paper';
 
-const SEND_SIZE = 44;
+const SEND_SIZE = 40;
 
 type MessageComposerProps = {
   value: string;
@@ -31,6 +31,7 @@ export function MessageComposer({
 }: MessageComposerProps) {
   const [focused, setFocused] = useState(false);
   const canSubmit = value.trim().length > 0 && !disabled && !loading;
+  const isEmpty = value.trim().length === 0;
 
   return (
     <View
@@ -47,7 +48,8 @@ export function MessageComposer({
         dense
         placeholder={placeholder}
         placeholderTextColor="#9E9E9E"
-        style={styles.input}
+        style={[styles.input, isEmpty && styles.inputPlaceholder]}
+        contentStyle={styles.inputContent}
         underlineColor="transparent"
         activeUnderlineColor="transparent"
         onFocus={() => setFocused(true)}
@@ -56,25 +58,29 @@ export function MessageComposer({
         returnKeyType="send"
         blurOnSubmit
         editable={!loading && !disabled}
-        multiline
+        multiline={false}
+        numberOfLines={1}
+        textAlign={isEmpty ? 'center' : 'left'}
       />
-      <Pressable
-        onPress={onSubmit}
-        disabled={!canSubmit}
-        style={({ pressed }) => [
-          styles.sendBtn,
-          { backgroundColor: canSubmit ? accentColor : '#BDBDBD' },
-          pressed && canSubmit && styles.sendBtnPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Icon source={submitIcon} size={22} color="#fff" />
-        )}
-      </Pressable>
+      <View style={styles.sendBtnWrap}>
+        <Pressable
+          onPress={onSubmit}
+          disabled={!canSubmit}
+          style={({ pressed }) => [
+            styles.sendBtn,
+            { backgroundColor: canSubmit ? accentColor : '#BDBDBD' },
+            pressed && canSubmit && styles.sendBtnPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Icon source={submitIcon} size={20} color="#fff" />
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -83,12 +89,12 @@ const styles = StyleSheet.create({
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: SEND_SIZE + 4,
+    minHeight: SEND_SIZE + 12,
     borderRadius: 14,
     borderWidth: 1.5,
     backgroundColor: '#FAFAFA',
     paddingLeft: 4,
-    paddingRight: 4,
+    paddingRight: 2,
   },
   composerFocused: {
     backgroundColor: '#fff',
@@ -96,10 +102,25 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
+    lineHeight: 20,
     marginTop: 0,
+    marginBottom: 0,
+    paddingVertical: 0,
     paddingHorizontal: 8,
     backgroundColor: 'transparent',
-    maxHeight: 88,
+    minHeight: SEND_SIZE - 4,
+  },
+  inputContent: {
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  inputPlaceholder: {
+    textAlignVertical: 'center',
+  },
+  sendBtnWrap: {
+    paddingLeft: 6,
+    paddingRight: 4,
+    paddingVertical: 6,
   },
   sendBtn: {
     width: SEND_SIZE,

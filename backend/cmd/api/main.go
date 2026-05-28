@@ -184,9 +184,10 @@ func main() {
 	api.Handle("/shopping", middleware.RequireAuth(http.HandlerFunc(handlers.GetShoppingItems(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/shopping", middleware.RequireAuth(http.HandlerFunc(handlers.AddShoppingItem(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/bulk", middleware.RequireAuth(http.HandlerFunc(handlers.AddBulkShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
-	api.Handle("/shopping/{id}/toggle", middleware.RequireAuth(http.HandlerFunc(handlers.ToggleShoppingItem(sqlDB)))).Methods("PATCH", "OPTIONS")
+	api.Handle("/shopping/purchase", middleware.RequireAuth(http.HandlerFunc(handlers.PurchaseShoppingItems(sqlDB, kafkaProducer)))).Methods("POST", "OPTIONS")
+	api.Handle("/shopping/bulk-delete", middleware.RequireAuth(http.HandlerFunc(handlers.BulkDeleteShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
+	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.DeleteShoppingItem(sqlDB)))).Methods("DELETE", "OPTIONS")
-	api.Handle("/shopping/clear-bought", middleware.RequireAuth(http.HandlerFunc(handlers.ClearBoughtItems(sqlDB)))).Methods("DELETE", "OPTIONS")
 
 	// Procurement (legacy)
 	api.Handle("/procurement/shopping-list", middleware.RequireAuth(http.HandlerFunc(handlers.GetShoppingListHandler(sqlDB)))).Methods("GET", "POST", "OPTIONS")

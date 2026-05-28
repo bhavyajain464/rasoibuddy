@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Platform } from 'react-native';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { AuthUser } from '../types';
 import { googleLogin, logoutApi, setAuthToken, setOnUnauthorized } from '../services/api';
 
@@ -183,9 +183,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         throw new Error('Invalid response from server');
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Google sign-in error:', e);
-      showAppError('Could not sign in with Google. Please try again.');
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
+        showAppError('Cannot reach Kitchen AI servers. Check your internet connection.');
+      } else if (msg.includes('401') || msg.includes('invalid audience') || msg.includes('verification failed')) {
+        showAppError('Server rejected this Google account. Contact support if this persists.');
+      } else {
+        showAppError(`Could not sign in: ${msg.slice(0, 120)}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -246,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         google.accounts.id.prompt();
       }
     } else {
-      nativeAuth.promptAsync();
+      await nativeAuth.promptAsync();
     }
   }, [nativeAuth]);
 
@@ -327,21 +334,48 @@ function useNativeAuthRequest(onIdToken: (idToken: string) => void) {
   }, []);
 
   const promptAsync = useCallback(async () => {
-    if (Platform.OS === 'android') {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    }
+    try {
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
 
-    const response = await GoogleSignin.signIn();
-    if (response.type !== 'success') {
-      return;
-    }
+      const response = await GoogleSignin.signIn();
+      if (response.type !== 'success') {
+        return;
+      }
 
-    const idToken = response.data.idToken;
-    if (!idToken) {
-      throw new Error('Google sign-in did not return an ID token');
-    }
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        throw new Error('Google did not return an ID token. Use a Web client ID as webClientId in Google Cloud.');
+      }
 
-    await onIdTokenRef.current(idToken);
+      await onIdTokenRef.current(idToken);
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      const code = err?.code;
+      const msg = err?.message ?? (e instanceof Error ? e.message : String(e));
+
+      if (code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+      if (code === statusCodes.IN_PROGRESS) {
+        showAppInfo('Sign-in already in progress.');
+        return;
+      }
+      if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        showAppError('Google Play Services is missing or outdated on this device.');
+        return;
+      }
+      if (msg.includes('DEVELOPER_ERROR') || code === '10') {
+        showAppError(
+          'Google Sign-In is not set up for this Play build. In Google Cloud Console, open your Android OAuth client (package com.kitchenai.app) and add the Play App signing SHA-1 from Play Console → Setup → App integrity. See GOOGLE_OAUTH_SETUP.md.',
+        );
+        return;
+      }
+
+      console.error('Native Google sign-in error:', e);
+      showAppError(msg ? `Google sign-in failed: ${msg.slice(0, 140)}` : 'Google sign-in failed.');
+    }
   }, []);
 
   return {

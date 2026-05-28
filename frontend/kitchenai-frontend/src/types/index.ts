@@ -68,6 +68,21 @@ export interface UserShoppingItem {
   unit: string;
   bought: boolean;
   created_at: string;
+  bought_at?: string;
+}
+
+export interface OrderSuggestItem {
+  name: string;
+  qty: number;
+  unit: string;
+  reason?: string;
+}
+
+export interface OrderSuggestResponse {
+  items: OrderSuggestItem[];
+  summary: string;
+  source: 'ai' | 'fallback' | string;
+  generated_at: string;
 }
 
 export interface ShoppingListResponse {

@@ -27,6 +27,15 @@ import { buildWaMeUrl, isIosHomeScreenWeb, openWhatsAppUrl } from '../utils/open
 import { CookedLogEntry, CookProfile } from '../types';
 import { layout } from '../theme';
 import { MessageComposer } from '../components/MessageComposer';
+import {
+  buildCookMessage,
+  buildCookMessageForItems,
+  COOK_MESSAGE_LANG_OPTIONS,
+  cookLanguageLabel,
+  cookMessagePlaceholder,
+  normalizeCookLang,
+  type CookMessageLang,
+} from '../utils/cookMessageTemplates';
 
 const COOK_ACCENT = '#128C7E';
 const COOK_BORDER = '#B2DFDB';
@@ -46,7 +55,7 @@ export function CookScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [cookNameDraft, setCookNameDraft] = useState('');
   const [phoneDraft, setPhoneDraft] = useState('');
-  const [langDraft, setLangDraft] = useState('en');
+  const [langDraft, setLangDraft] = useState<CookMessageLang>('en');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [pendingSendAfterSave, setPendingSendAfterSave] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -58,11 +67,24 @@ export function CookScreen() {
 
   useEffect(() => {
     if (!cookProfile?.configured) return;
-    const parts: string[] = [];
-    if (route.params?.dishName) parts.push(String(route.params.dishName).trim());
-    if (route.params?.instructions) parts.push(String(route.params.instructions).trim());
-    if (parts.length > 0) setMessage(parts.join('\n'));
-  }, [route.params?.dishName, route.params?.instructions, cookProfile?.configured]);
+    const rawItems = route.params?.dishItems;
+    if (Array.isArray(rawItems) && rawItems.length > 0) {
+      const items = rawItems.map((x) => String(x).trim()).filter(Boolean);
+      if (items.length > 0) {
+        setMessage(buildCookMessageForItems(items, cookProfile.preferred_lang));
+        return;
+      }
+    }
+    const dish = route.params?.dishName ? String(route.params.dishName).trim() : '';
+    if (dish) {
+      setMessage(buildCookMessage(dish, cookProfile.preferred_lang));
+    }
+  }, [
+    route.params?.dishItems,
+    route.params?.dishName,
+    cookProfile?.configured,
+    cookProfile?.preferred_lang,
+  ]);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -97,7 +119,7 @@ export function CookScreen() {
     if (!cookProfile) return;
     setCookNameDraft(cookProfile.cook_name ?? '');
     setPhoneDraft(cookProfile.phone_number ?? '');
-    setLangDraft(cookProfile.preferred_lang || 'en');
+    setLangDraft(normalizeCookLang(cookProfile.preferred_lang));
   }, [cookProfile]);
 
   const onRefresh = useCallback(async () => {
@@ -110,11 +132,9 @@ export function CookScreen() {
   const canMessageCook =
     !profileLoading && !profileError && Boolean(cookProfile?.configured && profileHasPhone);
 
-  const languageLabel = (code?: string) => {
-    if (code === 'hi') return 'Hindi';
-    if (code === 'kn') return 'Kannada';
-    return 'English';
-  };
+  const activeCookLang = normalizeCookLang(
+    isEditingProfile ? langDraft : cookProfile?.preferred_lang,
+  );
 
   const formatStoredAt = (date?: string) => {
     if (!date) return 'Not available';
@@ -142,6 +162,26 @@ export function CookScreen() {
   const openCookEditor = () => {
     setIsEditingProfile(true);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 260, animated: true }));
+  };
+
+  const profileDetailLine = () => {
+    if (profileLoading) return 'Loading…';
+    if (profileError) return 'Could not load — tap Retry below';
+    if (!profileHasPhone) return 'Add WhatsApp number to send messages';
+    const parts = [
+      cookProfile?.cook_name?.trim(),
+      cookProfile?.phone_number?.trim(),
+      cookLanguageLabel(cookProfile?.preferred_lang),
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : 'Not set up yet';
+  };
+
+  const closeCookEditor = () => {
+    setPendingSendAfterSave(false);
+    setIsEditingProfile(false);
+    setCookNameDraft(cookProfile?.cook_name ?? '');
+    setPhoneDraft(cookProfile?.phone_number ?? '');
+    setLangDraft(normalizeCookLang(cookProfile?.preferred_lang));
   };
 
   const handleSaveCookProfile = async () => {
@@ -225,14 +265,6 @@ export function CookScreen() {
     await sendCurrentMessageToCook();
   };
 
-  const dishGuess = primaryDishFromMessage(message);
-  const isKnownDish = (dish: string) =>
-    dishesKnown.some(
-      (d) =>
-        d.toLowerCase().includes(dish.toLowerCase()) ||
-        dish.toLowerCase().includes(d.toLowerCase()),
-    );
-
   return (
     <ScrollView
       ref={scrollRef}
@@ -264,7 +296,7 @@ export function CookScreen() {
           <Surface style={styles.blockedPrompt} elevation={0}>
             <IconButton icon="account-plus" iconColor="#E65100" size={18} style={{ margin: 0 }} />
             <Text variant="bodySmall" style={styles.blockedPromptText}>
-              Add your cook&apos;s WhatsApp number in the profile below to compose and send messages.
+              Open Cook profile below to add a WhatsApp number.
             </Text>
           </Surface>
         ) : null}
@@ -275,7 +307,7 @@ export function CookScreen() {
           onSubmit={handleSendToCook}
           placeholder={
             canMessageCook
-              ? 'e.g. Paneer butter masala, medium spicy, less oil'
+              ? cookMessagePlaceholder(activeCookLang)
               : 'Set up cook profile to message'
           }
           loading={sending}
@@ -299,33 +331,31 @@ export function CookScreen() {
           </Pressable>
         ) : null}
 
-        {dishGuess !== '' && (
-          <View style={styles.knownRow}>
-            {isKnownDish(dishGuess) ? (
-              <Surface style={[styles.knownBadge, { backgroundColor: '#E8F5E9' }]} elevation={0}>
-                <IconButton icon="check-circle" iconColor="#2E7D32" size={16} style={{ margin: 0 }} />
-                <Text style={styles.knownText}>Cook knows “{dishGuess}”</Text>
-              </Surface>
-            ) : (
-              <Surface style={[styles.knownBadge, { backgroundColor: '#FFF3E0' }]} elevation={0}>
-                <IconButton icon="alert-circle-outline" iconColor="#E65100" size={16} style={{ margin: 0 }} />
-                <Text style={styles.unknownText}>Add details if the cook may not know this dish</Text>
-              </Surface>
-            )}
-          </View>
-        )}
       </Surface>
 
-      {/* Cook Profile — name & number used for WhatsApp */}
+      {/* Cook profile — compact row; Edit opens the form */}
       <Surface style={styles.profileCard} elevation={1}>
         <View style={styles.profileHeader}>
           <View style={styles.profileHeaderLeft}>
             <View style={styles.profileAvatar}>
               <IconButton icon="account-circle" iconColor="#fff" size={24} style={{ margin: 0 }} />
             </View>
-            <View>
+            <View style={styles.profileHeaderText}>
               <Text variant="titleSmall" style={styles.profileTitle}>Cook profile</Text>
-              <Text variant="bodySmall" style={styles.profileSubtitle}>Persistent cook storage</Text>
+              {!isEditingProfile ? (
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.profileDetailLine,
+                    !profileHasPhone && !profileLoading && !profileError
+                      ? styles.profileDetailLineWarn
+                      : null,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {profileDetailLine()}
+                </Text>
+              ) : null}
             </View>
           </View>
           {!profileLoading && !profileError && !isEditingProfile ? (
@@ -336,7 +366,7 @@ export function CookScreen() {
         </View>
 
         {profileLoading ? (
-          <ActivityIndicator style={{ marginVertical: 16 }} />
+          <ActivityIndicator style={styles.profileLoader} />
         ) : profileError ? (
           <View style={styles.profileBody}>
             <Surface style={styles.loadErrorPrompt} elevation={0}>
@@ -349,56 +379,12 @@ export function CookScreen() {
               Retry
             </Button>
           </View>
-        ) : !isEditingProfile ? (
-          <View style={styles.profileBody}>
-            <View style={styles.detailGrid}>
-              <View style={styles.detailItem}>
-                <Text variant="labelSmall" style={styles.detailLabel}>Name</Text>
-                <Text variant="bodyMedium" style={styles.detailValue}>
-                  {cookProfile?.cook_name?.trim() || 'Not added'}
-                </Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Text variant="labelSmall" style={styles.detailLabel}>WhatsApp</Text>
-                <Text variant="bodyMedium" style={styles.detailValue}>
-                  {cookProfile?.phone_number?.trim() || 'Not added'}
-                </Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Text variant="labelSmall" style={styles.detailLabel}>Message language</Text>
-                <Text variant="bodyMedium" style={styles.detailValue}>
-                  {languageLabel(cookProfile?.preferred_lang)}
-                </Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Text variant="labelSmall" style={styles.detailLabel}>Last updated</Text>
-                <Text variant="bodyMedium" style={styles.detailValue}>
-                  {formatStoredAt(cookProfile?.updated_at)}
-                </Text>
-              </View>
-            </View>
-            {profileHasPhone ? (
-              <Surface style={styles.defaultRoute} elevation={0}>
-                <IconButton icon="whatsapp" iconColor="#128C7E" size={18} style={{ margin: 0 }} />
-                <Text variant="bodySmall" style={styles.defaultRouteText}>
-                  WhatsApp drafts are sent to this saved number by default.
-                </Text>
-              </Surface>
-            ) : (
-              <Surface style={styles.addCookPrompt} elevation={0}>
-                <IconButton icon="alert-circle-outline" iconColor="#E65100" size={18} style={{ margin: 0 }} />
-                <Text variant="bodySmall" style={styles.addCookText}>
-                  Add a cook WhatsApp number before sending messages.
-                </Text>
-              </Surface>
-            )}
-          </View>
-        ) : (
+        ) : isEditingProfile ? (
           <View style={styles.profileBody}>
             <Text variant="bodySmall" style={styles.profileHint}>
               {pendingSendAfterSave
                 ? 'Save the cook number to continue sending your current message.'
-                : "Edit the stored cook details. WhatsApp drafts use this number by default."}
+                : 'Name, WhatsApp number, and message language for your cook.'}
             </Text>
             <TextInput
               mode="outlined"
@@ -427,7 +413,7 @@ export function CookScreen() {
             />
             <Text variant="labelMedium" style={styles.langLabel}>Message language</Text>
             <View style={styles.langRow}>
-              {(['en', 'hi', 'kn'] as const).map((code) => (
+              {COOK_MESSAGE_LANG_OPTIONS.map(({ code, label }) => (
                 <Chip
                   key={code}
                   selected={langDraft === code}
@@ -435,7 +421,7 @@ export function CookScreen() {
                   style={langDraft === code ? styles.langChipActive : styles.langChipPick}
                   textStyle={langDraft === code ? styles.langChipTextActive : undefined}
                 >
-                  {code === 'en' ? 'English' : code === 'hi' ? 'Hindi' : 'Kannada'}
+                  {label}
                 </Chip>
               ))}
             </View>
@@ -449,17 +435,7 @@ export function CookScreen() {
             >
               {pendingSendAfterSave ? 'Save and send' : 'Save cook profile'}
             </Button>
-            <Button
-              mode="text"
-              onPress={() => {
-                setPendingSendAfterSave(false);
-                setIsEditingProfile(false);
-                setCookNameDraft(cookProfile?.cook_name ?? '');
-                setPhoneDraft(cookProfile?.phone_number ?? '');
-                setLangDraft(cookProfile?.preferred_lang || 'en');
-              }}
-              disabled={savingProfile}
-            >
+            <Button mode="text" onPress={closeCookEditor} disabled={savingProfile}>
               Cancel
             </Button>
             {!cookProfile?.phone_number?.trim() && !phoneDraft.trim() ? (
@@ -468,7 +444,7 @@ export function CookScreen() {
               </Text>
             ) : null}
           </View>
-        )}
+        ) : null}
       </Surface>
 
       {/* Dishes Known */}
@@ -479,7 +455,11 @@ export function CookScreen() {
           </Text>
           <View style={styles.dishesGrid}>
             {dishesKnown.map((dish, i) => (
-              <Pressable key={i} onPress={() => canMessageCook && setMessage(dish)} disabled={!canMessageCook}>
+              <Pressable
+                key={i}
+                onPress={() => canMessageCook && setMessage(buildCookMessage(dish, activeCookLang))}
+                disabled={!canMessageCook}
+              >
                 <Chip compact icon="check" style={styles.dishChip} textStyle={styles.dishChipText}>{dish}</Chip>
               </Pressable>
             ))}
@@ -565,7 +545,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   blockedPromptText: { color: '#E65100', flex: 1, lineHeight: 18 },
-  knownRow: { marginTop: 8 },
   waFallback: {
     marginTop: 10,
     paddingVertical: 10,
@@ -576,9 +555,6 @@ const styles = StyleSheet.create({
     borderColor: '#A5D6A7',
   },
   waFallbackText: { color: '#128C7E', fontWeight: '600', textAlign: 'center' },
-  knownBadge: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, gap: 2 },
-  knownText: { color: '#2E7D32', fontSize: 12, fontWeight: '600' },
-  unknownText: { color: '#E65100', fontSize: 12, fontWeight: '600', flex: 1 },
 
   profileCard: {
     marginHorizontal: 20,
@@ -587,42 +563,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 16,
   },
-  profileHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   profileHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  profileHeaderText: { flex: 1 },
   profileAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#128C7E', justifyContent: 'center', alignItems: 'center' },
   profileTitle: { fontWeight: '700', color: '#333' },
-  profileSubtitle: { color: '#888', marginTop: 1 },
-  profileBody: { gap: 10 },
+  profileDetailLine: { color: '#666', marginTop: 2, lineHeight: 17 },
+  profileDetailLineWarn: { color: '#E65100' },
+  profileLoader: { marginTop: 12 },
+  profileBody: { gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEE' },
   profileHint: { color: '#666', marginBottom: 4, lineHeight: 18 },
-  detailGrid: { gap: 10 },
-  detailItem: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#ECEFF1',
-  },
-  detailLabel: { color: '#888', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0 },
-  detailValue: { color: '#263238', fontWeight: '600' },
-  defaultRoute: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    borderRadius: 12,
-    padding: 10,
-    gap: 4,
-  },
-  defaultRouteText: { color: '#1B5E20', flex: 1, lineHeight: 18 },
-  addCookPrompt: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    padding: 10,
-    gap: 4,
-  },
-  addCookText: { color: '#E65100', flex: 1, lineHeight: 18 },
   loadErrorPrompt: {
     flexDirection: 'row',
     alignItems: 'center',

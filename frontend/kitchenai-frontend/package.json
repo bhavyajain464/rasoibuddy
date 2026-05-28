@@ -9,7 +9,16 @@
     "android:dev": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --port 8082 & sleep 3 && bash scripts/launch-android-dev.sh",
     "ios": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli run:ios --port 8082",
     "web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --web --port 8082",
-    "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli export --platform web"
+    "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli export --platform web",
+    "build:android:production": "npx eas-cli build --platform android --profile production"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-razorpay", "react-native-vector-icons"],
+        "listUnknownPackages": false
+      }
+    }
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -43,7 +52,6 @@
   "devDependencies": {
     "@expo/ngrok": "^4.1.3",
     "@types/react": "~19.1.0",
-    "eas-cli": "^18.12.3",
     "typescript": "~5.9.2"
   },
   "private": true

@@ -54,7 +54,8 @@ export function MessageImportCard() {
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    marginTop: 12,
+    marginHorizontal: 24,
     marginBottom: 16,
     borderRadius: 16,
     backgroundColor: '#fff',

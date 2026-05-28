@@ -231,7 +231,7 @@ func TestWhatsAppIntegration(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			},
 			"config": map[string]interface{}{
 				"whatsapp_compose":    "wa.me links (user sends from their WhatsApp)",
-				"supported_languages": []string{"en", "hi", "kn"},
+				"supported_languages": []string{"en", "hi", "hing"},
 			},
 		}
 

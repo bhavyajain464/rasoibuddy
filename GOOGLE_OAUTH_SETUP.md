@@ -43,12 +43,20 @@ Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Servi
 ### 3. Android Application Client
 - **Type**: Android application
 - **Name**: `kitchenai-android-client`
-- **Package name**: Get from `app.json` (currently not specified, needs to be set)
-- **SHA-1 fingerprint**: Generate using:
-  ```bash
-  keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
-  ```
+- **Package name**: `com.kitchenai.app` (from `app.json`)
+- **SHA-1 fingerprints** (add **every** key you ship with):
+  - **Local / Expo dev** (debug keystore):
+    ```bash
+    keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+    ```
+  - **Play Store production (required for store installs)** — this is the usual reason login works in dev but fails on the Play build:
+    1. [Google Play Console](https://play.google.com/console) → your app → **Test and release** → **App integrity** (or **Setup** → **App signing**).
+    2. Copy **SHA-1** (and SHA-256 if shown) under **App signing key certificate**.
+    3. In [Google Cloud Console](https://console.cloud.google.com/) → **Credentials** → your **Android** OAuth client → add that SHA-1 with package `com.kitchenai.app`.
+    4. If you use EAS Build, also add the **upload key** SHA-1 from [expo.dev](https://expo.dev) → project → **Credentials** → Android → keystore fingerprints (only needed for some internal tracks; Play-installed users use the **app signing** key).
+  - Symptom when SHA-1 is wrong: `DEVELOPER_ERROR` on sign-in, or generic failure on production APK/AAB only.
 - **Client ID**: Copy this value for `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
+- **Important**: `GoogleSignin.configure()` uses **`webClientId`** = the **Web** client ID (not the Android client ID). The Android OAuth client still must list the correct package + SHA-1.
 
 ## Step 2: Update Environment Variables
 
@@ -156,6 +164,11 @@ The backend CORS configuration in `backend/cmd/api/main.go` already includes:
    - Web client ID for web platform
    - iOS client ID for iOS platform
    - Android client ID for Android platform
+
+4. **Login works in dev / emulator but not on Play Store build**:
+   - Add **Play App signing** SHA-1 to the Android OAuth client (see step 3 above).
+   - Confirm `EXPO_PUBLIC_API_BASE_URL` in the EAS production profile points at your live backend (e.g. Cloud Run `/api/v1`).
+   - Backend must have `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`, and `GOOGLE_ANDROID_CLIENT_ID` set (Cloud Run env vars).
 
 ## Notes
 

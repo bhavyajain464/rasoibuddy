@@ -76,7 +76,7 @@ const DEFAULT_STAPLES: StapleItem[] = [
   { name: 'Mustard Seeds', qty: 100, unit: 'g', category: 'Spices', selected: true },
   { name: 'Black Pepper', qty: 50, unit: 'g', category: 'Spices', selected: false },
   { name: 'Cinnamon Sticks', qty: 50, unit: 'g', category: 'Spices', selected: false },
-  { name: 'Bay Leaves', qty: 1, unit: 'pack', category: 'Spices', selected: false },
+  { name: 'Bay Leaves', qty: 1, unit: 'pcs', category: 'Spices', selected: false },
 
   // Oils & Essentials
   { name: 'Cooking Oil', qty: 2, unit: 'L', category: 'Oils & Essentials', selected: true },

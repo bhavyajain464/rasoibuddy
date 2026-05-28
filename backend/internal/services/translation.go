@@ -243,5 +243,5 @@ func (s *TranslationService) TranslateShoppingList(items []string, targetLang st
 
 // SupportedLanguages returns list of supported language codes
 func (s *TranslationService) SupportedLanguages() []string {
-	return []string{"en", "hi", "kn"}
+	return []string{"en", "hi", "hing"}
 }

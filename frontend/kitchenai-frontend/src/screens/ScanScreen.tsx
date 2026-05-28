@@ -49,7 +49,7 @@ export function ScanScreen() {
       return;
     }
     if (!canBillScan) {
-      showUpgradeMessage('Free plan includes 5 bill scans (camera or upload).', startUpgrade);
+      showUpgradeMessage('Free plan includes 2 bill scans per day (camera or upload).', startUpgrade);
       return;
     }
     setScanning(true);

@@ -14,6 +14,7 @@ import {
   LowStockItem,
   ShoppingListResponse,
   UserShoppingItem,
+  OrderSuggestResponse,
   PreMarketPingResponse,
   ProcurementSummary,
   ScanResult,
@@ -138,8 +139,8 @@ function normalizeEntitlements(raw: Record<string, unknown>): Entitlements {
     is_elite: Boolean(raw.is_elite ?? tier === 'elite'),
     has_diet_analysis: Boolean(raw.has_diet_analysis),
     bill_scans_used: Number(raw.bill_scans_used ?? 0),
-    bill_scan_limit: Number(raw.bill_scan_limit ?? (isPro ? -1 : 5)),
-    bill_scans_remaining: Number(raw.bill_scans_remaining ?? (isPro ? -1 : 5)),
+    bill_scan_limit: Number(raw.bill_scan_limit ?? (isPro ? -1 : 2)),
+    bill_scans_remaining: Number(raw.bill_scans_remaining ?? (isPro ? -1 : 2)),
     free_meal_categories: (raw.free_meal_categories as string[]) ?? ['daily'],
     pro_meal_categories: proMeals,
     available_plans: raw.available_plans as Entitlements['available_plans'],
@@ -522,6 +523,18 @@ export async function getSimpleRescueMeal(): Promise<{ suggestion: string }> {
 
 // ─── Shopping List ────────────────────────────────────────────
 
+export async function getOrderSuggestions(exclude: string[] = []): Promise<OrderSuggestResponse> {
+  const params = new URLSearchParams();
+  if (exclude.length > 0) {
+    params.set('exclude', exclude.join(','));
+  }
+  const qs = params.toString();
+  const url = `${API_BASE_URL}/shopping/order-suggestions${qs ? `?${qs}` : ''}`;
+  const res = await authFetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function getShoppingItems(): Promise<UserShoppingItem[]> {
   const res = await authFetch(`${API_BASE_URL}/shopping`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -530,7 +543,7 @@ export async function getShoppingItems(): Promise<UserShoppingItem[]> {
   return Array.isArray(items) ? items : [];
 }
 
-export async function addShoppingItem(name: string, qty: number = 1, unit: string = 'pcs'): Promise<any> {
+export async function addShoppingItem(name: string, qty: number = 0, unit: string = 'pcs'): Promise<any> {
   const res = await authFetch(`${API_BASE_URL}/shopping`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -550,14 +563,6 @@ export async function addBulkShoppingItems(items: { name: string; qty: number; u
   return res.json();
 }
 
-export async function toggleShoppingItem(id: string): Promise<any> {
-  const res = await authFetch(`${API_BASE_URL}/shopping/${id}/toggle`, {
-    method: 'PATCH',
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
 export async function deleteShoppingItem(id: string): Promise<void> {
   const res = await authFetch(`${API_BASE_URL}/shopping/${id}`, {
     method: 'DELETE',
@@ -565,9 +570,23 @@ export async function deleteShoppingItem(id: string): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
-export async function clearBoughtItems(): Promise<any> {
-  const res = await authFetch(`${API_BASE_URL}/shopping/clear-bought`, {
-    method: 'DELETE',
+export async function purchaseShoppingItems(
+  ids: string[],
+): Promise<{ purchased: number; inventory: InventoryItem[] }> {
+  const res = await authFetch(`${API_BASE_URL}/shopping/purchase`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function bulkDeleteShoppingItems(ids: string[]): Promise<{ deleted: number }> {
+  const res = await authFetch(`${API_BASE_URL}/shopping/bulk-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

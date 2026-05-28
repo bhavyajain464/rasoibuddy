@@ -14,12 +14,15 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
+import { UpgradePaywallProvider } from '../context/UpgradePaywallContext';
 import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
 
 const Tab = createBottomTabNavigator();
 
 export const navigationRef = createNavigationContainerRef<{
   Meals: { openLog?: boolean } | undefined;
+  Profile: { upgradePlan?: boolean } | undefined;
+  Inventory: { tab?: 'all' | 'expired'; expiringSoon?: boolean } | undefined;
   [key: string]: object | undefined;
 }>();
 
@@ -103,6 +106,7 @@ export function AppNavigator() {
 
   return (
     <EntitlementsProvider>
+    <UpgradePaywallProvider>
     <WhatsAppShareProvider>
     <MealLogNotificationProvider navigationRef={navigationRef}>
     <NavigationContainer ref={navigationRef} linking={linking}>
@@ -128,6 +132,7 @@ export function AppNavigator() {
     </NavigationContainer>
     </MealLogNotificationProvider>
     </WhatsAppShareProvider>
+    </UpgradePaywallProvider>
     </EntitlementsProvider>
   );
 }

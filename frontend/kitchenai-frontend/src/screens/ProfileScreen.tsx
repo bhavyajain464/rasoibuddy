@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Platform,
   Image,
   Pressable,
   Linking,
@@ -22,14 +21,18 @@ import {
   Surface,
   Switch,
 } from 'react-native-paper';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useUpgradePaywall } from '../context/UpgradePaywallContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { UserProfile, UserMemory } from '../types';
 import * as api from '../services/api';
 import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
-import { PlanSubscriptionSection } from '../components/PlanSubscriptionSection';
+import { ProfileHeaderUpgrade } from '../components/profile/ProfileHeaderUpgrade';
+import { ProfilePlanSettingsSection } from '../components/profile/ProfilePlanSettingsSection';
 import { showAppError, showAppSuccess, showAppInfo } from '../utils/alertMessage';
 import {
   getMealLogRemindersEnabled,
@@ -57,7 +60,12 @@ const MEMORY_CATEGORIES = [
 
 const SPICE_EMOJI: Record<string, string> = { mild: '🌶', medium: '🌶🌶', spicy: '🌶🌶🌶', extra_spicy: '🔥' };
 
+type ProfileRouteParams = { upgradePlan?: boolean };
+
 export function ProfileScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<{ Profile: ProfileRouteParams }, 'Profile'>>();
+  const { openUpgrade } = useUpgradePaywall();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const {
@@ -67,16 +75,19 @@ export function ProfileScreen() {
     refresh: refreshEntitlements,
   } = useEntitlements();
   const {
-    subscribe,
     syncLastPayment,
     busy: upgradeBusy,
     busyPlanKey: upgradeBusyPlanKey,
     planLabel,
   } = usePlanUpgrade();
+
+  const openProfileUpgrade = useCallback(() => {
+    openUpgrade({ source: 'profile' });
+  }, [openUpgrade]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('preferences');
+  const [activeTab, setActiveTab] = useState('settings');
 
   const [householdSize, setHouseholdSize] = useState(2);
   const [allergies, setAllergies] = useState<string[]>([]);
@@ -95,10 +106,26 @@ export function ProfileScreen() {
   const [mealLogReminders, setMealLogReminders] = useState(false);
   const [mealLogRemindersLoading, setMealLogRemindersLoading] = useState(false);
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    icon?: string;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
   useEffect(() => {
     if (!isMealLogNotificationSupported()) return;
     void getMealLogRemindersEnabled().then(setMealLogReminders);
   }, []);
+
+  useEffect(() => {
+    if (!route.params?.upgradePlan) return;
+    openUpgrade({ source: 'profile' });
+    navigation.setParams({ upgradePlan: undefined });
+  }, [route.params?.upgradePlan, navigation, openUpgrade]);
 
   const onToggleMealLogReminders = useCallback(async (enabled: boolean) => {
     if (!isMealLogNotificationSupported()) {
@@ -165,8 +192,8 @@ export function ProfileScreen() {
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
   useEffect(() => {
-    if (activeTab === 'settings') void refreshEntitlements();
-  }, [activeTab, refreshEntitlements]);
+    void refreshEntitlements();
+  }, [refreshEntitlements]);
 
   const handleSave = async () => {
     try {
@@ -201,22 +228,31 @@ export function ProfileScreen() {
     }
   };
 
-  const handleDeleteMemory = async (memoryId: string) => {
-    const doDelete = async () => {
-      try {
+  const handleDeleteMemory = (memoryId: string) => {
+    setConfirmDialog({
+      title: 'Delete memory?',
+      message: 'This note will be removed from your profile permanently.',
+      confirmLabel: 'Delete',
+      destructive: true,
+      onConfirm: async () => {
         await api.deleteMemory(memoryId);
-        setProfile(prev => prev ? { ...prev, memories: prev.memories.filter(m => m.id !== memoryId) } : prev);
-      } catch {
-        showAppError('Failed to delete memory');
-      }
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete this memory?')) doDelete();
-    } else {
-      Alert.alert('Delete Memory', 'Are you sure?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: doDelete },
-      ]);
+        setProfile((prev) =>
+          prev ? { ...prev, memories: prev.memories.filter((m) => m.id !== memoryId) } : prev,
+        );
+      },
+    });
+  };
+
+  const handleConfirmDialog = async () => {
+    if (!confirmDialog) return;
+    setConfirmLoading(true);
+    try {
+      await confirmDialog.onConfirm();
+      setConfirmDialog(null);
+    } catch {
+      showAppError('Something went wrong. Try again.');
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -231,14 +267,16 @@ export function ProfileScreen() {
   };
 
   const handleSignOut = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Sign out?')) signOut();
-    } else {
-      Alert.alert('Sign Out', 'Are you sure?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: signOut },
-      ]);
-    }
+    setConfirmDialog({
+      title: 'Sign out?',
+      message: 'You can sign back in anytime with your Google account.',
+      confirmLabel: 'Sign out',
+      destructive: true,
+      icon: 'logout',
+      onConfirm: () => {
+        signOut();
+      },
+    });
   };
 
   if (loading) {
@@ -250,6 +288,7 @@ export function ProfileScreen() {
   }
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.scrollContent, { paddingBottom: layout.tabBarHeight + insets.bottom + 24 }]}
@@ -257,17 +296,30 @@ export function ProfileScreen() {
     >
       {/* Profile Header */}
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <View style={styles.avatarWrap}>
-          {user?.picture_url ? (
-            <Image source={{ uri: user.picture_url }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarText}>{user?.name?.[0] || '?'}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {user?.picture_url ? (
+              <Image source={{ uri: user.picture_url }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarText}>{user?.name?.[0] || '?'}</Text>
+              </View>
+            )}
+            <View style={styles.headerText}>
+              <Text variant="titleMedium" style={styles.userName} numberOfLines={1}>
+                {user?.name}
+              </Text>
+              <Text variant="bodySmall" style={styles.userEmail} numberOfLines={1}>
+                {user?.email}
+              </Text>
             </View>
-          )}
+          </View>
+          <ProfileHeaderUpgrade
+            entitlements={entitlements}
+            planLabel={planLabel()}
+            onPress={openProfileUpgrade}
+          />
         </View>
-        <Text variant="titleLarge" style={styles.userName}>{user?.name}</Text>
-        <Text variant="bodyMedium" style={styles.userEmail}>{user?.email}</Text>
         <View style={styles.statRow}>
           <Surface style={styles.statPill} elevation={0}>
             <Text style={styles.statNum}>{profile?.inventory_count || 0}</Text>
@@ -289,9 +341,9 @@ export function ProfileScreen() {
         value={activeTab}
         onValueChange={setActiveTab}
         buttons={[
+          { value: 'settings', label: 'Settings' },
           { value: 'preferences', label: 'Preferences' },
           { value: 'memory', label: 'Memory' },
-          { value: 'settings', label: 'Settings' },
         ]}
         style={styles.tabs}
       />
@@ -488,10 +540,10 @@ export function ProfileScreen() {
       {/* ── SETTINGS ─────────────────────────────────────── */}
       {activeTab === 'settings' && (
         <View style={styles.tabContent}>
-          <PlanSubscriptionSection
+          <ProfilePlanSettingsSection
             entitlements={entitlements}
-            planLabel={planLabel}
-            onSubscribe={(tier, interval) => void subscribe(tier, interval)}
+            planLabel={planLabel()}
+            onOpenUpgrade={openProfileUpgrade}
             onSyncPayment={() => void syncLastPayment()}
             busy={upgradeBusy}
             busyPlanKey={upgradeBusyPlanKey}
@@ -557,6 +609,19 @@ export function ProfileScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    <AppConfirmDialog
+      visible={confirmDialog != null}
+      title={confirmDialog?.title ?? ''}
+      message={confirmDialog?.message ?? ''}
+      confirmLabel={confirmDialog?.confirmLabel}
+      destructive={confirmDialog?.destructive}
+      icon={confirmDialog?.icon}
+      loading={confirmLoading}
+      onDismiss={() => !confirmLoading && setConfirmDialog(null)}
+      onConfirm={() => void handleConfirmDialog()}
+    />
+    </>
   );
 }
 
@@ -567,19 +632,39 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: '#607D8B',
-    alignItems: 'center',
-    paddingTop: 16,
+    paddingHorizontal: 20,
     paddingBottom: 24,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  avatarWrap: { marginBottom: 12 },
-  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)' },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    marginRight: 12,
+    gap: 12,
+  },
+  headerText: { flex: 1, minWidth: 0 },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
+    flexShrink: 0,
+  },
   avatarFallback: { backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 32, color: '#fff', fontWeight: '700' },
+  avatarText: { fontSize: 26, color: '#fff', fontWeight: '700' },
   userName: { color: '#fff', fontWeight: '800' },
-  userEmail: { color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  statRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  userEmail: { color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  statRow: { flexDirection: 'row', gap: 10, marginTop: 18, justifyContent: 'center' },
   statPill: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 16,

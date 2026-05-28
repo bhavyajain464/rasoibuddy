@@ -1,7 +1,5 @@
 node_modules
-.expo
 android
 ios
+.expo
 .git
-dist
-*.log
