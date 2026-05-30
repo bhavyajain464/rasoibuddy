@@ -10,7 +10,9 @@
     "ios": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli run:ios --port 8082",
     "web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --web --port 8082",
     "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli export --platform web",
-    "build:android:production": "npx eas-cli build --platform android --profile production"
+    "build:android:production": "npx eas-cli build --platform android --profile production",
+    "doctor": "npx expo-doctor",
+    "typecheck": "tsc --noEmit"
   },
   "expo": {
     "doctor": {
@@ -30,7 +32,7 @@
     "@react-navigation/bottom-tabs": "^7.16.0",
     "@react-navigation/native": "^7.2.4",
     "@react-navigation/native-stack": "^7.16.0",
-    "expo": "~54.0.33",
+    "expo": "~54.0.35",
     "expo-application": "~7.0.8",
     "expo-auth-session": "~7.0.11",
     "expo-build-properties": "~1.0.10",
@@ -39,7 +41,7 @@
     "expo-crypto": "~15.0.9",
     "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
-    "expo-file-system": "~19.0.22",
+    "expo-file-system": "~19.0.23",
     "expo-image-picker": "~17.0.11",
     "expo-linking": "~8.0.12",
     "expo-notifications": "~0.32.17",

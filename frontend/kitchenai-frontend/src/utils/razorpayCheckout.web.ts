@@ -94,7 +94,12 @@ export async function openRazorpayCheckout(
     if (order.prefill_email) {
       options.prefill = { email: order.prefill_email };
     }
-    const rzp = new window.Razorpay(options);
+    const RazorpayCtor = window.Razorpay;
+    if (!RazorpayCtor) {
+      reject(new Error('Razorpay checkout is not available'));
+      return;
+    }
+    const rzp = new RazorpayCtor(options);
     rzp.on('payment.failed', (response) => {
       console.error('[razorpay] payment.failed', response);
       reject(new Error(formatRazorpayFailure(response)));
