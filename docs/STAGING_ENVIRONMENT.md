@@ -26,6 +26,8 @@ git pull origin develop
 
 Production deploys: `.github/workflows/deploy-backend.yml` on `main` only.
 
+**Onboarding testing:** Staging API sets `ENVIRONMENT=staging`, so `/onboarding/status` always returns `onboarding_done: false` (onboarding shows every login, even after complete). Production is unchanged.
+
 ## Frontend (single Vercel project: **kitchmate**)
 
 One Vercel project, two environments via **branch-scoped env vars**:

@@ -308,6 +308,29 @@ Per item: name, quantity, unit, price_per_unit (0 if unknown), total_price (0 if
 JSON array only, no markdown:
 [{"name":"Basmati Rice","quantity":5,"unit":"kg","price_per_unit":120,"total_price":600,"shelf_life_days":60}]`
 
+const billScanGroqTextPrompt = `You are reading plain text from an Indian grocery invoice (Swiggy Instamart, Blinkit, Zepto, BigBasket, or a store receipt).
+
+Extract ONLY edible/kitchen items. EXCLUDE: handling fees, delivery charges, bags, discounts summary rows, tax annexures, and any non-food product.
+
+Rules:
+- Use the product description as name (normalize spacing; keep brand + variant).
+- quantity: numeric quantity sold (often 1 on delivery apps).
+- unit: map NOS/pcs to "pieces"; use kg, g, L, ml, packets when visible in the name or UQC.
+- total_price: line item total in rupees (last amount column for that row); 0 if unclear.
+- price_per_unit: 0 if unknown.
+- shelf_life_days: reasonable estimate for Indian home storage.
+
+Return ONLY a JSON array, no markdown:
+[{"name":"Potato","quantity":1,"unit":"kg","price_per_unit":0,"total_price":26,"shelf_life_days":14}]`
+
+func ScanBillGroqFromPDF(ctx context.Context, cfg *config.Config, pdfData []byte) ([]BillItem, error) {
+	text, err := ExtractPDFText(pdfData)
+	if err != nil {
+		return nil, err
+	}
+	return scanBillGroqFromInvoiceText(ctx, cfg, text)
+}
+
 func ScanBillGroqFromBase64(ctx context.Context, cfg *config.Config, base64Image, imageType string) ([]BillItem, error) {
 	if cfg.GroqAPIKey == "" {
 		return nil, fmt.Errorf("groq API key not configured")

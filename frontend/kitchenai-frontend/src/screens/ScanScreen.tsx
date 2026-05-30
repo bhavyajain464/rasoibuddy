@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Image, Alert, Platform } from 'react-native';
-import { Text, Button, Card, Surface, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Image, Platform } from 'react-native';
+import { Text, Button, Card, Surface, ActivityIndicator, Icon } from 'react-native-paper';
 import { BillCameraModal } from '../components/BillCameraModal';
 import * as api from '../services/api';
 import { ScanResult } from '../types';
 import { colors } from '../theme';
-import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/billImagePicker';
+import {
+  pickBillFileFromDevice,
+  pickBillImageFromCameraWeb,
+  type BillScanPick,
+  isPdfBillPick,
+} from '../utils/billImagePicker';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { showUpgradeMessage } from '../utils/upgrade';
@@ -17,35 +22,39 @@ import { showAppInfo, showAppSuccess } from '../utils/alertMessage';
 export function ScanScreen() {
   const { canBillScan, refresh: refreshEntitlements } = useEntitlements();
   const { startUpgrade } = usePlanUpgrade();
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [billPick, setBillPick] = useState<BillScanPick | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
 
-  const applyPickedImage = (uri: string) => {
-    setImageUri(uri);
+  const applyBillPick = (pick: BillScanPick | string) => {
+    if (typeof pick === 'string') {
+      setBillPick({ uri: pick, mimeType: 'image/jpeg' });
+    } else {
+      setBillPick(pick);
+    }
     setResult(null);
   };
 
   const pickFromCamera = () => {
     if (Platform.OS === 'web') {
       void (async () => {
-        const uri = await pickBillImageFromCameraWeb();
-        if (uri) applyPickedImage(uri);
+        const pick = await pickBillImageFromCameraWeb();
+        if (pick) applyBillPick(pick);
       })();
       return;
     }
     setCameraModalVisible(true);
   };
 
-  const pickFromGallery = async () => {
-    const uri = await pickBillImageFromGallery();
-    if (uri) applyPickedImage(uri);
+  const pickFromFile = async () => {
+    const pick = await pickBillFileFromDevice();
+    if (pick) applyBillPick(pick);
   };
 
   const handleScan = async () => {
-    if (!imageUri) {
-      showAppInfo('Take a photo or pick one from your gallery first.');
+    if (!billPick) {
+      showAppInfo('Take a photo with the camera or upload an image/PDF first.');
       return;
     }
     if (!canBillScan) {
@@ -56,7 +65,7 @@ export function ScanScreen() {
     setResult(null);
 
     try {
-      const scanResult = await api.scanBillUpload(imageUri);
+      const scanResult = await api.scanBillUpload(billPick.uri, billPick.mimeType);
       await refreshEntitlements();
       setResult(scanResult);
       const addedCount = scanResult.added_to_inventory?.length || 0;
@@ -82,7 +91,7 @@ export function ScanScreen() {
     <BillCameraModal
       visible={cameraModalVisible}
       onClose={() => setCameraModalVisible(false)}
-      onCaptured={applyPickedImage}
+      onCaptured={(uri) => applyBillPick(uri)}
     />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Card style={styles.card} mode="elevated">
@@ -91,19 +100,26 @@ export function ScanScreen() {
             Scan Grocery Bill
           </Text>
           <Text variant="bodyMedium" style={styles.description}>
-            Take a photo of your grocery bill or pick one from gallery. Gemini AI
-            will extract items and add them to your inventory.
+            Take a photo or upload an image or PDF of your bill. Videos are not supported.
           </Text>
 
-          {/* Image Preview */}
-          {imageUri && (
+          {billPick && (
             <Surface style={styles.imageContainer} elevation={1}>
-              <Image source={{ uri: imageUri }} style={styles.image} resizeMode="contain" />
+              {isPdfBillPick(billPick) ? (
+                <View style={styles.pdfPreview}>
+                  <Icon source="file-pdf-box" size={48} color="#C62828" />
+                  <Text variant="bodyMedium" style={styles.pdfName} numberOfLines={2}>
+                    {billPick.name || 'Bill PDF'}
+                  </Text>
+                </View>
+              ) : (
+                <Image source={{ uri: billPick.uri }} style={styles.image} resizeMode="contain" />
+              )}
               <Button
                 mode="text"
                 compact
                 onPress={() => {
-                  setImageUri(null);
+                  setBillPick(null);
                   setResult(null);
                 }}
                 textColor="#F44336"
@@ -113,7 +129,6 @@ export function ScanScreen() {
             </Surface>
           )}
 
-          {/* Pick Buttons */}
           <View style={styles.pickRow}>
             <Button
               mode="contained"
@@ -127,13 +142,13 @@ export function ScanScreen() {
             </Button>
             <Button
               mode="contained"
-              icon="image"
-              onPress={pickFromGallery}
+              icon="file-upload"
+              onPress={pickFromFile}
               style={styles.pickButton}
               buttonColor={colors.scan}
               disabled={scanning}
             >
-              Gallery
+              Upload
             </Button>
           </View>
 
@@ -142,82 +157,35 @@ export function ScanScreen() {
             icon="text-recognition"
             onPress={handleScan}
             loading={scanning}
-            disabled={scanning || !imageUri}
+            disabled={scanning || !billPick}
             style={styles.scanButton}
             contentStyle={styles.scanButtonContent}
           >
-            Scan with Gemini AI
+            Scan Bill
           </Button>
         </Card.Content>
       </Card>
 
-      {/* Results */}
       {scanning && (
         <Surface style={styles.resultCard} elevation={1}>
           <ActivityIndicator size="large" />
           <Text variant="bodyMedium" style={styles.scanningText}>
-            Analyzing bill with Gemini AI...
+            Reading your bill...
           </Text>
         </Surface>
       )}
 
-      {result && (
-        <Card style={styles.resultCard} mode="elevated">
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.resultTitle}>
-              Scan Results
+      {result && result.items && result.items.length > 0 && (
+        <Surface style={styles.resultCard} elevation={1}>
+          <Text variant="titleMedium" style={styles.resultTitle}>
+            Found {result.items.length} items
+          </Text>
+          {result.items.map((item, idx) => (
+            <Text key={idx} variant="bodyMedium" style={styles.resultItem}>
+              • {item.name} — {item.quantity} {item.unit}
             </Text>
-
-            {result.items && result.items.length > 0 && (
-              <View style={styles.resultSection}>
-                <Text variant="labelLarge">Items Found ({result.items.length}):</Text>
-                {result.items.map((item, idx) => (
-                  <View key={idx} style={styles.resultItemRow}>
-                    <Text variant="bodyMedium" style={styles.resultItemName}>
-                      {item.name}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.resultItem}>
-                      {item.quantity} {item.unit}
-                      {item.shelf_life_days ? ` · expires in ~${item.shelf_life_days} days` : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {result.added_to_inventory && result.added_to_inventory.length > 0 && (
-              <View style={styles.resultSection}>
-                <Text variant="labelLarge" style={styles.addedLabel}>
-                  Added to Inventory ({result.added_to_inventory.length}):
-                </Text>
-                {result.added_to_inventory.map((item, idx) => (
-                  <View key={idx} style={styles.resultItemRow}>
-                    <Text variant="bodyMedium" style={styles.resultItemName}>
-                      {item.action === 'updated' ? '↑' : '+'} {item.name}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.resultItem}>
-                      {item.quantity} {item.unit} · {item.action}
-                      {item.estimated_expiry ? ` · expiry: ${item.estimated_expiry}` : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {result.errors && result.errors.length > 0 && (
-              <View style={styles.resultSection}>
-                <Text variant="labelLarge" style={styles.errorLabel}>
-                  Errors ({result.errors.length}):
-                </Text>
-                {result.errors.map((err, idx) => (
-                  <Text key={idx} variant="bodySmall" style={styles.errorText}>
-                    {err}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </Card.Content>
-        </Card>
+          ))}
+        </Surface>
       )}
     </ScrollView>
     </>
@@ -225,26 +193,11 @@ export function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  card: {
-    marginBottom: 16,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  description: {
-    color: '#666',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  content: { padding: 16, paddingBottom: 32 },
+  card: { borderRadius: 16, marginBottom: 16 },
+  title: { fontWeight: '700', color: '#333', marginBottom: 8 },
+  description: { color: '#666', lineHeight: 22, marginBottom: 16 },
   imageContainer: {
     borderRadius: 12,
     overflow: 'hidden',
@@ -252,67 +205,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
   },
-  image: {
+  image: { width: '100%', height: 220 },
+  pdfPreview: {
     width: '100%',
-    height: 250,
+    minHeight: 120,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  pickRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  pickButton: {
-    flex: 1,
-    borderRadius: 12,
-  },
-  scanButton: {
-    borderRadius: 12,
-  },
-  scanButtonContent: {
-    paddingVertical: 6,
-  },
+  pdfName: { color: '#444', textAlign: 'center', fontWeight: '600' },
+  pickRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  pickButton: { flex: 1, borderRadius: 12 },
+  scanButton: { borderRadius: 12, backgroundColor: colors.scan },
+  scanButtonContent: { paddingVertical: 6 },
   resultCard: {
-    marginBottom: 16,
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
     backgroundColor: '#fff',
+    marginBottom: 16,
   },
-  scanningText: {
-    marginTop: 12,
-    color: '#666',
-  },
-  resultTitle: {
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  resultSection: {
-    marginBottom: 12,
-  },
-  resultItemRow: {
-    marginLeft: 12,
-    marginTop: 8,
-    paddingBottom: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
-  },
-  resultItemName: {
-    fontWeight: '600',
-    color: '#333',
-  },
-  resultItem: {
-    color: '#666',
-    marginTop: 2,
-  },
-  addedLabel: {
-    color: '#388E3C',
-  },
-  errorLabel: {
-    color: '#F44336',
-  },
-  errorText: {
-    color: '#D32F2F',
-    marginLeft: 12,
-    marginTop: 4,
-  },
+  scanningText: { marginTop: 12, color: '#666' },
+  resultTitle: { fontWeight: '700', marginBottom: 12, alignSelf: 'flex-start' },
+  resultItem: { color: '#555', marginBottom: 4, alignSelf: 'flex-start' },
 });

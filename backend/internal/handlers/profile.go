@@ -38,6 +38,14 @@ func GetOnboardingStatus(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
+		// Staging: always show onboarding so the flow can be tested repeatedly.
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("ENVIRONMENT")), "staging") {
+			done = false
+		}
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("ONBOARDING_ALWAYS_SHOW")), "true") {
+			done = false
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"onboarding_done": done})
 	}

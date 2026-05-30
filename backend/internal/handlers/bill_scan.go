@@ -60,9 +60,16 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 				req.ImageType = "image/jpeg"
 			} else if strings.HasPrefix(req.ImageData, "iVBORw0KGgo") {
 				req.ImageType = "image/png"
+			} else if strings.HasPrefix(req.ImageData, "JVBERi") {
+				req.ImageType = "application/pdf"
 			} else {
 				req.ImageType = "image/jpeg"
 			}
+		}
+		req.ImageType = services.NormalizeBillScanMIME(req.ImageType, "")
+		if err := services.ValidateBillScanMIME(req.ImageType); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		items, err := services.ScanBillBase64ForConfig(r.Context(), cfg, req.ImageData, req.ImageType)
@@ -126,18 +133,16 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 		// Get image type from header
 		imageType := header.Header.Get("Content-Type")
 		if imageType == "" {
-			// Try to infer from filename
-			if strings.HasSuffix(strings.ToLower(header.Filename), ".jpg") ||
-				strings.HasSuffix(strings.ToLower(header.Filename), ".jpeg") {
-				imageType = "image/jpeg"
-			} else if strings.HasSuffix(strings.ToLower(header.Filename), ".png") {
-				imageType = "image/png"
-			} else {
-				imageType = "image/jpeg" // Default
-			}
+			imageType = services.NormalizeBillScanMIME("", header.Filename)
+		} else {
+			imageType = services.NormalizeBillScanMIME(imageType, header.Filename)
+		}
+		if err := services.ValidateBillScanMIME(imageType); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
-		// Scan the bill (LLM_PROVIDER selects gemini vs groq)
+		// Scan the bill (LLM_PROVIDER selects gemini vs groq; PDF text → Groq, images → vision)
 		items, err := services.ScanBillBytesForConfig(r.Context(), cfg, fileData, imageType)
 		if err != nil {
 			response := ScanBillResponse{

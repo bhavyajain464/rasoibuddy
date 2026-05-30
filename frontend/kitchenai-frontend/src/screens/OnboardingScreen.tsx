@@ -21,10 +21,28 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
 import { showAppError } from '../utils/alertMessage';
+import { DEFAULT_ONBOARDING_STAPLES, type OnboardingStaple } from '../data/onboardingStaples';
+import { STAPLE_IMAGES } from '../data/stapleImages';
 
-const logo = require('../../assets/icon.png');
+const ONBOARDING_MOTTO = 'Less waste. Smarter meals. Calmer evenings.';
 
-const STEPS = ['Welcome', 'Preferences', 'Kitchen Staples'];
+const INTRO_STEPS = [
+  {
+    title: 'How you eat',
+    desc: 'Diet, spice level, and cuisines you cook at home',
+  },
+  {
+    title: 'Stock your staples',
+    desc: 'Atta, dal, masala — add common items in one tap',
+  },
+  {
+    title: 'Meals that fit your kitchen',
+    desc: 'Personalized ideas and expiry help from day one',
+  },
+] as const;
+
+const STEPS = ['Start', 'Preferences', 'Kitchen Staples'];
+const SETUP_ESTIMATE = '~2 min';
 
 const DIETARY_OPTIONS = [
   'vegetarian', 'vegan', 'eggetarian', 'non-veg',
@@ -41,68 +59,28 @@ const SPICE_LEVELS = [
   { id: 'extra_spicy', label: 'Extra Spicy', emoji: '🔥' },
 ];
 
-interface StapleItem {
-  name: string;
-  qty: number;
-  unit: string;
-  category: string;
-  selected: boolean;
+interface StapleItem extends OnboardingStaple {}
+
+function stapleQtyStep(unit: string): number {
+  switch (unit) {
+    case 'kg':
+    case 'L':
+      return 1;
+    case 'g':
+    case 'ml':
+      return 50;
+    default:
+      return 1;
+  }
 }
 
-const DEFAULT_STAPLES: StapleItem[] = [
-  // Grains & Flours
-  { name: 'Wheat Flour (Atta)', qty: 5, unit: 'kg', category: 'Grains & Flours', selected: true },
-  { name: 'Rice (Basmati)', qty: 5, unit: 'kg', category: 'Grains & Flours', selected: true },
-  { name: 'Rice Flour', qty: 1, unit: 'kg', category: 'Grains & Flours', selected: false },
-  { name: 'Besan (Gram Flour)', qty: 500, unit: 'g', category: 'Grains & Flours', selected: false },
-  { name: 'Sooji (Semolina)', qty: 500, unit: 'g', category: 'Grains & Flours', selected: false },
-  { name: 'Poha (Flattened Rice)', qty: 500, unit: 'g', category: 'Grains & Flours', selected: false },
+function stapleQtyMin(unit: string): number {
+  return stapleQtyStep(unit);
+}
 
-  // Dals & Lentils
-  { name: 'Toor Dal', qty: 1, unit: 'kg', category: 'Dals & Lentils', selected: true },
-  { name: 'Moong Dal', qty: 500, unit: 'g', category: 'Dals & Lentils', selected: true },
-  { name: 'Chana Dal', qty: 500, unit: 'g', category: 'Dals & Lentils', selected: false },
-  { name: 'Masoor Dal', qty: 500, unit: 'g', category: 'Dals & Lentils', selected: false },
-  { name: 'Rajma (Kidney Beans)', qty: 500, unit: 'g', category: 'Dals & Lentils', selected: false },
-  { name: 'Chole (Chickpeas)', qty: 500, unit: 'g', category: 'Dals & Lentils', selected: false },
-
-  // Spices
-  { name: 'Turmeric Powder', qty: 200, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Red Chilli Powder', qty: 200, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Coriander Powder', qty: 200, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Cumin Powder', qty: 100, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Garam Masala', qty: 100, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Cumin Seeds (Jeera)', qty: 100, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Mustard Seeds', qty: 100, unit: 'g', category: 'Spices', selected: true },
-  { name: 'Black Pepper', qty: 50, unit: 'g', category: 'Spices', selected: false },
-  { name: 'Cinnamon Sticks', qty: 50, unit: 'g', category: 'Spices', selected: false },
-  { name: 'Bay Leaves', qty: 1, unit: 'pcs', category: 'Spices', selected: false },
-
-  // Oils & Essentials
-  { name: 'Cooking Oil', qty: 2, unit: 'L', category: 'Oils & Essentials', selected: true },
-  { name: 'Ghee', qty: 500, unit: 'ml', category: 'Oils & Essentials', selected: true },
-  { name: 'Salt', qty: 1, unit: 'kg', category: 'Oils & Essentials', selected: true },
-  { name: 'Sugar', qty: 1, unit: 'kg', category: 'Oils & Essentials', selected: true },
-  { name: 'Tea (Chai)', qty: 250, unit: 'g', category: 'Oils & Essentials', selected: true },
-  { name: 'Coffee Powder', qty: 200, unit: 'g', category: 'Oils & Essentials', selected: false },
-
-  // Dairy & Fresh
-  { name: 'Milk', qty: 1, unit: 'L', category: 'Dairy & Fresh', selected: true },
-  { name: 'Curd (Yogurt)', qty: 500, unit: 'g', category: 'Dairy & Fresh', selected: true },
-  { name: 'Butter', qty: 200, unit: 'g', category: 'Dairy & Fresh', selected: false },
-  { name: 'Paneer', qty: 200, unit: 'g', category: 'Dairy & Fresh', selected: false },
-
-  // Vegetables (basics)
-  { name: 'Onions', qty: 2, unit: 'kg', category: 'Vegetables', selected: true },
-  { name: 'Tomatoes', qty: 1, unit: 'kg', category: 'Vegetables', selected: true },
-  { name: 'Potatoes', qty: 2, unit: 'kg', category: 'Vegetables', selected: true },
-  { name: 'Green Chillies', qty: 100, unit: 'g', category: 'Vegetables', selected: true },
-  { name: 'Ginger', qty: 100, unit: 'g', category: 'Vegetables', selected: true },
-  { name: 'Garlic', qty: 100, unit: 'g', category: 'Vegetables', selected: true },
-  { name: 'Coriander Leaves', qty: 1, unit: 'bunch', category: 'Vegetables', selected: false },
-  { name: 'Curry Leaves', qty: 1, unit: 'bunch', category: 'Vegetables', selected: false },
-  { name: 'Lemons', qty: 4, unit: 'pcs', category: 'Vegetables', selected: false },
-];
+function formatStapleQty(qty: number): string {
+  return Number.isInteger(qty) ? String(qty) : qty.toFixed(1);
+}
 
 interface OnboardingScreenProps {
   onComplete: () => void;
@@ -122,7 +100,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [newAllergy, setNewAllergy] = useState('');
 
   // Staples
-  const [staples, setStaples] = useState<StapleItem[]>(DEFAULT_STAPLES);
+  const [staples, setStaples] = useState<StapleItem[]>(() =>
+    DEFAULT_ONBOARDING_STAPLES.map(s => ({ ...s })),
+  );
 
   const toggleDietary = (tag: string) =>
     setDietaryTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
@@ -133,6 +113,18 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
   const selectAllCategory = (cat: string, select: boolean) =>
     setStaples(prev => prev.map(s => s.category === cat ? { ...s, selected: select } : s));
+
+  const adjustStapleQty = (idx: number, direction: 1 | -1) => {
+    setStaples(prev =>
+      prev.map((s, i) => {
+        if (i !== idx) return s;
+        const step = stapleQtyStep(s.unit);
+        const min = stapleQtyMin(s.unit);
+        const next = Math.max(min, s.qty + direction * step);
+        return { ...s, qty: next };
+      }),
+    );
+  };
 
   const addAllergy = () => {
     const trimmed = newAllergy.trim();
@@ -174,7 +166,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${((step + 1) / STEPS.length) * 100}%` }]} />
         </View>
-        <Text style={styles.progressText}>Step {step + 1} of {STEPS.length}</Text>
+        <Text style={styles.progressText}>
+          Step {step + 1} of {STEPS.length}
+          {step === 0 ? ` · ${SETUP_ESTIMATE}` : ''}
+        </Text>
       </View>
 
       <ScrollView
@@ -183,28 +178,31 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ── Step 0: Welcome ────────────────────────── */}
+        {/* ── Step 0: Intro ──────────────────────────── */}
         {step === 0 && (
           <View style={styles.stepWrap}>
-            <Surface style={styles.welcomeCard} elevation={2}>
-              <Image source={logo} style={styles.welcomeLogo} resizeMode="contain" />
-              <Text variant="headlineMedium" style={styles.welcomeTitle}>Welcome to Kitchen AI</Text>
-              <Text variant="bodyMedium" style={styles.welcomeDesc}>
-                Let's set up your kitchen in 2 quick steps. We'll personalize your meal suggestions and stock your pantry with essentials.
+            <View style={styles.introHero}>
+              <Text variant="headlineMedium" style={styles.welcomeMotto}>
+                {ONBOARDING_MOTTO}
               </Text>
-            </Surface>
+              <Text variant="bodyLarge" style={styles.introLead}>
+                Let's set up your kitchen in 2 quick steps.
+              </Text>
+              <Text variant="bodyMedium" style={styles.introNote}>
+                We'll personalize meals and stock essentials — no bill scan yet.
+              </Text>
+            </View>
 
             <View style={styles.featureList}>
-              {[
-                { icon: 'account-cog', text: 'Set your food preferences' },
-                { icon: 'basket', text: 'Add common kitchen staples' },
-                { icon: 'robot', text: 'Get AI-powered meal ideas' },
-              ].map((f, i) => (
-                <View key={i} style={styles.featureRow}>
-                  <Surface style={styles.featureIcon} elevation={0}>
-                    <IconButton icon={f.icon} iconColor="#2E7D32" size={20} style={{ margin: 0 }} />
-                  </Surface>
-                  <Text variant="bodyMedium" style={styles.featureText}>{f.text}</Text>
+              {INTRO_STEPS.map((item, i) => (
+                <View key={item.title} style={styles.featureRow}>
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{i + 1}</Text>
+                  </View>
+                  <View style={styles.featureCopy}>
+                    <Text style={styles.featureTitle}>{item.title}</Text>
+                    <Text style={styles.featureDesc}>{item.desc}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -307,7 +305,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           <View style={styles.stepWrap}>
             <Text variant="headlineSmall" style={styles.stepTitle}>Kitchen Staples</Text>
             <Text variant="bodyMedium" style={styles.stepSub}>
-              Select items already in your kitchen ({selectedCount} selected)
+              Select items already in your kitchen
             </Text>
 
             {categories.map(cat => {
@@ -324,15 +322,56 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   {catItems.map((item) => {
                     const idx = staples.indexOf(item);
                     return (
-                      <Pressable key={idx} onPress={() => toggleStaple(idx)} style={styles.stapleRow}>
-                        <Checkbox status={item.selected ? 'checked' : 'unchecked'} onPress={() => toggleStaple(idx)} color="#2E7D32" />
-                        <View style={styles.stapleInfo}>
-                          <Text variant="bodyMedium" style={[styles.stapleName, !item.selected && { color: '#aaa' }]}>
-                            {item.name}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.stapleQty}>{item.qty} {item.unit}</Text>
-                        </View>
-                      </Pressable>
+                      <View key={idx} style={styles.stapleRow}>
+                        <Pressable
+                          onPress={() => toggleStaple(idx)}
+                          style={styles.stapleMain}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: item.selected }}
+                        >
+                          <Checkbox
+                            status={item.selected ? 'checked' : 'unchecked'}
+                            onPress={() => toggleStaple(idx)}
+                            color="#2E7D32"
+                          />
+                          <Image
+                            source={STAPLE_IMAGES[item.id]}
+                            style={[styles.stapleThumb, !item.selected && styles.stapleThumbMuted]}
+                            accessibilityIgnoresInvertColors
+                          />
+                          <View style={styles.stapleInfo}>
+                            <Text variant="bodyMedium" style={[styles.stapleName, !item.selected && { color: '#aaa' }]}>
+                              {item.name}
+                            </Text>
+                            {!item.selected && (
+                              <Text variant="bodySmall" style={styles.stapleQty}>
+                                {formatStapleQty(item.qty)} {item.unit}
+                              </Text>
+                            )}
+                          </View>
+                        </Pressable>
+                        {item.selected ? (
+                          <View style={styles.stapleQtyControls}>
+                            <Pressable
+                              onPress={() => adjustStapleQty(idx, -1)}
+                              style={styles.stapleQtyBtn}
+                              accessibilityLabel={`Decrease ${item.name}`}
+                            >
+                              <IconButton icon="minus" size={16} iconColor="#666" style={{ margin: 0 }} />
+                            </Pressable>
+                            <Text variant="bodySmall" style={styles.stapleQtyActive}>
+                              {formatStapleQty(item.qty)} {item.unit}
+                            </Text>
+                            <Pressable
+                              onPress={() => adjustStapleQty(idx, 1)}
+                              style={styles.stapleQtyBtn}
+                              accessibilityLabel={`Increase ${item.name}`}
+                            >
+                              <IconButton icon="plus" size={16} iconColor="#666" style={{ margin: 0 }} />
+                            </Pressable>
+                          </View>
+                        ) : null}
+                      </View>
                     );
                   })}
                 </Surface>
@@ -357,7 +396,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             style={styles.nextBtn}
             contentStyle={{ paddingVertical: 4 }}
           >
-            {step === 0 ? "Let's Go" : 'Next'}
+            {step === 0 ? 'Set up my kitchen' : 'Next'}
           </Button>
         ) : (
           <Button
@@ -387,15 +426,25 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 24 },
   stepWrap: { paddingHorizontal: 20 },
 
-  // Welcome
-  welcomeCard: { backgroundColor: '#fff', borderRadius: 20, padding: 32, alignItems: 'center', marginTop: 20 },
-  welcomeLogo: { width: 220, height: 176, borderRadius: 18, overflow: 'hidden', backgroundColor: '#000' },
-  welcomeTitle: { fontWeight: '800', color: '#333', marginTop: 16, textAlign: 'center' },
-  welcomeDesc: { color: '#888', marginTop: 10, textAlign: 'center', lineHeight: 22 },
-  featureList: { marginTop: 28, gap: 14 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  featureIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center' },
-  featureText: { color: '#555', fontSize: 15, fontWeight: '500' },
+  introHero: { marginTop: 12, paddingHorizontal: 4 },
+  welcomeMotto: { fontWeight: '800', color: '#1B5E20', textAlign: 'left', lineHeight: 34 },
+  introLead: { color: '#333', marginTop: 16, fontWeight: '600', lineHeight: 24 },
+  introNote: { color: '#777', marginTop: 8, lineHeight: 22 },
+  featureList: { marginTop: 28, gap: 18 },
+  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  stepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2E7D32',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  stepBadgeText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  featureCopy: { flex: 1 },
+  featureTitle: { color: '#333', fontSize: 16, fontWeight: '700' },
+  featureDesc: { color: '#777', fontSize: 14, marginTop: 3, lineHeight: 20 },
 
   // Steps
   stepTitle: { fontWeight: '800', color: '#333', marginTop: 12 },
@@ -426,10 +475,29 @@ const styles = StyleSheet.create({
   catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   catLabel: { fontWeight: '700', color: '#333' },
   selectAllText: { color: '#2E7D32', fontWeight: '600', fontSize: 13 },
-  stapleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  stapleInfo: { flex: 1, marginLeft: 4 },
+  stapleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 },
+  stapleMain: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
+  stapleThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginLeft: 2,
+    backgroundColor: '#F3F4F2',
+  },
+  stapleThumbMuted: { opacity: 0.45 },
+  stapleInfo: { flex: 1, marginLeft: 10 },
   stapleName: { fontWeight: '500', color: '#333' },
   stapleQty: { color: '#999', marginTop: 1 },
+  stapleQtyControls: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  stapleQtyBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stapleQtyActive: { color: '#2E7D32', fontWeight: '700', minWidth: 56, textAlign: 'center' },
 
   // Bottom
   bottomBar: {

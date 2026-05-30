@@ -25,6 +25,7 @@ import {
   Checkbox,
   Snackbar,
   Menu,
+  Icon,
 } from 'react-native-paper';
 import {
   useIsFocused,
@@ -39,7 +40,12 @@ import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { BillCameraModal } from '../components/BillCameraModal';
 import { InventoryItemCard } from '../components/InventoryItemCard';
 import { AddInventoryModal } from '../components/modals/AddInventoryModal';
-import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/billImagePicker';
+import {
+  pickBillFileFromDevice,
+  pickBillImageFromCameraWeb,
+  type BillScanPick,
+  isPdfBillPick,
+} from '../utils/billImagePicker';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, ScanResult } from '../types';
 import { colors } from '../theme';
@@ -91,7 +97,7 @@ export function InventoryScreen() {
 
   // Scan modal
   const [scanModalVisible, setScanModalVisible] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [billPick, setBillPick] = useState<BillScanPick | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({});
@@ -278,7 +284,7 @@ export function InventoryScreen() {
       );
       return;
     }
-    setImageUri(null);
+    setBillPick(null);
     setScanResult(null);
     setScanning(false);
     setSelectedItems({});
@@ -289,7 +295,7 @@ export function InventoryScreen() {
   const closeScanModal = () => {
     setScanModalVisible(false);
     setCameraModalVisible(false);
-    setImageUri(null);
+    setBillPick(null);
     setScanResult(null);
     setSelectedItems({});
     setAddingScanned(false);
@@ -349,30 +355,34 @@ export function InventoryScreen() {
     closeScanModal();
   };
 
-  const applyPickedImage = (uri: string) => {
-    setImageUri(uri);
+  const applyBillPick = (pick: BillScanPick | string) => {
+    if (typeof pick === 'string') {
+      setBillPick({ uri: pick, mimeType: 'image/jpeg' });
+    } else {
+      setBillPick(pick);
+    }
     setScanResult(null);
   };
 
   const pickFromCamera = () => {
     if (Platform.OS === 'web') {
       void (async () => {
-        const uri = await pickBillImageFromCameraWeb();
-        if (uri) applyPickedImage(uri);
+        const pick = await pickBillImageFromCameraWeb();
+        if (pick) applyBillPick(pick);
       })();
       return;
     }
     setCameraModalVisible(true);
   };
 
-  const pickFromGallery = async () => {
-    const uri = await pickBillImageFromGallery();
-    if (uri) applyPickedImage(uri);
+  const pickFromFile = async () => {
+    const pick = await pickBillFileFromDevice();
+    if (pick) applyBillPick(pick);
   };
 
   const handleScan = async () => {
-    if (!imageUri) {
-      showAppInfo('Take a photo or pick one from your gallery first.');
+    if (!billPick) {
+      showAppInfo('Take a photo with the camera or upload an image/PDF first.');
       return;
     }
     if (!canBillScan) {
@@ -383,7 +393,7 @@ export function InventoryScreen() {
     setScanResult(null);
     setSelectedItems({});
     try {
-      const result = await api.scanBillUpload(imageUri);
+      const result = await api.scanBillUpload(billPick.uri, billPick.mimeType);
       setScanResult(result);
       await refreshEntitlements();
       if (result.items && result.items.length > 0) {
@@ -483,9 +493,6 @@ export function InventoryScreen() {
               {loading
                 ? 'Loading your kitchen…'
                 : `${inventory.length} in stock · ${expiringItems.length} expiring soon · ${expiredItems.length} expired`}
-            </Text>
-            <Text variant="labelSmall" style={styles.headerHint}>
-              Search and switch tabs below · tap + to add manually or scan a bill
             </Text>
           </View>
           <ProfileHeaderButton />
@@ -692,7 +699,7 @@ export function InventoryScreen() {
       <BillCameraModal
         visible={cameraModalVisible}
         onClose={() => setCameraModalVisible(false)}
-        onCaptured={applyPickedImage}
+        onCaptured={(uri) => applyBillPick(uri)}
       />
 
       {/* ── Scan Bill Modal ──────────────────────────────────── */}
@@ -715,8 +722,7 @@ export function InventoryScreen() {
             {!scanResult && (
               <>
                 <Text variant="bodyMedium" style={styles.scanDesc}>
-                  Take a photo or pick from gallery. We'll extract edible items
-                  for you to review before adding to inventory.
+                  Snap a photo or upload an image or PDF of your grocery bill. Videos are not supported.
                 </Text>
                 {entitlements && !entitlements.is_pro ? (
                   <Text variant="labelMedium" style={styles.scanQuota}>
@@ -724,13 +730,22 @@ export function InventoryScreen() {
                   </Text>
                 ) : null}
 
-                {imageUri && (
+                {billPick && (
                   <Surface style={styles.imageContainer} elevation={1}>
-                    <Image source={{ uri: imageUri }} style={styles.image} resizeMode="contain" />
+                    {isPdfBillPick(billPick) ? (
+                      <View style={styles.pdfPreview}>
+                        <Icon source="file-pdf-box" size={48} color="#C62828" />
+                        <Text variant="bodyMedium" style={styles.pdfName} numberOfLines={2}>
+                          {billPick.name || 'Bill PDF'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Image source={{ uri: billPick.uri }} style={styles.image} resizeMode="contain" />
+                    )}
                     <Button
                       mode="text"
                       compact
-                      onPress={() => { setImageUri(null); setScanResult(null); }}
+                      onPress={() => { setBillPick(null); setScanResult(null); }}
                       textColor="#F44336"
                     >
                       Remove
@@ -751,13 +766,13 @@ export function InventoryScreen() {
                   </Button>
                   <Button
                     mode="contained"
-                    icon="image"
-                    onPress={pickFromGallery}
+                    icon="file-upload"
+                    onPress={pickFromFile}
                     style={styles.pickButton}
                     buttonColor={colors.scan}
                     disabled={scanning}
                   >
-                    Gallery
+                    Upload
                   </Button>
                 </View>
 
@@ -766,7 +781,7 @@ export function InventoryScreen() {
                   icon="magnify-scan"
                   onPress={handleScan}
                   loading={scanning}
-                  disabled={scanning || !imageUri}
+                  disabled={scanning || !billPick}
                   style={styles.scanBtn}
                   contentStyle={{ paddingVertical: 6 }}
                 >
@@ -847,7 +862,7 @@ export function InventoryScreen() {
                 </Text>
                 <Button
                   mode="outlined"
-                  onPress={() => { setScanResult(null); setImageUri(null); }}
+                  onPress={() => { setScanResult(null); setBillPick(null); }}
                   style={{ marginTop: 16 }}
                 >
                   Try Again
@@ -914,10 +929,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.92)',
     marginTop: 6,
     lineHeight: 22,
-  },
-  headerHint: {
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 10,
   },
   searchbar: {
     marginHorizontal: 16,
@@ -1072,6 +1083,20 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 220,
+  },
+  pdfPreview: {
+    width: '100%',
+    minHeight: 120,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  pdfName: {
+    color: '#444',
+    textAlign: 'center',
+    fontWeight: '600',
   },
   pickRow: {
     flexDirection: 'row',
