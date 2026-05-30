@@ -57,7 +57,7 @@ function BorderFieldLabel({ label }: { label: string }) {
 export function ExpiryDateBox({
   value,
   onChange,
-  label = 'Expiry',
+  label = 'Expiry (optional)',
   compact = false,
   fullWidth = false,
   allowPastDates = false,
@@ -120,7 +120,7 @@ export function ExpiryDateBox({
             style={[styles.dateText, !value && styles.datePlaceholder]}
             numberOfLines={1}
           >
-            {value ? formatDisplay(value) : '—'}
+            {value ? formatDisplay(value) : ''}
           </Text>
           <Icon source="calendar" size={compact ? 16 : 18} color={palette.primary} />
         </Pressable>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   boxCompact: {
-    width: 76,
+    width: 134,
   },
   boxFullWidth: {
     width: '100%',
@@ -203,6 +203,8 @@ const styles = StyleSheet.create({
   },
   dateText: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontWeight: '600',
     color: palette.text,
     fontSize: 12,

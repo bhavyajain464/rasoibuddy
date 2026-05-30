@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button, Icon, Text } from 'react-native-paper';
 import * as api from '../../services/api';
 import { ExpiryDateBox } from '../ExpiryDateBox';
@@ -46,7 +46,217 @@ type Props = {
   onAdded?: () => void;
 };
 
+/** Below this width: two-line row (identity row + measurement row). */
+const STACKED_ROW_BREAKPOINT = 560;
+
+const SP = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+} as const;
+
+const ACTION_SIZE = 40;
+const ACTION_COLUMN = ACTION_SIZE + SP.sm;
+const INDEX_COLUMN = 22;
+/** Fits DD/MM/YYYY + calendar icon + "Expiry (optional)" label */
+const EXPIRY_COLUMN = 136;
+
+type RowActionProps = {
+  isLastRow: boolean;
+  canAdd: boolean;
+  onAdd: () => void;
+  onRemove: () => void;
+};
+
+function RowActionButton({ isLastRow, canAdd, onAdd, onRemove }: RowActionProps) {
+  if (isLastRow) {
+    return (
+      <Pressable
+        onPress={onAdd}
+        disabled={!canAdd}
+        style={({ pressed }) => [
+          styles.rowActionBtn,
+          !canAdd && styles.rowActionBtnDisabled,
+          pressed && canAdd && styles.rowActionBtnPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Add another row"
+        accessibilityState={{ disabled: !canAdd }}
+      >
+        <Icon
+          source="plus"
+          size={20}
+          color={canAdd ? palette.primary : palette.textMuted}
+        />
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onRemove}
+      style={({ pressed }) => [
+        styles.rowActionBtn,
+        styles.rowActionBtnRemove,
+        pressed && styles.rowActionBtnPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Remove row"
+    >
+      <Icon source="minus" size={20} color={palette.textSecondary} />
+    </Pressable>
+  );
+}
+
+type DraftRowEditorProps = {
+  row: DraftRow;
+  index: number;
+  isLastRow: boolean;
+  isLastInList: boolean;
+  stacked: boolean;
+  canAdd: boolean;
+  onUpdate: (patch: Partial<Omit<DraftRow, 'key'>>) => void;
+  onAddRow: () => void;
+  onRemoveRow: () => void;
+};
+
+function DraftRowEditor({
+  row,
+  index,
+  isLastRow,
+  isLastInList,
+  stacked,
+  canAdd,
+  onUpdate,
+  onAddRow,
+  onRemoveRow,
+}: DraftRowEditorProps) {
+  const action = (
+    <RowActionButton
+      isLastRow={isLastRow}
+      canAdd={canAdd}
+      onAdd={onAddRow}
+      onRemove={onRemoveRow}
+    />
+  );
+
+  if (stacked) {
+    return (
+      <View style={[styles.entryCard, isLastInList && styles.entryCardLast]}>
+        <View style={styles.stackedRow}>
+          <View style={styles.indexColumn}>
+            <Text variant="labelSmall" style={styles.rowIndex}>
+              {index + 1}
+            </Text>
+          </View>
+
+          <View style={styles.stackedMain}>
+            <View style={[styles.stackedFields, { paddingRight: ACTION_COLUMN }]}>
+              <View style={styles.identityRow}>
+                <ItemNameBox
+                  label="Name"
+                  value={row.name}
+                  onChangeText={(name) => onUpdate({ name })}
+                  placeholder="Item name"
+                  compact
+                  style={styles.nameField}
+                />
+                <View style={styles.expirySlot}>
+                  <ExpiryDateBox
+                    value={row.expiry}
+                    onChange={(expiry) => onUpdate({ expiry })}
+                    compact
+                  />
+                </View>
+              </View>
+
+              <View style={styles.measurementRow}>
+                <QuantityBox
+                  label="Qty"
+                  value={row.qty}
+                  onChangeText={(qty) => onUpdate({ qty })}
+                  compact
+                  embedded
+                />
+                <View style={styles.unitSlot}>
+                  <UnitPillSelector
+                    value={row.unit}
+                    onChange={(unit) => onUpdate({ unit })}
+                    compact
+                    fillWidth
+                    embedded
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.stackedActionColumn} pointerEvents="box-none">
+              {action}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.entryCard, isLastInList && styles.entryCardLast]}>
+      <View style={styles.inlineRow}>
+        <View style={styles.inlineIndexCell}>
+          <Text variant="labelSmall" style={styles.rowIndexInline}>
+            {index + 1}
+          </Text>
+        </View>
+
+        <View style={styles.inlineNameSlot}>
+          <ItemNameBox
+            label="Name"
+            value={row.name}
+            onChangeText={(name) => onUpdate({ name })}
+            placeholder="Item name"
+            compact
+            style={styles.nameField}
+          />
+        </View>
+
+        <View style={styles.inlineQtyUnitStrip}>
+          <QuantityBox
+            label="Qty"
+            value={row.qty}
+            onChangeText={(qty) => onUpdate({ qty })}
+            compact
+            embedded
+          />
+          <View style={styles.inlineUnitSlot}>
+            <UnitPillSelector
+              value={row.unit}
+              onChange={(unit) => onUpdate({ unit })}
+              compact
+              hugContent
+              embedded
+            />
+          </View>
+        </View>
+
+        <View style={styles.inlineExpirySlot}>
+          <ExpiryDateBox
+            value={row.expiry}
+            onChange={(expiry) => onUpdate({ expiry })}
+            compact
+            style={styles.expiryFieldInline}
+          />
+        </View>
+
+        <View style={styles.inlineActionCell}>{action}</View>
+      </View>
+    </View>
+  );
+}
+
 export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  const stackedRows = windowWidth < STACKED_ROW_BREAKPOINT;
   const [draftRows, setDraftRows] = useState<DraftRow[]>(initialDraftRows);
   const [saving, setSaving] = useState(false);
   const { bump } = useAppRefresh();
@@ -154,78 +364,20 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
     >
       <View style={styles.listDivider} />
 
-      {draftRows.map((row, index) => {
-        const isLastRow = index === draftRows.length - 1;
-        const canAdd = isRowAddable(row);
-
-        return (
-          <View key={row.key} style={styles.draftRow}>
-            <Text variant="labelSmall" style={styles.rowIndex}>{index + 1}</Text>
-
-            <ItemNameBox
-              label="Name"
-              value={row.name}
-              onChangeText={(name) => updateDraftRow(row.key, { name })}
-              placeholder="Item name"
-              compact
-              style={styles.nameField}
-            />
-
-            <QuantityBox
-              label="Qty"
-              value={row.qty}
-              onChangeText={(qty) => updateDraftRow(row.key, { qty })}
-              compact
-            />
-
-            <UnitPillSelector
-              value={row.unit}
-              onChange={(unit) => updateDraftRow(row.key, { unit })}
-              compact
-            />
-
-            <ExpiryDateBox
-              value={row.expiry}
-              onChange={(expiry) => updateDraftRow(row.key, { expiry })}
-              compact
-            />
-
-            {isLastRow ? (
-              <Pressable
-                onPress={addDraftRow}
-                disabled={!canAdd}
-                style={({ pressed }) => [
-                  styles.rowActionBtn,
-                  !canAdd && styles.rowActionBtnDisabled,
-                  pressed && canAdd && styles.rowActionBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Add another row"
-                accessibilityState={{ disabled: !canAdd }}
-              >
-                <Icon
-                  source="plus"
-                  size={20}
-                  color={canAdd ? palette.primary : palette.textMuted}
-                />
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => removeDraftRow(row.key)}
-                style={({ pressed }) => [
-                  styles.rowActionBtn,
-                  styles.rowActionBtnRemove,
-                  pressed && styles.rowActionBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Remove row"
-              >
-                <Icon source="minus" size={20} color={palette.textSecondary} />
-              </Pressable>
-            )}
-          </View>
-        );
-      })}
+      {draftRows.map((row, index) => (
+        <DraftRowEditor
+          key={row.key}
+          row={row}
+          index={index}
+          isLastRow={index === draftRows.length - 1}
+          isLastInList={index === draftRows.length - 1}
+          stacked={stackedRows}
+          canAdd={isRowAddable(row)}
+          onUpdate={(patch) => updateDraftRow(row.key, patch)}
+          onAddRow={addDraftRow}
+          onRemoveRow={() => removeDraftRow(row.key)}
+        />
+      ))}
     </BottomSheet>
   );
 }
@@ -234,37 +386,139 @@ const styles = StyleSheet.create({
   listDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: palette.border,
-    marginBottom: 12,
-    marginTop: -4,
+    marginBottom: SP.md,
   },
-  draftRow: {
+  entryCard: {
+    marginBottom: SP.md,
+    paddingBottom: SP.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.borderLight,
+  },
+  entryCardLast: {
+    marginBottom: SP.sm,
+    paddingBottom: 0,
+    borderBottomWidth: 0,
+  },
+  /** Stacked (narrow): index | two-line field block + centered action */
+  stackedRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-    marginBottom: 10,
-    paddingTop: 4,
+    alignItems: 'stretch',
+    gap: SP.sm,
+  },
+  indexColumn: {
+    width: INDEX_COLUMN,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rowIndex: {
-    width: 16,
+    color: palette.textMuted,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  stackedMain: {
+    flex: 1,
+    minWidth: 0,
+    position: 'relative',
+  },
+  stackedFields: {
+    gap: SP.sm,
+    minWidth: 0,
+  },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: SP.sm,
+  },
+  expirySlot: {
+    width: EXPIRY_COLUMN,
+    flexShrink: 0,
+  },
+  measurementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: SP.sm,
+    width: '100%',
+    alignSelf: 'stretch',
+    paddingTop: 6,
+  },
+  unitSlot: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'stretch',
+  },
+  stackedActionColumn: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: ACTION_COLUMN,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  /** Inline (wide): shared label offset so + aligns with input boxes */
+  inlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: SP.sm,
+    width: '100%',
+  },
+  inlineIndexCell: {
+    width: INDEX_COLUMN,
+    paddingTop: 6,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  rowIndexInline: {
     color: palette.textMuted,
     textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: 10,
+    fontWeight: '700',
+    lineHeight: 40,
+  },
+  inlineNameSlot: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 88,
+  },
+  inlineQtyUnitStrip: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: SP.sm,
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingTop: 6,
+  },
+  inlineUnitSlot: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  inlineExpirySlot: {
+    width: EXPIRY_COLUMN,
+    flexShrink: 0,
+  },
+  expiryFieldInline: {
+    width: '100%',
+    marginBottom: 0,
   },
   nameField: {
     flex: 1,
     minWidth: 0,
   },
+  inlineActionCell: {
+    paddingTop: 6,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
   rowActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: ACTION_SIZE,
+    height: ACTION_SIZE,
+    borderRadius: ACTION_SIZE / 2,
     borderWidth: 1.5,
     borderColor: palette.primary,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
     flexShrink: 0,
   },
   rowActionBtnRemove: {

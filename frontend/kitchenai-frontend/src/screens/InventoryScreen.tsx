@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -140,20 +140,23 @@ export function InventoryScreen() {
     void loadData();
   }, [loadData, refreshVersion]);
 
-  useFocusEffect(
-    useCallback(() => {
-      const params = route.params;
-      if (!params?.tab && !params?.expiringSoon) return;
-      if (params.tab === 'expired') {
-        setTab('expired');
-        setExpiringSoonFilter(false);
-      } else if (params.expiringSoon) {
-        setTab('all');
-        setExpiringSoonFilter(true);
-      }
-      navigation.setParams({});
-    }, [route.params, navigation]),
-  );
+  // Deep links from Home (expired banner / expiring soon). Use primitive deps only —
+  // `route.params` object identity changes every render on web and caused setParams loops.
+  useEffect(() => {
+    const tabParam = route.params?.tab;
+    const expiringSoonParam = route.params?.expiringSoon;
+    if (tabParam !== 'expired' && !expiringSoonParam) return;
+
+    if (tabParam === 'expired') {
+      setTab('expired');
+      setExpiringSoonFilter(false);
+    } else if (expiringSoonParam) {
+      setTab('all');
+      setExpiringSoonFilter(true);
+    }
+
+    navigation.setParams({ tab: undefined, expiringSoon: undefined });
+  }, [route.params?.tab, route.params?.expiringSoon, navigation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -456,6 +459,18 @@ export function InventoryScreen() {
 
   const listContentStyle = [styles.list, { paddingBottom: contentPaddingBottom(96) }];
 
+  const webFabAnchor = useMemo(
+    () => (
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        color="#fff"
+        onPress={() => setWebMenuVisible(true)}
+      />
+    ),
+    [],
+  );
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
@@ -578,14 +593,7 @@ export function InventoryScreen() {
           <Menu
             visible={webMenuVisible}
             onDismiss={() => setWebMenuVisible(false)}
-            anchor={
-              <FAB
-                icon="plus"
-                style={styles.fab}
-                color="#fff"
-                onPress={() => setWebMenuVisible(true)}
-              />
-            }
+            anchor={webFabAnchor}
             anchorPosition="top"
           >
             <Menu.Item
@@ -642,9 +650,10 @@ export function InventoryScreen() {
       />
 
       {/* ── Edit Expiry Modal ────────────────────────────────── */}
+      {editTarget !== null && (
       <Portal>
         <Modal
-          visible={editTarget !== null}
+          visible
           onDismiss={closeEditExpiry}
           contentContainerStyle={styles.modal}
         >
@@ -678,6 +687,7 @@ export function InventoryScreen() {
           </View>
         </Modal>
       </Portal>
+      )}
 
       <BillCameraModal
         visible={cameraModalVisible}
@@ -686,9 +696,10 @@ export function InventoryScreen() {
       />
 
       {/* ── Scan Bill Modal ──────────────────────────────────── */}
+      {scanModalVisible && (
       <Portal>
         <Modal
-          visible={scanModalVisible}
+          visible
           onDismiss={closeScanModal}
           contentContainerStyle={styles.scanModal}
         >
@@ -846,6 +857,7 @@ export function InventoryScreen() {
           </ScrollView>
         </Modal>
       </Portal>
+      )}
 
       <AppConfirmDialog
         visible={confirmDialog != null}
