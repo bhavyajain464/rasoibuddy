@@ -83,16 +83,24 @@ Return ONLY a JSON array, no markdown, no explanation:
   {"name": "Tomatoes", "quantity": 2, "unit": "kg", "price_per_unit": 40, "total_price": 80, "shelf_life_days": 7}
 ]`
 
-	// Convert image to base64 if needed and create parts
+	// Build multimodal parts (images or PDF).
 	parts := []genai.Part{
 		genai.Text(prompt),
 	}
 
-	format := "jpeg"
-	if strings.HasPrefix(imageType, "image/") {
-		format = strings.TrimPrefix(imageType, "image/")
+	mime := strings.ToLower(strings.TrimSpace(strings.Split(imageType, ";")[0]))
+	if strings.Contains(mime, "pdf") {
+		parts = append(parts, genai.Blob{MIMEType: "application/pdf", Data: imageData})
+	} else {
+		format := "jpeg"
+		if strings.HasPrefix(imageType, "image/") {
+			format = strings.TrimPrefix(mime, "image/")
+			if format == "jpg" {
+				format = "jpeg"
+			}
+		}
+		parts = append(parts, genai.ImageData(format, imageData))
 	}
-	parts = append(parts, genai.ImageData(format, imageData))
 
 	// Generate content
 	resp, err := model.GenerateContent(ctx, parts...)

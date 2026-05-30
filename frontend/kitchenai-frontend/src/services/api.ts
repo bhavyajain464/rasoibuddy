@@ -36,7 +36,7 @@ import {
   CheckoutOrderResponse,
   VerifyCheckoutRequest,
 } from '../types';
-import { imageUriToBase64 } from '../utils/imageToBase64';
+import { fileUriToBase64 } from '../utils/imageToBase64';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
 
@@ -287,8 +287,8 @@ export async function scanBillTest(): Promise<ScanResult> {
   return res.json();
 }
 
-export async function scanBillUpload(imageUri: string): Promise<ScanResult> {
-  const { base64: base64Data, mimeType } = await imageUriToBase64(imageUri);
+export async function scanBillUpload(fileUri: string, mimeHint?: string): Promise<ScanResult> {
+  const { base64: base64Data, mimeType } = await fileUriToBase64(fileUri, mimeHint);
 
   const res = await authFetch(`${API_BASE_URL}/bill/scan`, {
     method: 'POST',
