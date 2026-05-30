@@ -5,7 +5,7 @@ The **develop** branch is the integration environment. **main** stays production
 | Layer | Production (`main`) | Staging (`develop`) |
 | --- | --- | --- |
 | Git branch | `main` | `develop` |
-| Web (Vercel) | Project **kitchmate** → [kitchmate-one.vercel.app](https://kitchmate-one.vercel.app) | Project **kitchmate-staging** → deploys from `develop` |
+| Web (Vercel) | Project **kitchmate** → [kitchmate-one.vercel.app](https://kitchmate-one.vercel.app) | Project **kitchmate-staging** → [kitchmate-staging.vercel.app](https://kitchmate-staging.vercel.app) (`develop`) |
 | API (Cloud Run) | `kitchenai-backend` | `kitchenai-backend-staging` |
 | Razorpay | Live (`RAZORPAY_ENV=production`) | Test (`RAZORPAY_ENV=staging`) |
 | DB / Redis / Kafka / LLM keys | Shared (same GCP secrets for now) | Same secrets as production |
@@ -59,9 +59,11 @@ Required environment variables (Production target on the **kitchmate-staging** p
 | --- | --- |
 | `EXPO_PUBLIC_API_BASE_URL` | `https://kitchenai-backend-staging-208103249970.asia-south1.run.app/api/v1` |
 | `EXPO_PUBLIC_GOOGLE_*` | Same OAuth client IDs as production (for now) |
-| `EXPO_PUBLIC_WEB_REDIRECT_URI` | Staging Vercel origin + `/` (e.g. `https://kitchmate-staging.vercel.app/`) |
+| `EXPO_PUBLIC_WEB_REDIRECT_URI` | `https://kitchmate-staging.vercel.app` |
 
-Copy OAuth redirect URIs in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) for the **Web** client: add the staging Vercel URL to **Authorized JavaScript origins** and **Authorized redirect URIs** (see `GOOGLE_OAUTH_SETUP.md`).
+Copy OAuth redirect URIs in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) for the **Web** client: add `https://kitchmate-staging.vercel.app` to **Authorized JavaScript origins** and **Authorized redirect URIs** (see `GOOGLE_OAUTH_SETUP.md`).
+
+**One-time (Vercel dashboard):** Project **kitchmate-staging** → Settings → Environments → Production → Branch Tracking → set branch to **`develop`** (so merges to `develop` update the staging URL, not only preview aliases).
 
 CLI helpers (from `frontend/kitchenai-frontend`):
 
