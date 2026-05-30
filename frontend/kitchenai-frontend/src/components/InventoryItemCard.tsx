@@ -44,7 +44,7 @@ export function InventoryItemCard({ item, onPress, onExpire, onEditExpiry }: Inv
             {expiryLabel && (
               <Text variant="bodySmall" style={[
                 styles.expiry,
-                isUrgent && { color: '#FF5722' },
+                isUrgent && { color: '#E65100' },
               ]}>
                 {expiryLabel}
               </Text>
@@ -54,7 +54,7 @@ export function InventoryItemCard({ item, onPress, onExpire, onEditExpiry }: Inv
             {onEditExpiry && (
               <IconButton
                 icon="calendar-edit"
-                iconColor="#2196F3"
+                iconColor="#2E7D32"
                 size={22}
                 onPress={() => onEditExpiry(item)}
                 style={styles.actionBtn}

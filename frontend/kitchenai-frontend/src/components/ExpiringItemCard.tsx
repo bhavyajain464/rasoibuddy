@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   },
   urgentCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#F44336',
+    borderLeftColor: '#FF9800',
   },
   name: {
     fontWeight: '600',
@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   urgentText: {
-    color: '#F44336',
+    color: '#E65100',
   },
 });

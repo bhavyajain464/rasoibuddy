@@ -37,7 +37,7 @@ export function ProfilePlanSettingsSection({
   if (loading && !entitlements) {
     return (
       <Surface style={styles.card} elevation={1}>
-        <ActivityIndicator size="small" color="#4CAF50" />
+        <ActivityIndicator size="small" color="#2E7D32" />
         <Text style={styles.muted}>Loading plan…</Text>
       </Surface>
     );
@@ -60,7 +60,7 @@ export function ProfilePlanSettingsSection({
   const scan = scanUsage(entitlements);
   const isPro = Boolean(entitlements?.is_pro);
   const isElite = Boolean(entitlements?.is_elite);
-  const tierColor = isElite ? '#6A1B9A' : isPro ? '#2E7D32' : '#607D8B';
+  const tierColor = isElite ? '#1B5E20' : isPro ? '#2E7D32' : '#388E3C';
   const tierIcon = isElite ? 'crown' : isPro ? 'star' : 'account';
 
   return (
@@ -101,7 +101,7 @@ export function ProfilePlanSettingsSection({
                 styles.usageFill,
                 {
                   width: `${Math.min(100, scan.pct)}%`,
-                  backgroundColor: scan.pct >= 100 ? '#F44336' : scan.pct >= 90 ? '#FF9800' : '#4CAF50',
+                  backgroundColor: scan.pct >= 100 ? '#F44336' : scan.pct >= 90 ? '#FF9800' : '#388E3C',
                 },
               ]}
             />
@@ -110,7 +110,7 @@ export function ProfilePlanSettingsSection({
         </View>
       ) : isPro ? (
         <View style={styles.unlimitedRow}>
-          <Icon source="infinity" size={18} color="#4CAF50" />
+          <Icon source="infinity" size={18} color="#388E3C" />
           <Text style={styles.unlimitedText}>Unlimited bill scans</Text>
         </View>
       ) : null}
@@ -123,7 +123,7 @@ export function ProfilePlanSettingsSection({
 
       <Pressable onPress={onSyncPayment} disabled={busy} style={styles.syncRow}>
         {busyPlanKey === 'sync' ? (
-          <ActivityIndicator size="small" color="#607D8B" />
+          <ActivityIndicator size="small" color="#388E3C" />
         ) : (
           <Text style={styles.syncText}>Already paid? Activate your plan</Text>
         )}
@@ -167,5 +167,5 @@ const styles = StyleSheet.create({
   unlimitedText: { color: '#2E7D32', fontWeight: '600', fontSize: 13 },
   primaryBtn: { borderRadius: 12, marginBottom: 8 },
   syncRow: { alignItems: 'center', paddingVertical: 8 },
-  syncText: { color: '#607D8B', fontSize: 13, fontWeight: '600' },
+  syncText: { color: '#388E3C', fontSize: 13, fontWeight: '600' },
 });

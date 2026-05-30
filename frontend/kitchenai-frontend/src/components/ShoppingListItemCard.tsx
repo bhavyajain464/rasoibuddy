@@ -8,11 +8,19 @@ interface ShoppingListItemCardProps {
 }
 
 export function ShoppingListItemCard({ item }: ShoppingListItemCardProps) {
-  const isCritical = item.priority === 1;
+  const isExpiringSoon = item.reason !== 'low_stock';
+  const isCritical = item.priority === 1 && !isExpiringSoon;
 
   return (
     <Card
-      style={[styles.card, isCritical ? styles.criticalCard : styles.lowCard]}
+      style={[
+        styles.card,
+        isExpiringSoon
+          ? styles.expiringCard
+          : isCritical
+            ? styles.criticalCard
+            : styles.lowCard,
+      ]}
       mode="elevated"
     >
       <Card.Content style={styles.content}>
@@ -24,7 +32,14 @@ export function ShoppingListItemCard({ item }: ShoppingListItemCardProps) {
         </Text>
         <Chip
           compact
-          style={[styles.chip, isCritical ? styles.criticalChip : styles.lowChip]}
+          style={[
+            styles.chip,
+            isExpiringSoon
+              ? styles.expiringChip
+              : isCritical
+                ? styles.criticalChip
+                : styles.lowChip,
+          ]}
           textStyle={styles.chipText}
         >
           {item.reason === 'low_stock' ? 'Low Stock' : 'Expiring Soon'}
@@ -76,6 +91,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#F44336',
   },
+  expiringCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
   lowCard: {
     borderLeftWidth: 4,
     borderLeftColor: '#FF9800',
@@ -99,6 +118,9 @@ const styles = StyleSheet.create({
   },
   criticalChip: {
     backgroundColor: '#FFEBEE',
+  },
+  expiringChip: {
+    backgroundColor: '#FFF3E0',
   },
   lowChip: {
     backgroundColor: '#FFF3E0',

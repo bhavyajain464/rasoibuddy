@@ -16,7 +16,7 @@ export function ProfileHeaderUpgrade({ entitlements, planLabel, onPress }: Props
   if (isElite) {
     return (
       <View style={[styles.badge, styles.badgeElite]}>
-        <Icon source="crown" size={16} color="#6A1B9A" />
+        <Icon source="crown" size={16} color="#1B5E20" />
         <Text style={[styles.badgeText, styles.badgeTextElite]}>Elite</Text>
       </View>
     );
@@ -32,7 +32,7 @@ export function ProfileHeaderUpgrade({ entitlements, planLabel, onPress }: Props
       accessibilityRole="button"
       accessibilityLabel={isPro ? 'Upgrade to Elite' : 'Upgrade plan'}
     >
-      <Icon source={icon} size={16} color={isPro ? '#6A1B9A' : '#2E7D32'} />
+      <Icon source={icon} size={16} color={isPro ? '#1B5E20' : '#2E7D32'} />
       <View style={styles.upgradeTextWrap}>
         <Text style={[styles.upgradeLabel, isPro && styles.upgradeLabelElite]}>{label}</Text>
         {!isPro ? (
@@ -63,13 +63,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   upgradeBtnElite: {
-    backgroundColor: '#F3E5F5',
+    backgroundColor: '#E8F5E9',
   },
   pressed: { opacity: 0.88 },
   upgradeTextWrap: { flexShrink: 1 },
   upgradeLabel: { fontSize: 14, fontWeight: '800', color: '#2E7D32' },
-  upgradeLabelElite: { color: '#6A1B9A' },
-  upgradeSub: { fontSize: 10, color: '#607D8B', marginTop: 1, fontWeight: '600' },
+  upgradeLabelElite: { color: '#1B5E20' },
+  upgradeSub: { fontSize: 10, color: '#666666', marginTop: 1, fontWeight: '600' },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -81,5 +81,5 @@ const styles = StyleSheet.create({
   },
   badgeElite: { backgroundColor: 'rgba(255,255,255,0.92)' },
   badgeText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  badgeTextElite: { color: '#6A1B9A' },
+  badgeTextElite: { color: '#1B5E20' },
 });

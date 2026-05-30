@@ -8,7 +8,7 @@ interface StatCardProps {
   color?: string;
 }
 
-export function StatCard({ value, label, color = '#4CAF50' }: StatCardProps) {
+export function StatCard({ value, label, color = '#2E7D32' }: StatCardProps) {
   return (
     <Card style={styles.card} mode="elevated">
       <Card.Content style={styles.content}>

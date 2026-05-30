@@ -139,7 +139,7 @@ function IntervalToggle({
             style={[styles.intervalPill, active && styles.intervalPillActive]}
           >
             <View style={styles.intervalPillInner}>
-              {active ? <Icon source="check-circle" size={16} color="#7CB9FF" /> : null}
+              {active ? <Icon source="check-circle" size={16} color="#81C784" /> : null}
               <Text style={[styles.intervalText, active && styles.intervalTextActive]}>{opt.label}</Text>
             </View>
             {opt.hint && active ? (
@@ -166,7 +166,7 @@ function PlanPickCard({
   onSelect: () => void;
 }) {
   const isElite = tier === 'elite';
-  const accent = isElite ? '#CE93D8' : '#81C784';
+  const accent = isElite ? '#A5D6A7' : '#81C784';
   const borderColor = selected ? accent : '#2a3140';
 
   if (!plan && disabled) {
@@ -348,7 +348,7 @@ export function UpgradePaywallModal({
 
               <Pressable onPress={() => void syncLastPayment()} disabled={busy} style={styles.syncRow}>
                 {busyPlanKey === 'sync' ? (
-                  <ActivityIndicator size="small" color="#7CB9FF" />
+                  <ActivityIndicator size="small" color="#81C784" />
                 ) : (
                   <Text style={styles.syncText}>Already paid? Activate your plan</Text>
                 )}
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   tierHead: { color: '#8b939f', fontSize: 13, fontWeight: '700' },
   tierHeadFree: { color: '#9aa3b0' },
   tierHeadActive: { color: '#A5D6A7' },
-  tierHeadActiveElite: { color: '#E1BEE7' },
+  tierHeadActiveElite: { color: '#A5D6A7' },
   currentPlanTag: { color: '#6b7380', fontSize: 9, fontWeight: '600', marginTop: 2 },
 
   compareRow: {
@@ -478,13 +478,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   intervalPillActive: {
-    borderColor: '#4a7bb7',
-    backgroundColor: '#1a2740',
+    borderColor: '#388E3C',
+    backgroundColor: '#1a2420',
   },
   intervalPillInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   intervalText: { color: '#8b939f', fontSize: 14, fontWeight: '600' },
-  intervalTextActive: { color: '#e8f0ff', fontWeight: '700' },
-  intervalHint: { color: '#7CB9FF', fontSize: 11, marginTop: 4, fontWeight: '600' },
+  intervalTextActive: { color: '#E8F5E9', fontWeight: '700' },
+  intervalHint: { color: '#81C784', fontSize: 11, marginTop: 4, fontWeight: '600' },
 
   planRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   planCard: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     }),
   },
   planCardEliteGlow: {
-    backgroundColor: '#221a28',
+    backgroundColor: '#1a2420',
     ...Platform.select({
       web: { boxShadow: '0 0 0 1px rgba(206,147,216,0.4)' } as object,
       default: { elevation: 4 },
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#6A1B9A',
+    backgroundColor: '#1B5E20',
     paddingVertical: 3,
     alignItems: 'center',
     borderTopLeftRadius: 12,
@@ -533,13 +533,13 @@ const styles = StyleSheet.create({
   },
   recommendedText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
   planName: { color: '#b0b8c4', fontSize: 13, fontWeight: '700', marginTop: 8, textTransform: 'uppercase' },
-  planNameElite: { color: '#E1BEE7' },
+  planNameElite: { color: '#A5D6A7' },
   planPrice: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 8 },
   planSuffix: { color: '#8b939f', fontSize: 12, marginTop: 2 },
   planComingSoon: { color: '#888', fontSize: 14, marginTop: 16 },
 
   syncRow: { alignItems: 'center', paddingVertical: 8 },
-  syncText: { color: '#7CB9FF', fontSize: 13, fontWeight: '600' },
+  syncText: { color: '#81C784', fontSize: 13, fontWeight: '600' },
 
   footer: {
     position: 'absolute',
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaPro: { backgroundColor: '#2E7D32' },
-  ctaElite: { backgroundColor: '#7B1FA2' },
+  ctaElite: { backgroundColor: '#1B5E20' },
   ctaDisabled: { opacity: 0.5 },
   ctaInner: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ctaText: { color: '#fff', fontSize: 17, fontWeight: '800' },

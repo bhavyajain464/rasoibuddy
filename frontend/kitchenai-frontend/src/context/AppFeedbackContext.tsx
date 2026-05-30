@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { Snackbar } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
 
 export type FeedbackKind = 'info' | 'success' | 'error';
 
@@ -23,7 +23,7 @@ const AppFeedbackContext = createContext<FeedbackAPI | null>(null);
 export const appFeedbackRef: { current: FeedbackAPI | null } = { current: null };
 
 export function AppFeedbackProvider({ children }: { children: React.ReactNode }) {
-  const insets = useSafeAreaInsets();
+  const { totalHeight } = useTabBarLayout();
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('');
   const [kind, setKind] = useState<FeedbackKind>('info');
@@ -49,7 +49,7 @@ export function AppFeedbackProvider({ children }: { children: React.ReactNode })
   appFeedbackRef.current = api;
 
   const bg =
-    kind === 'error' ? '#C62828' : kind === 'success' ? '#2E7D32' : '#37474F';
+    kind === 'error' ? '#C62828' : kind === 'success' ? '#2E7D32' : '#1B5E20';
 
   return (
     <AppFeedbackContext.Provider value={api}>
@@ -59,7 +59,7 @@ export function AppFeedbackProvider({ children }: { children: React.ReactNode })
         onDismiss={() => setVisible(false)}
         duration={kind === 'error' ? 5000 : 3500}
         action={{ label: 'OK', onPress: () => setVisible(false) }}
-        style={{ marginBottom: insets.bottom + 8, backgroundColor: bg }}
+        style={{ marginBottom: totalHeight + 8, backgroundColor: bg }}
       >
         {message}
       </Snackbar>

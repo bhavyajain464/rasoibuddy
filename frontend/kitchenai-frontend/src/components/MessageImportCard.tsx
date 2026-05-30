@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E8F5E9',
+    borderColor: '#E8E8E8',
   },
   titleRow: {
     flexDirection: 'row',
@@ -82,10 +82,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: '700',
-    color: '#1B5E20',
+    color: '#1A1A1A',
   },
   subtitle: {
-    color: '#666',
+    color: '#666666',
     marginTop: 2,
     lineHeight: 17,
     fontSize: 12,

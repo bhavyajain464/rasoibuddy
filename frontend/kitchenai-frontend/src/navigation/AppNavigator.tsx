@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ActivityIndicator, View, StyleSheet, Text as RNText, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Icon } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -14,55 +16,87 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
+import { AppRefreshProvider } from '../context/AppRefreshContext';
 import { UpgradePaywallProvider } from '../context/UpgradePaywallContext';
 import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { palette } from '../theme';
+import type { MainTabParamList, RootStackParamList } from './types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export const navigationRef = createNavigationContainerRef<{
-  Meals: { openLog?: boolean } | undefined;
-  Profile: { upgradePlan?: boolean } | undefined;
-  Inventory: { tab?: 'all' | 'expired'; expiringSoon?: boolean } | undefined;
-  [key: string]: object | undefined;
-}>();
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const linking = {
   prefixes: [Platform.OS === 'web' ? window.location.origin : 'kitchenai://'],
   config: {
     screens: {
-      Home: '',
-      Inventory: 'inventory',
-      Meals: 'meals',
-      Cook: 'cook',
-      Shopping: 'shopping',
+      MainTabs: {
+        screens: {
+          Home: '',
+          Inventory: 'inventory',
+          Meals: 'meals',
+          Cook: 'cook',
+          Shopping: 'shopping',
+        },
+      },
       Profile: 'profile',
     },
   },
 };
 
-const TAB_ICONS: Record<string, { focused: string; default: string }> = {
-  Home: { focused: '🏠', default: '🏡' },
-  Inventory: { focused: '📦', default: '📋' },
-  Meals: { focused: '🍽️', default: '🍴' },
-  Cook: { focused: '👨‍🍳', default: '🧑‍🍳' },
-  Shopping: { focused: '🛒', default: '🛍️' },
-  Profile: { focused: '👤', default: '👤' },
+const TAB_ICONS: Record<keyof MainTabParamList, string> = {
+  Home: 'home-outline',
+  Inventory: 'clipboard-list-outline',
+  Meals: 'silverware-fork-knife',
+  Cook: 'pot-steam-outline',
+  Shopping: 'cart-outline',
 };
 
-function EmojiIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons = TAB_ICONS[name] || { focused: '📱', default: '📱' };
-  return (
-    <RNText style={styles.emojiIcon}>
-      {focused ? icons.focused : icons.default}
-    </RNText>
-  );
+function TabBarIcon({ name, color }: { name: keyof MainTabParamList; color: string }) {
+  return <Icon source={TAB_ICONS[name]} size={22} color={color} />;
 }
 
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator size="large" color="#4CAF50" />
+      <ActivityIndicator size="large" color="#2E7D32" />
     </View>
+  );
+}
+
+function MainTabNavigator() {
+  const { tabBarStyle } = useTabBarLayout();
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ color }) => (
+          <TabBarIcon name={route.name as keyof MainTabParamList} color={color} />
+        ),
+        tabBarActiveTintColor: palette.primary,
+        tabBarInactiveTintColor: palette.textMuted,
+        tabBarStyle,
+        tabBarLabelStyle: styles.tabLabel,
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="Inventory" component={InventoryScreen} options={{ title: 'Inventory' }} />
+      <Tab.Screen name="Meals" component={MealsScreen} options={{ title: 'Meals' }} />
+      <Tab.Screen name="Cook" component={CookScreen} options={{ title: 'Cook' }} />
+      <Tab.Screen name="Shopping" component={ShoppingScreen} options={{ title: 'Shopping' }} />
+    </Tab.Navigator>
+  );
+}
+
+function RootNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+    </Stack.Navigator>
   );
 }
 
@@ -107,31 +141,15 @@ export function AppNavigator() {
   return (
     <EntitlementsProvider>
     <UpgradePaywallProvider>
+    <AppRefreshProvider>
     <WhatsAppShareProvider>
     <MealLogNotificationProvider navigationRef={navigationRef}>
     <NavigationContainer ref={navigationRef} linking={linking}>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused }) => (
-            <EmojiIcon name={route.name} focused={focused} />
-          ),
-          tabBarActiveTintColor: '#4CAF50',
-          tabBarInactiveTintColor: '#999',
-          tabBarStyle: styles.tabBar,
-          tabBarLabelStyle: styles.tabLabel,
-          headerShown: false,
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-        <Tab.Screen name="Inventory" component={InventoryScreen} options={{ title: 'Inventory' }} />
-        <Tab.Screen name="Meals" component={MealsScreen} options={{ title: 'Meals' }} />
-        <Tab.Screen name="Cook" component={CookScreen} options={{ title: 'Cook' }} />
-        <Tab.Screen name="Shopping" component={ShoppingScreen} options={{ title: 'Shopping' }} />
-        <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
-      </Tab.Navigator>
+      <RootNavigator />
     </NavigationContainer>
     </MealLogNotificationProvider>
     </WhatsAppShareProvider>
+    </AppRefreshProvider>
     </UpgradePaywallProvider>
     </EntitlementsProvider>
   );
@@ -142,25 +160,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-  },
-  emojiIcon: {
-    fontSize: 22,
-  },
-  tabBar: {
-    backgroundColor: '#fff',
-    borderTopWidth: 0,
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -4 },
-    paddingBottom: 6,
-    paddingTop: 6,
-    height: 64,
+    backgroundColor: '#FAFAFA',
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: -2,
   },
 });

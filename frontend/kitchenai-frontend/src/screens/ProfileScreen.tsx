@@ -22,17 +22,20 @@ import {
   Switch,
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { closeProfile } from '../navigation/rootNavigation';
+import type { RootStackParamList } from '../navigation/types';
 import { useUpgradePaywall } from '../context/UpgradePaywallContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { UserProfile, UserMemory } from '../types';
 import * as api from '../services/api';
-import { layout } from '../theme';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { ProfileHeaderUpgrade } from '../components/profile/ProfileHeaderUpgrade';
 import { ProfilePlanSettingsSection } from '../components/profile/ProfilePlanSettingsSection';
+import { AppUpdateSection } from '../components/profile/AppUpdateSection';
 import { showAppError, showAppSuccess, showAppInfo } from '../utils/alertMessage';
 import {
   getMealLogRemindersEnabled,
@@ -60,11 +63,11 @@ const MEMORY_CATEGORIES = [
 
 const SPICE_EMOJI: Record<string, string> = { mild: '🌶', medium: '🌶🌶', spicy: '🌶🌶🌶', extra_spicy: '🔥' };
 
-type ProfileRouteParams = { upgradePlan?: boolean };
+type ProfileRouteParams = RootStackParamList['Profile'];
 
 export function ProfileScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<RouteProp<{ Profile: ProfileRouteParams }, 'Profile'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Profile'>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Profile'>>();
   const { openUpgrade } = useUpgradePaywall();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
@@ -282,7 +285,7 @@ export function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#2E7D32" />
       </View>
     );
   }
@@ -291,12 +294,19 @@ export function ProfileScreen() {
     <>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: layout.tabBarHeight + insets.bottom + 24 }]}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <View style={styles.headerRow}>
+          <IconButton
+            icon="arrow-left"
+            iconColor="#fff"
+            size={22}
+            onPress={closeProfile}
+            style={styles.headerBack}
+          />
           <View style={styles.headerLeft}>
             {user?.picture_url ? (
               <Image source={{ uri: user.picture_url }} style={styles.avatar} />
@@ -330,7 +340,7 @@ export function ProfileScreen() {
             <Text style={styles.statLabel}>Expiring</Text>
           </Surface>
           <Surface style={styles.statPill} elevation={0}>
-            <Text style={[styles.statNum, { color: '#9C27B0' }]}>{profile?.memories?.length || 0}</Text>
+            <Text style={[styles.statNum, { color: '#A5D6A7' }]}>{profile?.memories?.length || 0}</Text>
             <Text style={styles.statLabel}>Memories</Text>
           </Surface>
         </View>
@@ -441,7 +451,7 @@ export function ProfileScreen() {
             <Text variant="titleSmall" style={styles.secTitle}>Allergies</Text>
             <View style={styles.chipRow}>
               {allergies.map(a => (
-                <Chip key={a} onClose={() => setAllergies(allergies.filter(x => x !== a))} style={styles.dangerChip} textStyle={{ color: '#C62828' }}>
+                <Chip key={a} onClose={() => setAllergies(allergies.filter(x => x !== a))} style={styles.grayChip}>
                   {a}
                 </Chip>
               ))}
@@ -453,7 +463,7 @@ export function ProfileScreen() {
                 outlineColor="#E0E0E0" outlineStyle={{ borderRadius: 12 }}
                 onSubmitEditing={() => addCustomItem(newAllergy, allergies, setAllergies, () => setNewAllergy(''))}
               />
-              <IconButton icon="plus-circle" iconColor="#F44336" size={28} onPress={() => addCustomItem(newAllergy, allergies, setAllergies, () => setNewAllergy(''))} style={{ margin: 0 }} />
+              <IconButton icon="plus-circle" iconColor="#888" size={28} onPress={() => addCustomItem(newAllergy, allergies, setAllergies, () => setNewAllergy(''))} style={{ margin: 0 }} />
             </View>
           </Surface>
 
@@ -506,7 +516,7 @@ export function ProfileScreen() {
               mode="outlined" placeholder="e.g. My daughter is allergic to cashews"
               value={memoryContent} onChangeText={setMemoryContent}
               multiline numberOfLines={3} style={styles.memInput}
-              outlineColor="#E0E0E0" activeOutlineColor="#4CAF50" outlineStyle={{ borderRadius: 12 }}
+              outlineColor="#E0E0E0" activeOutlineColor="#2E7D32" outlineStyle={{ borderRadius: 12 }}
             />
             <Button mode="contained" onPress={handleAddMemory} loading={addingMemory} disabled={!memoryContent.trim()} style={styles.addMemBtn}>
               Add Memory
@@ -569,7 +579,7 @@ export function ProfileScreen() {
                   value={mealLogReminders}
                   onValueChange={(v) => void onToggleMealLogReminders(v)}
                   disabled={mealLogRemindersLoading}
-                  color="#4CAF50"
+                  color="#2E7D32"
                 />
               </View>
             </Surface>
@@ -593,13 +603,7 @@ export function ProfileScreen() {
             </View>
           </Surface>
 
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>About</Text>
-            <View style={styles.settRow}>
-              <Text variant="bodyMedium" style={styles.settLabel}>App Version</Text>
-              <Text variant="bodyMedium" style={styles.settVal}>1.0.0</Text>
-            </View>
-          </Surface>
+          <AppUpdateSection />
 
           <Button mode="contained" onPress={handleSignOut} style={styles.signOutBtn} buttonColor="#F44336" contentStyle={{ paddingVertical: 4 }}>
             Sign Out
@@ -626,12 +630,12 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollContent: { paddingBottom: 24 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   header: {
-    backgroundColor: '#607D8B',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 20,
     paddingBottom: 24,
     borderBottomLeftRadius: 28,
@@ -642,6 +646,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
+  },
+  headerBack: {
+    margin: 0,
+    marginLeft: -8,
+    marginRight: -4,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -697,13 +706,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
   },
-  optionActive: { backgroundColor: '#4CAF50' },
+  optionActive: { backgroundColor: '#2E7D32' },
   optionEmoji: { fontSize: 14 },
   optionText: { fontSize: 13, color: '#666', fontWeight: '600' },
   optionTextActive: { color: '#fff' },
 
   selChip: { backgroundColor: '#F5F5F5' },
-  selChipActive: { backgroundColor: '#4CAF50' },
+  selChipActive: { backgroundColor: '#2E7D32' },
   selChipText: { color: '#666' },
   selChipTextActive: { color: '#fff' },
 
@@ -714,14 +723,13 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   addInput: { flex: 1, marginRight: 4, backgroundColor: '#fff' },
 
-  dangerChip: { backgroundColor: '#FFEBEE' },
   grayChip: { backgroundColor: '#F5F5F5' },
 
-  saveBtn: { borderRadius: 14, marginTop: 4, marginBottom: 16, backgroundColor: '#4CAF50' },
+  saveBtn: { borderRadius: 14, marginTop: 4, marginBottom: 16, backgroundColor: '#2E7D32' },
 
   hint: { color: '#888', marginBottom: 12, lineHeight: 18 },
   memInput: { marginTop: 8, marginBottom: 12, backgroundColor: '#fff' },
-  addMemBtn: { backgroundColor: '#4CAF50', borderRadius: 12 },
+  addMemBtn: { backgroundColor: '#2E7D32', borderRadius: 12 },
   memListTitle: { fontWeight: '700', color: '#555', marginTop: 12, marginBottom: 10 },
   emptyMem: { borderRadius: 18, backgroundColor: '#fff', padding: 28, alignItems: 'center' },
   emptyMemText: { textAlign: 'center', color: '#888', marginTop: 8, lineHeight: 20 },

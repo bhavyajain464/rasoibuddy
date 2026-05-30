@@ -29,9 +29,9 @@ export function AppConfirmDialog({
   onDismiss,
   onConfirm,
 }: AppConfirmDialogProps) {
-  const accent = destructive ? '#F44336' : warning ? '#FF9800' : '#2196F3';
+  const accent = destructive ? '#F44336' : warning ? '#FF9800' : '#2E7D32';
   const iconName = icon ?? (destructive ? 'delete-outline' : warning ? 'clock-alert-outline' : 'help-circle-outline');
-  const confirmColor = destructive ? '#F44336' : warning ? '#FF9800' : '#2196F3';
+  const confirmColor = destructive ? '#F44336' : warning ? '#FF9800' : '#2E7D32';
 
   return (
     <Portal>

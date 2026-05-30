@@ -24,7 +24,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
-import { layout } from '../theme';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { navigateToUpgradePlan } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
@@ -61,18 +62,18 @@ interface MealCategory {
 }
 
 const CATEGORIES = [
-  { id: 'daily', title: 'Daily', subtitle: 'Just a dish idea', icon: 'calendar-today', color: '#795548', bg: '#EFEBE9' },
-  { id: 'rescue_meal', title: 'Rescue', subtitle: 'Use expiring items', icon: 'alert-circle-outline', color: '#9C27B0', bg: '#F3E5F5' },
-  { id: 'meal_of_day', title: 'Meal of Day', subtitle: 'Best from inventory', icon: 'star-circle', color: '#FF9800', bg: '#FFF3E0' },
-  { id: 'most_healthy', title: 'Healthy', subtitle: 'Nutrient-rich picks', icon: 'heart-pulse', color: '#4CAF50', bg: '#E8F5E9' },
-  { id: 'most_tasty', title: 'Tasty', subtitle: 'Crowd pleasers', icon: 'fire', color: '#F44336', bg: '#FFEBEE' },
-  { id: 'long_lasting', title: 'Meal Prep', subtitle: 'Cook now, eat later', icon: 'clock-outline', color: '#2196F3', bg: '#E3F2FD' },
+  { id: 'daily', title: 'Daily', subtitle: 'Just a dish idea', icon: 'calendar-today' },
+  { id: 'rescue_meal', title: 'Rescue', subtitle: 'Use expiring items', icon: 'alert-circle-outline' },
+  { id: 'meal_of_day', title: 'Meal of Day', subtitle: 'Best from inventory', icon: 'star-circle' },
+  { id: 'most_healthy', title: 'Healthy', subtitle: 'Nutrient-rich picks', icon: 'heart-pulse' },
+  { id: 'most_tasty', title: 'Tasty', subtitle: 'Crowd pleasers', icon: 'fire' },
+  { id: 'long_lasting', title: 'Meal Prep', subtitle: 'Cook now, eat later', icon: 'clock-outline' },
 ];
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: '#4CAF50',
-  medium: '#FF9800',
-  hard: '#F44336',
+  easy: '#388E3C',
+  medium: '#689F38',
+  hard: '#1B5E20',
 };
 
 const MEAL_TYPE_FILTERS = [
@@ -132,22 +133,18 @@ function CategoryBox({
   icon,
   label,
   subtitle,
-  color,
-  bg,
   locked,
   onPress,
 }: {
   icon: string;
   label: string;
   subtitle: string;
-  color: string;
-  bg: string;
   locked?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.gridItem, pressed && { opacity: 0.88 }]}>
-      <Surface style={[styles.gridSurface, { backgroundColor: bg }]} elevation={1}>
+      <Surface style={styles.gridSurface} elevation={0}>
         {locked ? (
           <View style={styles.premiumBadge}>
             <IconButton icon="lock" size={14} iconColor="#fff" style={{ margin: 0 }} />
@@ -155,28 +152,32 @@ function CategoryBox({
           </View>
         ) : null}
         <View style={styles.gridIconWrap}>
-          <IconButton icon={icon} iconColor={color} size={28} style={{ margin: 0 }} />
+          <IconButton icon={icon} iconColor="#2E7D32" size={26} style={{ margin: 0 }} />
         </View>
-        <Text variant="titleSmall" style={[styles.gridLabel, { color }]}>{label}</Text>
+        <Text variant="titleSmall" style={styles.gridLabel}>{label}</Text>
         <Text variant="bodySmall" style={styles.gridSub}>{subtitle}</Text>
       </Surface>
     </Pressable>
   );
 }
 
-type MealsRouteParams = { openLog?: boolean };
+type MealsRouteParams = {
+  openLog?: boolean;
+  generateCategory?: string;
+  mealType?: MealTypeFilterId;
+};
 
 export function MealsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ Meals: MealsRouteParams }, 'Meals'>>();
   const insets = useSafeAreaInsets();
+  const { contentPaddingBottom } = useTabBarLayout();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [result, setResult] = useState<MealCategory | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userPrompt, setUserPrompt] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState<MealTypeFilterId>('lunch_dinner');
-  const [inventoryCount, setInventoryCount] = useState(0);
   const [mealsTab, setMealsTab] = useState<MealsTab>('suggest');
   const [openLogFromNotification, setOpenLogFromNotification] = useState(false);
   const [cookProfileReady, setCookProfileReady] = useState(false);
@@ -252,7 +253,12 @@ export function MealsScreen() {
     navigation.navigate('Cook', { dishItems: [meal.name, ...pairs] });
   };
 
-  const generateForCategory = useCallback(async (catId: string, excludeDish?: string) => {
+  const generateForCategory = useCallback(async (
+    catId: string,
+    excludeDish?: string,
+    mealTypeOverride?: MealTypeFilterId,
+  ) => {
+    const activeMealType = mealTypeOverride ?? mealTypeFilter;
     setSelectedCategory(catId);
     setLoading(true);
     setError(null);
@@ -264,12 +270,11 @@ export function MealsScreen() {
         catId,
         userPrompt.trim() || undefined,
         excludeDish,
-        mealTypeFilter,
+        activeMealType,
       );
       const categories: MealCategory[] = res.categories || [];
       const match = categories.find((c) => c.id === catId) || categories[0] || null;
       setResult(match);
-      setInventoryCount(res.inventory_items_used || 0);
     } catch (e: unknown) {
       if (e instanceof UpgradeRequiredError) {
         navigateToUpgradePlan(navigation, {
@@ -305,6 +310,28 @@ export function MealsScreen() {
     [isMealCategoryFree, generateForCategory, navigation],
   );
 
+  useEffect(() => {
+    const catId = route.params?.generateCategory;
+    if (!catId) return;
+
+    const mealType = route.params?.mealType ?? 'lunch_dinner';
+    setMealsTab('suggest');
+    setMealTypeFilter(mealType);
+    navigation.setParams({ generateCategory: undefined, mealType: undefined });
+
+    if (!isMealCategoryFree(catId)) {
+      navigateToUpgradePlan(navigation, {
+        source: 'locked_meal',
+        mealCategoryId: catId,
+        preferredTier: 'pro',
+        preferredInterval: 'monthly',
+      });
+      return;
+    }
+
+    void generateForCategory(catId, undefined, mealType);
+  }, [route.params?.generateCategory, route.params?.mealType, navigation, isMealCategoryFree, generateForCategory]);
+
   const goBack = () => {
     setSelectedCategory(null);
     setResult(null);
@@ -316,7 +343,7 @@ export function MealsScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: layout.tabBarHeight + insets.bottom + 24 }]}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom() }]}
       showsVerticalScrollIndicator={false}
     >
       <View
@@ -324,33 +351,36 @@ export function MealsScreen() {
           styles.header,
           { paddingTop: insets.top + 14 },
           activeCat
-            ? { backgroundColor: activeCat.color }
+            ? { backgroundColor: '#2E7D32' }
             : mealsTab === 'history'
-              ? { backgroundColor: '#7B1FA2' }
-              : {},
+              ? { backgroundColor: '#2E7D32' }
+              : { backgroundColor: '#2E7D32' },
         ]}
       >
-        <View style={styles.headerContent}>
-          {selectedCategory && (
-            <Pressable onPress={goBack} style={styles.backRow}>
-              <IconButton icon="arrow-left" iconColor="#fff" size={20} style={{ margin: 0 }} />
-              <Text style={styles.backText}>Back</Text>
-            </Pressable>
-          )}
-          <Text variant="headlineSmall" style={styles.headerTitle}>
-            {activeCat
-              ? activeCat.title
-              : mealsTab === 'history'
-                ? 'History & diet'
-                : 'Smart Meals'}
-          </Text>
-          <Text variant="bodyMedium" style={styles.headerSub}>
-            {activeCat
-              ? activeCat.subtitle
-              : mealsTab === 'history'
-                ? 'Log what you ate · nightly diet email'
-                : 'AI-powered meal ideas from your kitchen'}
-          </Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerContent}>
+            {selectedCategory && (
+              <Pressable onPress={goBack} style={styles.backRow}>
+                <IconButton icon="arrow-left" iconColor="#fff" size={20} style={{ margin: 0 }} />
+                <Text style={styles.backText}>Back</Text>
+              </Pressable>
+            )}
+            <Text variant="headlineSmall" style={styles.headerTitle}>
+              {activeCat
+                ? activeCat.title
+                : mealsTab === 'history'
+                  ? 'History & diet'
+                  : 'Smart Meals'}
+            </Text>
+            <Text variant="bodyMedium" style={styles.headerSub}>
+              {activeCat
+                ? activeCat.subtitle
+                : mealsTab === 'history'
+                  ? 'Log what you ate · nightly diet email'
+                  : 'AI-powered meal ideas from your kitchen'}
+            </Text>
+          </View>
+          <ProfileHeaderButton />
         </View>
       </View>
 
@@ -387,7 +417,7 @@ export function MealsScreen() {
               onChangeText={setUserPrompt}
               style={styles.promptInput}
               outlineColor="#E0E0E0"
-              activeOutlineColor="#FF9800"
+              activeOutlineColor="#2E7D32"
               outlineStyle={{ borderRadius: 14 }}
               dense
               left={<TextInput.Icon icon="message-text-outline" color="#bbb" />}
@@ -405,8 +435,6 @@ export function MealsScreen() {
                 icon={cat.icon}
                 label={cat.title}
                 subtitle={cat.subtitle}
-                color={cat.color}
-                bg={cat.bg}
                 locked={!isMealCategoryFree(cat.id)}
                 onPress={() => onCategoryPress(cat.id)}
               />
@@ -419,7 +447,7 @@ export function MealsScreen() {
       {mealsTab === 'suggest' && loading && (
         <View style={styles.loadingWrap}>
           <Surface style={styles.loadingCard} elevation={2}>
-            <ActivityIndicator size="large" color={activeCat?.color || '#FF9800'} />
+            <ActivityIndicator size="large" color="#2E7D32" />
             <Text variant="titleSmall" style={styles.loadingText}>
               Finding {activeCat?.title || ''} ideas...
             </Text>
@@ -461,28 +489,25 @@ export function MealsScreen() {
               onChangeText={setUserPrompt}
               style={styles.regenInput}
               outlineColor="#E0E0E0"
-              activeOutlineColor={activeCat?.color || '#FF9800'}
+              activeOutlineColor="#2E7D32"
               outlineStyle={{ borderRadius: 12 }}
               dense
-              right={
-                <TextInput.Icon
-                  icon="refresh"
-                  color={activeCat?.color}
-                  onPress={() =>
-                    selectedCategory &&
-                    generateForCategory(selectedCategory, result?.meals?.[0]?.name)
-                  }
-                />
-              }
             />
-            <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
           </View>
 
-          {inventoryCount > 0 && (
-            <Chip icon="food-variant" compact style={styles.invChip} textStyle={{ fontSize: 12 }}>
-              Using {inventoryCount} inventory items
-            </Chip>
-          )}
+          <View style={styles.filterRow}>
+            <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
+            <Pressable
+              onPress={() =>
+                selectedCategory &&
+                generateForCategory(selectedCategory, result?.meals?.[0]?.name)
+              }
+              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.88 }]}
+            >
+              <IconButton icon="refresh" iconColor="#fff" size={18} style={{ margin: 0 }} />
+              <Text style={styles.regenBtnText}>Regenerate Ideas</Text>
+            </Pressable>
+          </View>
 
           {result.meals?.map((meal, idx) => (
             <Card key={idx} style={styles.mealCard} mode="elevated">
@@ -603,17 +628,6 @@ export function MealsScreen() {
               </Card.Content>
             </Card>
           ))}
-
-          <Pressable
-            onPress={() =>
-              selectedCategory &&
-              generateForCategory(selectedCategory, result?.meals?.[0]?.name)
-            }
-            style={[styles.regenBtn, { backgroundColor: activeCat?.color || '#FF9800' }]}
-          >
-            <IconButton icon="refresh" iconColor="#fff" size={18} style={{ margin: 0 }} />
-            <Text style={styles.regenBtnText}>Regenerate Ideas</Text>
-          </Pressable>
         </View>
       )}
 
@@ -623,18 +637,23 @@ export function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollContent: { paddingBottom: 24 },
 
   header: {
-    backgroundColor: '#FF9800',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 20,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  headerContent: {},
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  headerContent: { flex: 1, minWidth: 0 },
   backRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginLeft: -8 },
   backText: { color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontSize: 14 },
   headerTitle: { color: '#fff', fontWeight: '800' },
@@ -643,7 +662,7 @@ const styles = StyleSheet.create({
   tabBar: { paddingHorizontal: GRID_PAD, paddingTop: 14, paddingBottom: 4 },
   segmented: { backgroundColor: '#fff' },
   tabBtn: { backgroundColor: '#fff' },
-  tabBtnActive: { backgroundColor: '#FFF3E0' },
+  tabBtnActive: { backgroundColor: '#E8F5E9' },
 
   promptWrap: { paddingHorizontal: GRID_PAD, paddingTop: 16, gap: 10 },
   promptInput: { backgroundColor: '#fff' },
@@ -653,7 +672,7 @@ const styles = StyleSheet.create({
 
   sectionLabel: {
     fontWeight: '700',
-    color: '#333',
+    color: '#1A1A1A',
     paddingHorizontal: GRID_PAD,
     marginTop: 20,
     marginBottom: 10,
@@ -669,11 +688,19 @@ const styles = StyleSheet.create({
     padding: GRID_GAP / 2,
   },
   gridSurface: {
-    borderRadius: 20,
-    padding: 16,
-    minHeight: 128,
+    borderRadius: 18,
+    padding: 14,
+    minHeight: 120,
     justifyContent: 'center',
     overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   premiumBadge: {
     position: 'absolute',
@@ -694,6 +721,7 @@ const styles = StyleSheet.create({
   gridLabel: {
     fontWeight: '700',
     fontSize: 15,
+    color: '#1A1A1A',
   },
   gridSub: {
     color: '#666',
@@ -748,7 +776,7 @@ const styles = StyleSheet.create({
   },
   historyEmptyBtn: {
     marginTop: 16,
-    borderColor: '#FF9800',
+    borderColor: '#2E7D32',
   },
   addModal: {
     backgroundColor: '#fff',
@@ -868,9 +896,26 @@ const styles = StyleSheet.create({
   errorActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
 
   resultWrap: { paddingHorizontal: GRID_PAD, paddingTop: 4 },
-  regenRow: { marginBottom: 12, gap: 10 },
+  regenRow: { marginBottom: 10, gap: 10 },
   regenInput: { backgroundColor: '#fff' },
-  invChip: { alignSelf: 'flex-start', marginBottom: 12, backgroundColor: '#E8F5E9' },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 8,
+  },
+  regenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2E7D32',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    flexShrink: 1,
+  },
+  regenBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   mealCard: { marginBottom: 14, borderRadius: 16 },
   mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -887,16 +932,16 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   metaText: { color: '#888' },
 
-  ingLabel: { color: '#2E7D32', fontWeight: '700', marginBottom: 6 },
+  ingLabel: { color: '#333333', fontWeight: '700', marginBottom: 6 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   ingChip: { height: 28, backgroundColor: '#E8F5E9' },
-  ingChipText: { fontSize: 11, color: '#2E7D32' },
+  ingChipText: { fontSize: 11, color: '#555555' },
 
-  pairsLabel: { color: '#5D4037', fontWeight: '700', marginBottom: 6 },
-  pairsChip: { height: 30, backgroundColor: '#EFEBE9' },
+  pairsLabel: { color: '#333333', fontWeight: '700', marginBottom: 6 },
+  pairsChip: { height: 30, backgroundColor: '#F5F5F5' },
   pairsChipSelected: { backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#2E7D32' },
-  pairsChipText: { fontSize: 11, color: '#5D4037' },
-  pairsChipTextSelected: { color: '#1B5E20', fontWeight: '600' },
+  pairsChipText: { fontSize: 11, color: '#555555' },
+  pairsChipTextSelected: { color: '#333333', fontWeight: '600' },
 
   orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
   orderChip: { height: 28, backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },
@@ -904,19 +949,9 @@ const styles = StyleSheet.create({
 
   whyBox: { backgroundColor: '#FFF8E1', padding: 14, borderRadius: 12, marginBottom: 8 },
   whyLabel: { color: '#F57F17', fontWeight: '700', marginBottom: 4 },
-  whyText: { color: '#795548', lineHeight: 18 },
+  whyText: { color: '#555555', lineHeight: 18 },
 
-  nutritionText: { color: '#4CAF50', fontStyle: 'italic', marginBottom: 8 },
+  nutritionText: { color: '#666666', fontStyle: 'italic', marginBottom: 8 },
 
   cookBtn: { marginTop: 8, alignSelf: 'flex-start', borderRadius: 10 },
-
-  regenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
-    marginTop: 4,
-  },
-  regenBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

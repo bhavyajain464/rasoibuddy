@@ -33,15 +33,17 @@ import {
   useFocusEffect,
   RouteProp,
 } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { BillCameraModal } from '../components/BillCameraModal';
 import { InventoryItemCard } from '../components/InventoryItemCard';
-import { DEFAULT_UNIT, UnitDropdown } from '../components/UnitDropdown';
+import { AddInventoryModal } from '../components/modals/AddInventoryModal';
 import { pickBillImageFromCameraWeb, pickBillImageFromGallery } from '../utils/billImagePicker';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, ScanResult } from '../types';
-import { colors, layout } from '../theme';
+import { colors } from '../theme';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { showUpgradeMessage } from '../utils/upgrade';
@@ -49,19 +51,18 @@ import { UpgradeRequiredError } from '../services/api';
 import { showAppAlert } from '../utils/alertMessage';
 import { BILL_SCAN_ALERT_MESSAGE, BILL_SCAN_ALERT_TITLE } from '../utils/billScanMessage';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
+import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
+import { useAppRefresh } from '../context/AppRefreshContext';
+import type { MainTabParamList } from '../navigation/types';
 
 type TabValue = 'all' | 'expired';
 
-type InventoryRouteParams = {
-  tab?: TabValue;
-  expiringSoon?: boolean;
-};
-
 export function InventoryScreen() {
   const insets = useSafeAreaInsets();
+  const { totalHeight, contentPaddingBottom } = useTabBarLayout();
   const isFocused = useIsFocused();
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<{ Inventory: InventoryRouteParams }, 'Inventory'>>();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Inventory'>>();
+  const route = useRoute<RouteProp<MainTabParamList, 'Inventory'>>();
   const { entitlements, canBillScan, refresh: refreshEntitlements } = useEntitlements();
   const { startUpgrade } = usePlanUpgrade();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -80,13 +81,8 @@ export function InventoryScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [webMenuVisible, setWebMenuVisible] = useState(false);
 
-  // Manual add modal
+  // Manual add bottom sheet
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newQty, setNewQty] = useState('');
-  const [newUnit, setNewUnit] = useState(DEFAULT_UNIT);
-  const [newExpiry, setNewExpiry] = useState('');
-  const [adding, setAdding] = useState(false);
 
   // Edit expiry modal
   const [editTarget, setEditTarget] = useState<InventoryItem | ExpiringItem | null>(null);
@@ -112,6 +108,7 @@ export function InventoryScreen() {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const { version: refreshVersion, bump } = useAppRefresh();
 
   const loadData = useCallback(async () => {
     try {
@@ -133,9 +130,15 @@ export function InventoryScreen() {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      void loadData();
+    }, [loadData]),
+  );
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void loadData();
+  }, [loadData, refreshVersion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,7 +151,7 @@ export function InventoryScreen() {
         setTab('all');
         setExpiringSoonFilter(true);
       }
-      navigation.setParams({ tab: undefined, expiringSoon: undefined });
+      navigation.setParams({});
     }, [route.params, navigation]),
   );
 
@@ -161,39 +164,6 @@ export function InventoryScreen() {
   const showSnack = (msg: string) => {
     setSnackMsg(msg);
     setSnackVisible(true);
-  };
-
-  // ── Manual Add ────────────────────────────────────────────
-
-  const handleAddItem = async () => {
-    if (!newName.trim() || !newQty.trim()) {
-      showAppInfo('Please fill in name and quantity.');
-      return;
-    }
-    setAdding(true);
-    try {
-      await api.addInventoryItem({
-        canonical_name: newName.trim(),
-        qty: parseFloat(newQty),
-        unit: newUnit.trim(),
-        estimated_expiry: newExpiry.trim() || undefined,
-      });
-      setAddModalVisible(false);
-      resetAddForm();
-      await loadData();
-      showAppSuccess('Item added to inventory.');
-    } catch {
-      showAppError('Could not add item. Check your connection.');
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const resetAddForm = () => {
-    setNewName('');
-    setNewQty('');
-    setNewUnit(DEFAULT_UNIT);
-    setNewExpiry('');
   };
 
   // ── Edit Expiry ──────────────────────────────────────────────
@@ -257,7 +227,10 @@ export function InventoryScreen() {
   const handleAddToShopping = async (item: ExpiringItem) => {
     try {
       await api.addShoppingItem(item.canonical_name, item.qty, item.unit);
+      await api.deleteInventoryItem(item.item_id);
+      await loadData();
       showSnack(`"${item.canonical_name}" added to shopping list`);
+      bump();
     } catch {
       showAppError('Could not add to shopping list.');
     }
@@ -457,14 +430,14 @@ export function InventoryScreen() {
         <View style={styles.expiredActions}>
           <IconButton
             icon="calendar-edit"
-            iconColor="#2196F3"
+            iconColor="#2E7D32"
             size={22}
             onPress={() => openEditExpiry(item)}
             style={styles.actionBtn}
           />
           <IconButton
             icon="cart-plus"
-            iconColor="#4CAF50"
+            iconColor="#388E3C"
             size={22}
             onPress={() => handleAddToShopping(item)}
             style={styles.actionBtn}
@@ -481,22 +454,27 @@ export function InventoryScreen() {
     </Card>
   );
 
-  const listContentStyle = [styles.list, { paddingBottom: layout.tabBarHeight + insets.bottom + 96 }];
+  const listContentStyle = [styles.list, { paddingBottom: contentPaddingBottom(96) }];
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <Text variant="headlineSmall" style={styles.headerTitle}>
-          Inventory
-        </Text>
-        <Text variant="bodyMedium" style={styles.headerSub}>
-          {loading
-            ? 'Loading your kitchen…'
-            : `${inventory.length} in stock · ${expiringItems.length} expiring soon · ${expiredItems.length} expired`}
-        </Text>
-        <Text variant="labelSmall" style={styles.headerHint}>
-          Search and switch tabs below · tap + to add manually or scan a bill
-        </Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerTextBlock}>
+            <Text variant="headlineSmall" style={styles.headerTitle}>
+              Inventory
+            </Text>
+            <Text variant="bodyMedium" style={styles.headerSub}>
+              {loading
+                ? 'Loading your kitchen…'
+                : `${inventory.length} in stock · ${expiringItems.length} expiring soon · ${expiredItems.length} expired`}
+            </Text>
+            <Text variant="labelSmall" style={styles.headerHint}>
+              Search and switch tabs below · tap + to add manually or scan a bill
+            </Text>
+          </View>
+          <ProfileHeaderButton />
+        </View>
       </View>
 
       <Searchbar
@@ -505,7 +483,7 @@ export function InventoryScreen() {
         onChangeText={setSearch}
         style={styles.searchbar}
         inputStyle={styles.searchInput}
-        iconColor="#4CAF50"
+        iconColor="#2E7D32"
         elevation={2}
       />
 
@@ -593,7 +571,7 @@ export function InventoryScreen() {
         <View
           style={[
             styles.webFabWrap,
-            { bottom: layout.tabBarHeight + insets.bottom + 16 },
+            { bottom: totalHeight + 16 },
           ]}
           pointerEvents="box-none"
         >
@@ -639,7 +617,7 @@ export function InventoryScreen() {
                 icon: 'pencil-plus',
                 label: 'Add Manually',
                 onPress: () => setAddModalVisible(true),
-                style: { backgroundColor: '#4CAF50' },
+                style: { backgroundColor: '#2E7D32' },
                 color: '#fff',
               },
               {
@@ -652,64 +630,16 @@ export function InventoryScreen() {
             ]}
             onStateChange={({ open }) => setFabOpen(open)}
             fabStyle={styles.fab}
-            style={{ paddingBottom: layout.tabBarHeight + insets.bottom + 8 }}
+            style={{ paddingBottom: contentPaddingBottom(8) }}
           />
         </Portal>
       ))}
 
-      {/* ── Manual Add Modal ─────────────────────────────────── */}
-      <Portal>
-        <Modal
-          visible={addModalVisible}
-          onDismiss={() => setAddModalVisible(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <Text variant="titleLarge" style={styles.modalTitle}>
-            Add Item Manually
-          </Text>
-          <Divider style={styles.modalDivider} />
-
-          <TextInput
-            label="Item Name"
-            value={newName}
-            onChangeText={setNewName}
-            mode="outlined"
-            style={styles.input}
-            placeholder="e.g. Tomato"
-          />
-          <View style={styles.row}>
-            <TextInput
-              label="Quantity"
-              value={newQty}
-              onChangeText={setNewQty}
-              mode="outlined"
-              style={[styles.input, styles.halfInput]}
-              keyboardType="numeric"
-              placeholder="e.g. 5"
-            />
-            <View style={[styles.halfInput, styles.unitField]}>
-              <UnitDropdown label="Unit" value={newUnit} onChange={setNewUnit} />
-            </View>
-          </View>
-          <TextInput
-            label="Expiry Date (optional)"
-            value={newExpiry}
-            onChangeText={setNewExpiry}
-            mode="outlined"
-            style={styles.input}
-            placeholder="YYYY-MM-DD"
-          />
-
-          <View style={styles.modalActions}>
-            <Button mode="outlined" onPress={() => setAddModalVisible(false)}>
-              Cancel
-            </Button>
-            <Button mode="contained" onPress={handleAddItem} loading={adding}>
-              Add
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <AddInventoryModal
+        visible={addModalVisible}
+        onDismiss={() => setAddModalVisible(false)}
+        onAdded={() => void loadData()}
+      />
 
       {/* ── Edit Expiry Modal ────────────────────────────────── */}
       <Portal>
@@ -945,7 +875,7 @@ export function InventoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     backgroundColor: '#2E7D32',
@@ -953,6 +883,15 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  headerTextBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     color: '#fff',
@@ -1002,7 +941,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   fab: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2E7D32',
   },
   webFabWrap: {
     position: 'absolute',
@@ -1013,7 +952,7 @@ const styles = StyleSheet.create({
   expiredBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFEBEE',
     borderRadius: 12,
     padding: 8,
     paddingRight: 16,
@@ -1021,7 +960,7 @@ const styles = StyleSheet.create({
   },
   expiredBannerText: {
     flex: 1,
-    color: '#E65100',
+    color: '#C62828',
   },
   expiredCard: {
     marginBottom: 8,
@@ -1077,16 +1016,8 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 12,
   },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
   halfInput: {
     flex: 1,
-  },
-  unitField: {
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
   },
 
   // Scan modal

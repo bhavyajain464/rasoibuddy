@@ -82,20 +82,20 @@ function formatScanUsage(ent: Entitlements | null) {
 function tierTheme(tier: TierKey | string) {
   if (tier === 'elite') {
     return {
-      hero: '#6A1B9A',
-      heroSoft: '#F3E5F5',
-      accent: '#9C27B0',
+      hero: '#1B5E20',
+      heroSoft: '#F1F8E9',
+      accent: '#388E3C',
       icon: 'crown' as const,
-      cardBg: '#F3E5F5',
-      cardBorder: '#E1BEE7',
-      labelColor: '#6A1B9A',
+      cardBg: '#F1F8E9',
+      cardBorder: '#C8E6C9',
+      labelColor: '#1B5E20',
     };
   }
   if (tier === 'pro') {
     return {
       hero: '#2E7D32',
       heroSoft: '#E8F5E9',
-      accent: '#4CAF50',
+      accent: '#388E3C',
       icon: 'star' as const,
       cardBg: '#E8F5E9',
       cardBorder: '#C8E6C9',
@@ -103,13 +103,13 @@ function tierTheme(tier: TierKey | string) {
     };
   }
   return {
-    hero: '#455A64',
-    heroSoft: '#ECEFF1',
-    accent: '#607D8B',
+    hero: '#388E3C',
+    heroSoft: '#F1F8E9',
+    accent: '#689F38',
     icon: 'account' as const,
-    cardBg: '#F8F9FA',
+    cardBg: '#FAFAFA',
     cardBorder: '#E0E0E0',
-    labelColor: '#455A64',
+    labelColor: '#388E3C',
   };
 }
 
@@ -223,7 +223,7 @@ function FeatureChecklist({
   muted?: boolean;
   accentColor?: string;
 }) {
-  const checkColor = muted ? '#9E9E9E' : accentColor ?? '#4CAF50';
+  const checkColor = muted ? '#9E9E9E' : accentColor ?? '#388E3C';
   return (
     <View style={styles.checkList}>
       {items.map((item) => (
@@ -412,7 +412,7 @@ export function PlanSubscriptionSection({
   if (loading && !entitlements) {
     return (
       <View style={[styles.wrap, styles.statusBox]}>
-        <ActivityIndicator size="small" color="#4CAF50" />
+        <ActivityIndicator size="small" color="#2E7D32" />
         <Text style={styles.statusText}>Loading your plan…</Text>
       </View>
     );
@@ -552,7 +552,7 @@ export function PlanSubscriptionSection({
 
           <Pressable onPress={onSyncPayment} disabled={busy} style={styles.syncLink}>
             {busyPlanKey === 'sync' ? (
-              <ActivityIndicator size="small" color="#607D8B" />
+              <ActivityIndicator size="small" color="#388E3C" />
             ) : (
               <Text style={styles.syncLinkText}>Already paid? Activate your plan</Text>
             )}
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   checkTextMuted: { color: '#777' },
 
   syncLink: { alignItems: 'center', paddingVertical: 14 },
-  syncLinkText: { color: '#607D8B', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
+  syncLinkText: { color: '#388E3C', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
 
   activeBenefits: { borderRadius: 16, padding: 16, marginBottom: 16, marginHorizontal: 16 },
   activeBenefitsTitle: { fontSize: 14, fontWeight: '700', marginBottom: 10 },
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8E8E8',
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: '#2E7D32',
   },
   upgradeCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   upgradeTitle: { fontSize: 16, fontWeight: '800', color: '#1C1B1F' },

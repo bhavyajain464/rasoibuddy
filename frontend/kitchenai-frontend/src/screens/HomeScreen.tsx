@@ -9,17 +9,22 @@ import {
 import {
   Text,
   Surface,
-  Avatar,
   ActivityIndicator,
-  Badge,
   IconButton,
   Icon,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useAuth } from '../context/AuthContext';
+import { useAppRefresh } from '../context/AppRefreshContext';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem } from '../types';
 import { MessageImportCard } from '../components/MessageImportCard';
+import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
+import { AddInventoryModal } from '../components/modals/AddInventoryModal';
+import { LogMealModal } from '../components/modals/LogMealModal';
+import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -48,36 +53,45 @@ const EXPIRING_PREVIEW = 4;
 export function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { contentPaddingBottom } = useTabBarLayout();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
-  const [shoppingCount, setShoppingCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [logMealModalOpen, setLogMealModalOpen] = useState(false);
+  const [shoppingModalOpen, setShoppingModalOpen] = useState(false);
+  const { version: refreshVersion } = useAppRefresh();
 
   const loadData = useCallback(async () => {
     try {
-      const [inv, exp, expd, shop] = await Promise.all([
+      const [inv, exp, expd] = await Promise.all([
         api.fetchInventory().catch(() => []),
         api.fetchExpiringItems().catch(() => []),
         api.fetchExpiredItems().catch(() => []),
-        api.getShoppingItems().catch(() => []),
       ]);
       setInventory(inv || []);
       setExpiringItems(exp || []);
       setExpiredItems(expd || []);
-      setShoppingCount(shop.filter((s) => !s.bought).length);
     } catch {
       setInventory([]);
       setExpiringItems([]);
       setExpiredItems([]);
-      setShoppingCount(0);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadData();
+    }, [loadData]),
+  );
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData, refreshVersion]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -92,7 +106,7 @@ export function HomeScreen({ navigation }: any) {
       style={styles.container}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingBottom: Math.max(insets.bottom, 16) + 84 },
+        { paddingBottom: contentPaddingBottom(16) },
       ]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
@@ -104,34 +118,7 @@ export function HomeScreen({ navigation }: any) {
             <Text variant="bodyMedium" style={styles.greeting}>{getGreeting()},</Text>
             <Text variant="headlineMedium" style={styles.heroName}>{firstName}</Text>
           </View>
-          <Pressable onPress={() => navigation.navigate('Profile')}>
-            <Avatar.Text
-              size={48}
-              label={user?.name?.charAt(0).toUpperCase() || 'U'}
-              style={styles.avatar}
-              labelStyle={{ fontSize: 20, fontWeight: '700' }}
-            />
-          </Pressable>
-        </View>
-
-        {/* Summary pills */}
-        <View style={styles.pillRow}>
-          <Surface style={styles.pill} elevation={0}>
-            <Text style={styles.pillValue}>{inventory.length}</Text>
-            <Text style={styles.pillLabel}>items in stock</Text>
-          </Surface>
-          {expiringItems.length > 0 && (
-            <Surface style={[styles.pill, styles.pillWarn]} elevation={0}>
-              <Text style={[styles.pillValue, { color: '#E65100' }]}>{expiringItems.length}</Text>
-              <Text style={[styles.pillLabel, { color: '#E65100' }]}>expiring soon</Text>
-            </Surface>
-          )}
-          {expiredItems.length > 0 && (
-            <Surface style={[styles.pill, styles.pillDanger]} elevation={0}>
-              <Text style={[styles.pillValue, { color: '#C62828' }]}>{expiredItems.length}</Text>
-              <Text style={[styles.pillLabel, { color: '#C62828' }]}>expired</Text>
-            </Surface>
-          )}
+          <ProfileHeaderButton size={48} />
         </View>
       </View>
 
@@ -141,41 +128,31 @@ export function HomeScreen({ navigation }: any) {
         <>
           <MessageImportCard />
 
-          {/* ── Quick Actions Grid ────────────────────────── */}
+          {/* ── Quick Actions ─────────────────────────────── */}
           <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.grid}>
+          <View style={styles.actionRow}>
             <ActionCard
-              icon="package-variant"
-              label="Inventory"
-              subtitle={`${inventory.length} items`}
-              color="#4CAF50"
-              bg="#E8F5E9"
-              onPress={() => navigation.navigate('Inventory')}
+              icon="plus-box-outline"
+              label="Add item"
+              onPress={() => setInventoryModalOpen(true)}
             />
             <ActionCard
-              icon="silverware-fork-knife"
-              label="Meal Ideas"
-              subtitle="AI powered"
-              color="#FF9800"
-              bg="#FFF3E0"
-              onPress={() => navigation.navigate('Meals')}
+              icon="lightbulb-on-outline"
+              label="Meal idea"
+              onPress={() => navigation.navigate('Meals', {
+                generateCategory: 'daily',
+                mealType: 'lunch_dinner',
+              })}
             />
             <ActionCard
-              icon="cart-outline"
-              label="Shopping"
-              subtitle={shoppingCount > 0 ? `${shoppingCount} items` : 'List empty'}
-              color="#2196F3"
-              bg="#E3F2FD"
-              badge={shoppingCount > 0 ? shoppingCount : undefined}
-              onPress={() => navigation.navigate('Shopping')}
+              icon="notebook-plus-outline"
+              label="Log meal"
+              onPress={() => setLogMealModalOpen(true)}
             />
             <ActionCard
-              icon="chef-hat"
-              label="Cook"
-              subtitle="Send instructions"
-              color="#9C27B0"
-              bg="#F3E5F5"
-              onPress={() => navigation.navigate('Cook')}
+              icon="cart-plus"
+              label="Add to list"
+              onPress={() => setShoppingModalOpen(true)}
             />
           </View>
 
@@ -224,7 +201,7 @@ export function HomeScreen({ navigation }: any) {
                       <Text style={styles.expiringCountText}>{expiringItems.length}</Text>
                     </View>
                   </View>
-                  <Icon source="chevron-right" size={22} color="#BF360C" />
+                  <Icon source="chevron-right" size={22} color="#E65100" />
                 </Pressable>
 
                 <View style={styles.expiringList}>
@@ -297,7 +274,7 @@ export function HomeScreen({ navigation }: any) {
               style={styles.emptyPantry}
             >
               <Surface style={styles.emptyPantryCard} elevation={1}>
-                <IconButton icon="fridge-outline" size={32} iconColor="#81C784" style={{ margin: 0 }} />
+                <IconButton icon="fridge-outline" size={32} iconColor="#388E3C" style={{ margin: 0 }} />
                 <Text variant="titleSmall" style={styles.emptyPantryTitle}>
                   Your kitchen is empty
                 </Text>
@@ -309,32 +286,41 @@ export function HomeScreen({ navigation }: any) {
           ) : null}
         </>
       )}
+
+      <AddInventoryModal
+        visible={inventoryModalOpen}
+        onDismiss={() => setInventoryModalOpen(false)}
+        onAdded={loadData}
+      />
+      <LogMealModal
+        visible={logMealModalOpen}
+        onDismiss={() => setLogMealModalOpen(false)}
+      />
+      <AddShoppingModal
+        visible={shoppingModalOpen}
+        onDismiss={() => setShoppingModalOpen(false)}
+        onAdded={loadData}
+      />
     </ScrollView>
   );
 }
 
 /* ── Action Card Component ────────────────────────────────── */
 
-function ActionCard({ icon, label, subtitle, color, bg, badge, onPress }: {
+function ActionCard({ icon, label, onPress }: {
   icon: string;
   label: string;
-  subtitle: string;
-  color: string;
-  bg: string;
-  badge?: number;
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionCard, pressed && { opacity: 0.85 }]}>
-      <Surface style={[styles.actionSurface, { backgroundColor: bg }]} elevation={1}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionCard, pressed && { opacity: 0.88 }]}>
+      <Surface style={styles.actionSurface} elevation={0}>
         <View style={styles.actionIconWrap}>
-          <IconButton icon={icon} iconColor={color} size={28} style={{ margin: 0 }} />
-          {badge !== undefined && (
-            <Badge style={styles.actionBadge}>{badge}</Badge>
-          )}
+          <IconButton icon={icon} iconColor="#2E7D32" size={22} style={{ margin: 0 }} />
         </View>
-        <Text variant="titleSmall" style={[styles.actionLabel, { color }]}>{label}</Text>
-        <Text variant="bodySmall" style={styles.actionSub}>{subtitle}</Text>
+        <Text variant="labelMedium" style={styles.actionLabel} numberOfLines={2}>
+          {label}
+        </Text>
       </Surface>
     </Pressable>
   );
@@ -343,7 +329,7 @@ function ActionCard({ icon, label, subtitle, color, bg, badge, onPress }: {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     paddingBottom: 20,
@@ -351,9 +337,9 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 24,
-    paddingBottom: 34,
+    paddingBottom: 28,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -375,47 +361,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginTop: 6,
   },
-  avatar: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  pillRow: {
-    flexDirection: 'row',
-    marginTop: 22,
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  pillWarn: {
-    backgroundColor: '#FFF3E0',
-  },
-  pillDanger: {
-    backgroundColor: '#FFEBEE',
-  },
-  pillValue: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  pillLabel: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 12,
-  },
-
   // Sections
   sectionTitle: {
     fontWeight: '700',
     marginLeft: 24,
     marginTop: 24,
     marginBottom: 6,
-    color: '#333',
+    color: '#1A1A1A',
   },
   expiringSection: {
     marginHorizontal: 24,
@@ -457,7 +409,7 @@ const styles = StyleSheet.create({
   },
   expiringPanelTitle: {
     fontWeight: '800',
-    color: '#BF360C',
+    color: '#E65100',
     flex: 1,
   },
   expiringCountPill: {
@@ -499,7 +451,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   expiringRowAccentUrgent: {
-    backgroundColor: '#FF5722',
+    backgroundColor: '#FB8C00',
   },
   expiringRowAccentWarn: {
     backgroundColor: '#FFB74D',
@@ -523,17 +475,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   expiringDaysPillUrgent: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#FFF3E0',
   },
   expiringDaysPillWarn: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF8E1',
   },
   expiringDaysText: {
     fontSize: 12,
     fontWeight: '800',
   },
   expiringDaysTextUrgent: {
-    color: '#D84315',
+    color: '#EF6C00',
   },
   expiringDaysTextWarn: {
     color: '#E65100',
@@ -551,43 +503,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // Action grid
-  grid: {
+  // Quick actions — compact glass row
+  actionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 18,
-    marginTop: 10,
-    gap: 0,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    gap: 8,
   },
   actionCard: {
-    width: '50%',
-    padding: 7,
+    flex: 1,
+    minWidth: 0,
   },
   actionSurface: {
-    borderRadius: 20,
-    padding: 18,
-    minHeight: 132,
-    justifyContent: 'center',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   actionIconWrap: {
     position: 'relative',
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  actionBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: '#F44336',
+    marginBottom: 4,
   },
   actionLabel: {
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  actionSub: {
-    color: '#888',
-    fontSize: 13,
-    marginTop: 4,
+    fontWeight: '600',
+    fontSize: 10,
+    color: '#1A1A1A',
+    textAlign: 'center',
+    lineHeight: 13,
   },
 
   // Expired banner

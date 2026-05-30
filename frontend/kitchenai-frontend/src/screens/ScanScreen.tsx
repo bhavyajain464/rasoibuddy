@@ -227,7 +227,7 @@ export function ScanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAFAFA',
   },
   content: {
     padding: 16,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   addedLabel: {
-    color: '#4CAF50',
+    color: '#388E3C',
   },
   errorLabel: {
     color: '#F44336',

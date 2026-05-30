@@ -6,18 +6,15 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Platform, StyleSheet, View, ScrollView } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   Button,
-  Dialog,
-  Portal,
   Text,
   TextInput,
   ActivityIndicator,
-  Chip,
-  Checkbox,
   Divider,
   Surface,
+  IconButton,
 } from 'react-native-paper';
 import { useShareIntent } from 'expo-share-intent';
 import * as api from '../services/api';
@@ -28,6 +25,9 @@ import {
   logImportError,
   toUserFacingMessage,
 } from '../utils/whatsappAction';
+import { BottomSheet, bottomSheetInput, bottomSheetPrimaryBtn } from './BottomSheet';
+import { useAppRefresh } from '../context/AppRefreshContext';
+import { palette } from '../theme';
 
 type WhatsAppShareContextValue = {
   openWithText: (text: string) => void;
@@ -52,19 +52,6 @@ const INTENT_LABELS: Record<string, string> = {
   unknown: 'Not understood',
 };
 
-const INTENT_COLORS: Record<string, { fg: string; bg: string }> = {
-  add_to_shopping_list: { fg: '#2196F3', bg: 'rgba(33, 150, 243, 0.13)' },
-  mark_out_of_stock: { fg: '#FF9800', bg: 'rgba(255, 152, 0, 0.13)' },
-  add_inventory: { fg: '#4CAF50', bg: 'rgba(76, 175, 80, 0.13)' },
-  note_dislike: { fg: '#9C27B0', bg: 'rgba(156, 39, 176, 0.13)' },
-  report_cooked_dish: { fg: '#795548', bg: 'rgba(121, 85, 72, 0.13)' },
-  unknown: { fg: '#999999', bg: 'rgba(153, 153, 153, 0.13)' },
-};
-
-function intentColors(intent: string) {
-  return INTENT_COLORS[intent] ?? INTENT_COLORS.unknown;
-}
-
 function WhatsAppShareModal({
   visible,
   initialText,
@@ -80,7 +67,7 @@ function WhatsAppShareModal({
   const [action, setAction] = useState<WhatsAppParsedAction | null>(null);
   const [error, setError] = useState('');
   const [doneMsg, setDoneMsg] = useState('');
-  const [userApproved, setUserApproved] = useState(false);
+  const { bump } = useAppRefresh();
 
   useEffect(() => {
     if (visible) {
@@ -88,13 +75,8 @@ function WhatsAppShareModal({
       setAction(null);
       setError('');
       setDoneMsg('');
-      setUserApproved(false);
     }
   }, [visible, initialText]);
-
-  useEffect(() => {
-    setUserApproved(false);
-  }, [action?.intent, action?.summary, action?.entities?.item_name]);
 
   useEffect(() => {
     const trimmed = clampWhatsAppMessageText(initialText);
@@ -147,6 +129,7 @@ function WhatsAppShareModal({
     try {
       const res = await api.applyWhatsAppAction(action);
       setDoneMsg(res.message || 'Done');
+      bump();
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : String(e);
       logImportError('apply', { rawMessage: raw, cause: e });
@@ -160,155 +143,144 @@ function WhatsAppShareModal({
     action &&
     action.intent !== 'unknown' &&
     action.confidence >= 0.5 &&
-    userApproved &&
     !doneMsg;
 
   const confidence = action?.confidence ?? 0;
   const entities = action?.entities;
   const lowConfidence = action && confidence > 0 && confidence < 0.75;
+  const busy = parsing || applying;
 
   return (
-    <Portal>
-      <Dialog visible={visible} onDismiss={onDismiss} style={styles.dialog}>
-        <Dialog.Icon icon="shield-check-outline" color="#2E7D32" />
-        <Dialog.Title style={styles.dialogTitle}>Review suggestion</Dialog.Title>
-        <Dialog.Content style={styles.dialogContent}>
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+    <BottomSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      dismissDisabled={busy}
+      title="Review suggestion"
+      scrollable
+      maxHeightRatio={0.92}
+      footer={(
+        <View style={styles.footerRow}>
+          <Button
+            mode="outlined"
+            onPress={onDismiss}
+            disabled={busy}
+            style={styles.footerBtn}
+            textColor={palette.textSecondary}
           >
-          <Surface style={styles.disclaimer} elevation={0}>
-            <Text variant="labelMedium" style={styles.disclaimerTitle}>
-              Nothing changes until you confirm
-            </Text>
-            <Text variant="bodySmall" style={styles.disclaimerBody}>
-              AI reads your note and proposes an action. Check both boxes below match what you meant, then apply.
-            </Text>
-          </Surface>
-
-          <Text variant="labelMedium" style={styles.sectionLabel}>Your message</Text>
-          <View style={styles.originalBox}>
-            <Text variant="bodyMedium" style={styles.originalText}>
-              {text.trim() || '—'}
-            </Text>
-          </View>
-
-          {!doneMsg && (
-            <>
-              <TextInput
-                label="Edit message (optional)"
-                value={text}
-                onChangeText={(v) => {
-                  setText(v);
-                  setUserApproved(false);
-                }}
-                mode="outlined"
-                multiline
-                numberOfLines={2}
-                style={styles.input}
-                editable={!parsing && !applying}
-              />
-              <Button mode="text" compact onPress={handleReparse} disabled={parsing || !text.trim()}>
-                Re-analyze after edit
-              </Button>
-            </>
-          )}
-
-          {parsing && (
-            <View style={styles.center}>
-              <ActivityIndicator />
-              <Text variant="bodySmall" style={styles.muted}>Understanding message…</Text>
-            </View>
-          )}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {doneMsg ? (
-            <Text style={styles.success}>{doneMsg}</Text>
-          ) : null}
-
-          {action && !parsing && !doneMsg && (
-            <>
-              <Divider style={styles.divider} />
-              <Text variant="labelMedium" style={styles.sectionLabel}>Proposed action</Text>
-              {lowConfidence && (
-                <Surface style={styles.warnBox} elevation={0}>
-                  <Text variant="bodySmall" style={styles.warnText}>
-                    Low confidence ({formatConfidence(confidence)}%) — please verify this matches what was said.
-                  </Text>
-                </Surface>
-              )}
-              <View style={styles.preview}>
-                <Chip
-                  style={{ backgroundColor: intentColors(action.intent).bg }}
-                  textStyle={{ color: intentColors(action.intent).fg, fontWeight: '700' }}
-                >
-                  {INTENT_LABELS[action.intent] || action.intent}
-                </Chip>
-                <Text variant="bodyMedium" style={styles.summary}>
-                  {action.summary || '—'}
-                </Text>
-                {entities?.item_name ? (
-                  <Text variant="bodySmall" style={styles.muted}>
-                    Item: {entities.item_name}
-                    {entities.qty ? ` · ${entities.qty} ${entities.unit || 'pcs'}` : ''}
-                  </Text>
-                ) : null}
-              </View>
-
-              {action.intent === 'unknown' || action.confidence < 0.5 ? (
-                <Text variant="bodySmall" style={styles.error}>
-                  We could not understand this message well enough to act. Edit the text and re-analyze, or cancel.
-                </Text>
-              ) : (
-                <PressableRow
-                  checked={userApproved}
-                  onPress={() => setUserApproved(!userApproved)}
-                  label="This looks correct — I'm ready to apply"
-                />
-              )}
-            </>
-          )}
-          </ScrollView>
-        </Dialog.Content>
-        <Dialog.Actions style={styles.dialogActions}>
-          <Button onPress={onDismiss} textColor="#666">{doneMsg ? 'Done' : 'Cancel'}</Button>
-          {!doneMsg && (
+            {doneMsg ? 'Done' : 'Cancel'}
+          </Button>
+          {!doneMsg ? (
             <Button
               mode="contained"
-              onPress={handleApply}
+              onPress={() => void handleApply()}
               loading={applying}
-              disabled={!canApply || applying || parsing}
-              buttonColor="#2E7D32"
-              icon="check"
+              disabled={!canApply || busy}
+              buttonColor={palette.primary}
+              style={[styles.footerBtn, styles.footerBtnPrimary]}
+              contentStyle={bottomSheetPrimaryBtn.content}
+              labelStyle={bottomSheetPrimaryBtn.label}
             >
-              Apply changes
+              Apply
             </Button>
-          )}
-        </Dialog.Actions>
-      </Dialog>
-    </Portal>
-  );
-}
+          ) : null}
+        </View>
+      )}
+    >
+      <View style={styles.messageHeader}>
+        <Text variant="labelMedium" style={styles.sectionLabel}>Your message</Text>
+        {!doneMsg ? (
+          <IconButton
+            icon="refresh"
+            size={22}
+            iconColor={palette.primary}
+            onPress={() => void handleReparse()}
+            disabled={parsing || !text.trim() || busy}
+            accessibilityLabel="Re-analyze message"
+            style={styles.refreshBtn}
+          />
+        ) : null}
+      </View>
 
-function PressableRow({
-  checked,
-  onPress,
-  label,
-}: {
-  checked: boolean;
-  onPress: () => void;
-  label: string;
-}) {
-  return (
-    <View style={styles.approveRow}>
-      <Checkbox status={checked ? 'checked' : 'unchecked'} onPress={onPress} />
-      <Text variant="bodySmall" style={styles.approveLabel} onPress={onPress}>
-        {label}
-      </Text>
-    </View>
+      {!doneMsg ? (
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          mode="outlined"
+          style={[bottomSheetInput, styles.messageInput]}
+          outlineColor={palette.border}
+          activeOutlineColor={palette.primary}
+          editable={!busy}
+          placeholder='e.g. "milk khatam ho gaya"'
+          returnKeyType="done"
+        />
+      ) : (
+        <View style={styles.messageBox}>
+          <Text variant="bodyMedium" style={styles.messageText}>
+            {text.trim() || '—'}
+          </Text>
+        </View>
+      )}
+
+      {parsing ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={palette.primary} />
+          <Text variant="bodySmall" style={styles.muted}>Understanding message…</Text>
+        </View>
+      ) : null}
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {doneMsg ? (
+        <Surface style={styles.successBox} elevation={0}>
+          <Text style={styles.success}>{doneMsg}</Text>
+        </Surface>
+      ) : null}
+
+      {action && !parsing && !doneMsg ? (
+        <>
+          <Divider style={styles.divider} />
+          <Text variant="labelMedium" style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            Proposed action
+          </Text>
+
+          {lowConfidence ? (
+            <Surface style={styles.warnBox} elevation={0}>
+              <Text variant="bodySmall" style={styles.warnText}>
+                Low confidence ({formatConfidence(confidence)}%) — please verify this matches what was said.
+              </Text>
+            </Surface>
+          ) : null}
+
+          <Surface style={styles.preview} elevation={0}>
+            <View style={styles.intentPill}>
+              <Text style={styles.intentPillText}>
+                {INTENT_LABELS[action.intent] || action.intent}
+              </Text>
+            </View>
+            <Text variant="bodyMedium" style={styles.summary}>
+              {action.summary || '—'}
+            </Text>
+            {entities?.item_name ? (
+              <Text variant="bodySmall" style={styles.muted}>
+                Item: {entities.item_name}
+                {entities.qty ? ` · ${entities.qty} ${entities.unit || 'pcs'}` : ''}
+              </Text>
+            ) : null}
+            {entities?.dish_name ? (
+              <Text variant="bodySmall" style={styles.muted}>
+                Dish: {entities.dish_name}
+              </Text>
+            ) : null}
+          </Surface>
+
+          {action.intent === 'unknown' || action.confidence < 0.5 ? (
+            <Text variant="bodySmall" style={styles.error}>
+              We could not understand this message well enough to act. Edit the text and tap refresh, or cancel.
+            </Text>
+          ) : null}
+        </>
+      ) : null}
+    </BottomSheet>
   );
 }
 
@@ -358,123 +330,115 @@ export function WhatsAppShareProvider({ children }: { children: React.ReactNode 
 }
 
 const styles = StyleSheet.create({
-  dialog: {
-    borderRadius: 20,
-    maxWidth: 480,
-    alignSelf: 'center',
-    backgroundColor: '#fff',
+  sectionLabel: {
+    color: palette.textSecondary,
+    fontWeight: '600',
+    marginBottom: 0,
   },
-  dialogTitle: {
-    textAlign: 'center',
-    fontWeight: '800',
-    color: '#1B5E20',
+  sectionLabelSpaced: {
+    marginBottom: 8,
   },
-  dialogContent: {
-    paddingHorizontal: 0,
-    maxHeight: 440,
+  messageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  scroll: {
-    maxHeight: 400,
+  refreshBtn: {
+    margin: 0,
   },
-  scrollContent: {
-    paddingBottom: 8,
-  },
-  dialogActions: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  disclaimer: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 14,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2E7D32',
-  },
-  disclaimerTitle: {
-    color: '#1B5E20',
-    fontWeight: '700',
+  messageInput: {
     marginBottom: 4,
   },
-  disclaimerBody: {
-    color: '#33691E',
-    lineHeight: 18,
-  },
-  sectionLabel: {
-    color: '#555',
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 4,
-  },
-  originalBox: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
+  messageBox: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: palette.border,
   },
-  originalText: {
-    color: '#333',
+  messageText: {
+    color: palette.text,
     lineHeight: 22,
   },
-  input: {
-    marginBottom: 4,
-    maxHeight: 80,
-  },
   divider: {
-    marginVertical: 12,
+    marginVertical: 16,
+    backgroundColor: palette.borderLight,
   },
   warnBox: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 8,
+    backgroundColor: palette.warningBg,
+    borderRadius: 10,
     padding: 10,
-    marginBottom: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: palette.warningBorder,
   },
   warnText: {
-    color: '#E65100',
+    color: palette.warning,
     lineHeight: 18,
   },
-  approveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    paddingRight: 8,
-  },
-  approveLabel: {
-    flex: 1,
-    color: '#333',
-    lineHeight: 20,
-  },
-  center: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 8,
-  },
-  muted: {
-    color: '#888',
-  },
-  error: {
-    color: '#C62828',
-    marginTop: 8,
-  },
-  success: {
-    color: '#2E7D32',
-    marginTop: 12,
-    fontWeight: '600',
-  },
   preview: {
-    marginTop: 12,
-    gap: 8,
-    padding: 12,
-    backgroundColor: '#F5F5F5',
+    gap: 10,
+    padding: 14,
+    backgroundColor: '#FAFAFA',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.borderLight,
+  },
+  intentPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: palette.primaryDark,
+  },
+  intentPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
   summary: {
     fontWeight: '600',
-    color: '#333',
+    color: palette.text,
+    lineHeight: 22,
   },
-  confidence: {
-    color: '#999',
+  center: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  muted: {
+    color: palette.textMuted,
+    lineHeight: 18,
+  },
+  error: {
+    color: palette.error,
+    marginTop: 10,
+    lineHeight: 20,
+  },
+  successBox: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: palette.primaryContainer,
+    borderWidth: 1,
+    borderColor: palette.primaryContainerDark,
+  },
+  success: {
+    color: palette.primaryDark,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  footerBtn: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  footerBtnPrimary: {
+    flex: 1.4,
   },
 });

@@ -25,7 +25,8 @@ import * as api from '../services/api';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 import { buildWaMeUrl, isIosHomeScreenWeb, openWhatsAppUrl } from '../utils/openWhatsApp';
 import { CookedLogEntry, CookProfile } from '../types';
-import { layout } from '../theme';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { MessageComposer } from '../components/MessageComposer';
 import {
   buildCookMessage,
@@ -37,8 +38,8 @@ import {
   type CookMessageLang,
 } from '../utils/cookMessageTemplates';
 
-const COOK_ACCENT = '#128C7E';
-const COOK_BORDER = '#B2DFDB';
+const COOK_ACCENT = '#2E7D32';
+const COOK_BORDER = '#C8E6C9';
 
 function primaryDishFromMessage(message: string): string {
   const line = message.trim().split('\n')[0]?.trim() || '';
@@ -48,6 +49,7 @@ function primaryDishFromMessage(message: string): string {
 export function CookScreen() {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
+  const { contentPaddingBottom } = useTabBarLayout();
   const scrollRef = useRef<ScrollViewType>(null);
   const [cookProfile, setCookProfile] = useState<CookProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -269,21 +271,26 @@ export function CookScreen() {
     <ScrollView
       ref={scrollRef}
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: layout.tabBarHeight + insets.bottom + 24 }]}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom() }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <IconButton icon="chef-hat" iconColor="rgba(255,255,255,0.4)" size={40} style={styles.headerBg} />
-        <Text variant="headlineSmall" style={styles.headerTitle}>Cook Communication</Text>
+        <View style={styles.headerTopRow}>
+          <Text variant="headlineSmall" style={[styles.headerTitle, styles.headerTitleFlex]}>
+            Cook Communication
+          </Text>
+          <ProfileHeaderButton />
+        </View>
       </View>
 
       {/* Message to cook */}
       <Surface style={styles.sendCard} elevation={1}>
         <View style={styles.sendTitleRow}>
           <View style={styles.sendTitleIcon}>
-            <Icon source="whatsapp" size={18} color={COOK_ACCENT} />
+            <Icon source="whatsapp" size={18} color="#25D366" />
           </View>
           <View style={styles.sendTitleText}>
             <Text variant="titleSmall" style={styles.sendTitle}>
@@ -395,7 +402,7 @@ export function CookScreen() {
               style={styles.input}
               dense
               outlineColor="#E0E0E0"
-              activeOutlineColor="#128C7E"
+              activeOutlineColor="#2E7D32"
               outlineStyle={{ borderRadius: 12 }}
             />
             <TextInput
@@ -492,11 +499,11 @@ export function CookScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollContent: { paddingBottom: 24 },
 
   header: {
-    backgroundColor: '#128C7E',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,
@@ -505,7 +512,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerBg: { position: 'absolute', top: 8, right: 8, opacity: 0.15 },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   headerTitle: { color: '#fff', fontWeight: '800' },
+  headerTitleFlex: { flex: 1, minWidth: 0 },
 
   sendCard: {
     marginHorizontal: 20,
@@ -514,7 +527,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E0F2F1',
+    borderColor: '#C8E6C9',
   },
   sendTitleRow: {
     flexDirection: 'row',
@@ -526,12 +539,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#E0F2F1',
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendTitleText: { flex: 1 },
-  sendTitle: { fontWeight: '700', color: '#00695C' },
+  sendTitle: { fontWeight: '700', color: '#1A1A1A' },
   cardLabel: { fontWeight: '700', color: '#333', marginBottom: 12 },
   input: { backgroundColor: '#fff', marginBottom: 10 },
 
@@ -554,7 +567,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#A5D6A7',
   },
-  waFallbackText: { color: '#128C7E', fontWeight: '600', textAlign: 'center' },
+  waFallbackText: { color: '#25D366', fontWeight: '600', textAlign: 'center' },
 
   profileCard: {
     marginHorizontal: 20,
@@ -571,7 +584,7 @@ const styles = StyleSheet.create({
   },
   profileHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   profileHeaderText: { flex: 1 },
-  profileAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#128C7E', justifyContent: 'center', alignItems: 'center' },
+  profileAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2E7D32', justifyContent: 'center', alignItems: 'center' },
   profileTitle: { fontWeight: '700', color: '#333' },
   profileDetailLine: { color: '#666', marginTop: 2, lineHeight: 17 },
   profileDetailLineWarn: { color: '#E65100' },
@@ -590,7 +603,7 @@ const styles = StyleSheet.create({
   langLabel: { color: '#888', marginTop: 4 },
   langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   langChipPick: { backgroundColor: '#F0F0F0' },
-  langChipActive: { backgroundColor: '#128C7E' },
+  langChipActive: { backgroundColor: '#2E7D32' },
   langChipTextActive: { color: '#fff' },
   noPhone: { color: '#E65100', marginTop: 4 },
 

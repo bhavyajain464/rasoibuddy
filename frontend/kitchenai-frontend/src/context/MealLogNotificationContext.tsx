@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainerRef } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/types';
 import {
   addMealLogNotificationResponseListener,
   getLastNotificationResponse,
@@ -8,13 +9,8 @@ import {
   syncMealLogRemindersIfEnabled,
 } from '../services/mealLogNotifications';
 
-type RootParamList = {
-  Meals: { openLog?: boolean } | undefined;
-  [key: string]: object | undefined;
-};
-
 type Props = {
-  navigationRef: React.RefObject<NavigationContainerRef<RootParamList> | null>;
+  navigationRef: React.RefObject<NavigationContainerRef<RootStackParamList> | null>;
   children: React.ReactNode;
 };
 
@@ -29,7 +25,7 @@ export function MealLogNotificationProvider({ navigationRef, children }: Props) 
     const openMealLog = () => {
       const nav = navigationRef.current;
       if (!nav?.isReady()) return;
-      nav.navigate('Meals', { openLog: true });
+      nav.navigate('MainTabs', { screen: 'Meals', params: { openLog: true } });
     };
 
     const handleResponse = (response: import('expo-notifications').NotificationResponse) => {

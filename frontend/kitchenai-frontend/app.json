@@ -20,7 +20,13 @@
         "NSCameraUsageDescription": "Kitchen AI needs camera access to scan grocery bills.",
         "NSPhotoLibraryUsageDescription": "Kitchen AI needs photo library access to select grocery bill images.",
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["tez", "phonepe", "paytmmp", "bhim", "credpay"]
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "phonepe",
+          "paytmmp",
+          "bhim",
+          "credpay"
+        ]
       }
     },
     "android": {
@@ -49,7 +55,9 @@
           "iosActivationRules": {
             "NSExtensionActivationSupportsText": true
           },
-          "androidIntentFilters": ["text/*"]
+          "androidIntentFilters": [
+            "text/*"
+          ]
         }
       ],
       "expo-image-picker",
@@ -87,7 +95,8 @@
             }
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

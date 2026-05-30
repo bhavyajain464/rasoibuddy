@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   canCook: {
     borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: '#388E3C',
   },
   cannotCook: {
     borderLeftWidth: 4,
@@ -117,10 +117,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   metaText: {
-    color: '#795548',
+    color: '#1B5E20',
   },
   reason: {
-    color: '#2196F3',
+    color: '#2E7D32',
     fontStyle: 'italic',
     marginBottom: 8,
   },

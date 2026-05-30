@@ -202,7 +202,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               ].map((f, i) => (
                 <View key={i} style={styles.featureRow}>
                   <Surface style={styles.featureIcon} elevation={0}>
-                    <IconButton icon={f.icon} iconColor="#4CAF50" size={20} style={{ margin: 0 }} />
+                    <IconButton icon={f.icon} iconColor="#2E7D32" size={20} style={{ margin: 0 }} />
                   </Surface>
                   <Text variant="bodyMedium" style={styles.featureText}>{f.text}</Text>
                 </View>
@@ -284,7 +284,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               <Text variant="titleSmall" style={styles.secLabel}>Allergies (optional)</Text>
               <View style={styles.chipRow}>
                 {allergies.map(a => (
-                  <Chip key={a} onClose={() => setAllergies(prev => prev.filter(x => x !== a))} style={styles.allergyChip} textStyle={{ color: '#C62828' }}>
+                  <Chip key={a} onClose={() => setAllergies(prev => prev.filter(x => x !== a))} style={styles.grayChip}>
                     {a}
                   </Chip>
                 ))}
@@ -296,7 +296,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   outlineStyle={{ borderRadius: 12 }} outlineColor="#E0E0E0"
                   onSubmitEditing={addAllergy}
                 />
-                <IconButton icon="plus-circle" iconColor="#F44336" size={28} onPress={addAllergy} style={{ margin: 0 }} />
+                <IconButton icon="plus-circle" iconColor="#888" size={28} onPress={addAllergy} style={{ margin: 0 }} />
               </View>
             </Surface>
           </View>
@@ -325,7 +325,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     const idx = staples.indexOf(item);
                     return (
                       <Pressable key={idx} onPress={() => toggleStaple(idx)} style={styles.stapleRow}>
-                        <Checkbox status={item.selected ? 'checked' : 'unchecked'} onPress={() => toggleStaple(idx)} color="#4CAF50" />
+                        <Checkbox status={item.selected ? 'checked' : 'unchecked'} onPress={() => toggleStaple(idx)} color="#2E7D32" />
                         <View style={styles.stapleInfo}>
                           <Text variant="bodyMedium" style={[styles.stapleName, !item.selected && { color: '#aaa' }]}>
                             {item.name}
@@ -377,10 +377,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
   progressWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   progressBar: { height: 6, backgroundColor: '#E0E0E0', borderRadius: 3 },
-  progressFill: { height: 6, backgroundColor: '#4CAF50', borderRadius: 3 },
+  progressFill: { height: 6, backgroundColor: '#2E7D32', borderRadius: 3 },
   progressText: { color: '#999', fontSize: 12, marginTop: 6, textAlign: 'center' },
 
   scroll: { flex: 1 },
@@ -406,11 +406,11 @@ const styles = StyleSheet.create({
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { backgroundColor: '#F5F5F5' },
-  chipActive: { backgroundColor: '#4CAF50' },
-  allergyChip: { backgroundColor: '#FFEBEE' },
+  chipActive: { backgroundColor: '#2E7D32' },
+  grayChip: { backgroundColor: '#F5F5F5' },
 
   spicePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F5F5F5', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
-  spicePillActive: { backgroundColor: '#4CAF50' },
+  spicePillActive: { backgroundColor: '#2E7D32' },
   spiceEmoji: { fontSize: 14 },
   spiceText: { fontSize: 13, color: '#666', fontWeight: '600' },
 
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   catSection: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
   catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   catLabel: { fontWeight: '700', color: '#333' },
-  selectAllText: { color: '#4CAF50', fontWeight: '600', fontSize: 13 },
+  selectAllText: { color: '#2E7D32', fontWeight: '600', fontSize: 13 },
   stapleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
   stapleInfo: { flex: 1, marginLeft: 4 },
   stapleName: { fontWeight: '500', color: '#333' },
@@ -441,5 +441,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   backBtn: { borderRadius: 12 },
-  nextBtn: { borderRadius: 12, backgroundColor: '#4CAF50', minWidth: 140 },
+  nextBtn: { borderRadius: 12, backgroundColor: '#2E7D32', minWidth: 140 },
 });

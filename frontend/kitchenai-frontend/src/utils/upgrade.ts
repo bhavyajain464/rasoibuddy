@@ -4,6 +4,7 @@ import {
   upgradePaywallRef,
   type UpgradePaywallOptions,
 } from '../context/UpgradePaywallContext';
+import { openProfile } from '../navigation/rootNavigation';
 
 type UpgradeNavigation = {
   navigate: (screen: string, params?: { upgradePlan?: boolean }) => void;
@@ -18,7 +19,7 @@ export function navigateToUpgradePlan(
     upgradePaywallRef.current.openUpgrade(options ?? { source: 'locked_meal' });
     return;
   }
-  navigation?.navigate('Profile', { upgradePlan: true });
+  openProfile({ upgradePlan: true });
 }
 
 export function showUpgradeMessage(message: string, onUpgrade?: () => void) {

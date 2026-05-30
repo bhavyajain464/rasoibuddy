@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/models"
@@ -27,6 +29,13 @@ func GetOnboardingStatus(db *sql.DB) http.HandlerFunc {
 		err := db.QueryRow(`SELECT COALESCE(onboarding_done, FALSE) FROM user_prefs WHERE user_id = $1`, userID).Scan(&done)
 		if err != nil {
 			done = false
+		}
+
+		if previewEmail := strings.ToLower(strings.TrimSpace(os.Getenv("ONBOARDING_PREVIEW_EMAIL"))); previewEmail != "" {
+			var email string
+			if qerr := db.QueryRow(`SELECT LOWER(TRIM(email)) FROM users WHERE user_id = $1`, userID).Scan(&email); qerr == nil && email == previewEmail {
+				done = false
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

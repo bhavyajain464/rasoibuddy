@@ -4,12 +4,7 @@ import {
   Text,
   Surface,
   Button,
-  IconButton,
   Chip,
-  Portal,
-  Modal,
-  Divider,
-  TextInput,
   Switch,
   ActivityIndicator,
   Icon,
@@ -18,24 +13,13 @@ import * as api from '../../services/api';
 import { CookedLogEntry, DietAnalysisSettings } from '../../types';
 import { useUpgradePaywall } from '../../context/UpgradePaywallContext';
 import { showAppError } from '../../utils/alertMessage';
+import { LogMealModal } from '../modals/LogMealModal';
 
 const SOURCE_LABELS: Record<string, string> = {
   manual: 'Logged',
   'whatsapp-parsed': 'WhatsApp',
   'cook-reported': 'From cook',
 };
-
-const MEAL_SLOTS = [
-  { id: 'breakfast', label: 'Breakfast' },
-  { id: 'lunch', label: 'Lunch' },
-  { id: 'dinner', label: 'Dinner' },
-  { id: 'snack', label: 'Snack' },
-] as const;
-
-function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 type Props = {
   openAddOnMount?: boolean;
@@ -49,12 +33,6 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
   const [dietLoading, setDietLoading] = useState(true);
   const [dietSaving, setDietSaving] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [addDishName, setAddDishName] = useState('');
-  const [addMealSlot, setAddMealSlot] = useState('');
-  const [addCookedOn, setAddCookedOn] = useState(todayISO);
-  const [addNotes, setAddNotes] = useState('');
-  const [addSaving, setAddSaving] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -90,37 +68,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
   }, [openAddOnMount, onAddModalOpened]);
 
   const openAddMeal = () => {
-    setAddDishName('');
-    setAddMealSlot('');
-    setAddCookedOn(todayISO());
-    setAddNotes('');
-    setAddError(null);
     setAddModalVisible(true);
-  };
-
-  const handleAddMeal = async () => {
-    const name = addDishName.trim();
-    if (!name) {
-      setAddError('Enter what you ate.');
-      return;
-    }
-    setAddSaving(true);
-    setAddError(null);
-    try {
-      await api.logCookedDish({
-        dish_name: name,
-        meal_slot: addMealSlot || undefined,
-        source: 'manual',
-        notes: addNotes.trim() || undefined,
-        cooked_on: addCookedOn.trim() || todayISO(),
-      });
-      setAddModalVisible(false);
-      await refreshHistory();
-    } catch {
-      setAddError('Could not save. Check you are signed in and the backend is running.');
-    } finally {
-      setAddSaving(false);
-    }
   };
 
   const toggleDietEmail = async (enabled: boolean) => {
@@ -143,7 +91,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
     <View style={styles.wrap}>
       <Surface style={styles.dietCard} elevation={1}>
         <View style={styles.dietHeader}>
-          <Icon source="chart-line" size={28} color="#6A1B9A" />
+          <Icon source="chart-line" size={28} color="#2E7D32" />
           <View style={styles.dietHeaderText}>
             <Text variant="titleMedium" style={styles.dietTitle}>Diet analysis</Text>
             <Text variant="bodySmall" style={styles.dietSub}>
@@ -153,7 +101,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
         </View>
 
         {dietLoading ? (
-          <ActivityIndicator style={{ marginVertical: 12 }} color="#6A1B9A" />
+          <ActivityIndicator style={{ marginVertical: 12 }} color="#2E7D32" />
         ) : dietSettings?.eligible ? (
           <>
             <Text variant="bodySmall" style={styles.dietMeta}>
@@ -171,7 +119,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
                 value={dietSettings.email_enabled}
                 onValueChange={(v) => void toggleDietEmail(v)}
                 disabled={dietSaving || !dietSettings.smtp_configured}
-                color="#6A1B9A"
+                color="#2E7D32"
               />
             </View>
           </>
@@ -185,7 +133,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
               icon="crown"
               onPress={openDietUpgrade}
               style={styles.eliteBtn}
-              buttonColor="#6A1B9A"
+              buttonColor="#2E7D32"
             >
               Upgrade to Elite
             </Button>
@@ -198,7 +146,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
           <Text variant="titleMedium" style={styles.historyTitle}>Recent meals</Text>
           <Text variant="bodySmall" style={styles.historySubtitle}>Last 15 days · anything you ate</Text>
         </View>
-        <Button mode="contained" icon="plus" compact onPress={openAddMeal} buttonColor="#7B1FA2">
+        <Button mode="contained" icon="plus" compact onPress={openAddMeal} buttonColor="#2E7D32">
           Log meal
         </Button>
       </View>
@@ -208,7 +156,7 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
           <Text variant="bodySmall" style={styles.historyEmptyText}>
             Log breakfast, lunch, snacks — homemade or restaurant. These feed your nightly diet email.
           </Text>
-          <Button mode="outlined" icon="plus" onPress={openAddMeal} textColor="#7B1FA2">
+          <Button mode="outlined" icon="plus" onPress={openAddMeal} textColor="#2E7D32">
             Log your first meal
           </Button>
         </Surface>
@@ -235,51 +183,11 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
         ))
       )}
 
-      <Portal>
-        <Modal visible={addModalVisible} onDismiss={() => setAddModalVisible(false)} contentContainerStyle={styles.addModal}>
-          <Text variant="titleLarge">Log a meal</Text>
-          <Text variant="bodySmall" style={styles.addModalSub}>
-            Any dish — not limited to the meal catalog.
-          </Text>
-          <Divider style={styles.divider} />
-          <TextInput
-            label="What did you eat?"
-            value={addDishName}
-            onChangeText={setAddDishName}
-            mode="outlined"
-            style={styles.input}
-            placeholder="e.g. Poha, office canteen thali"
-          />
-          <Text variant="labelMedium" style={styles.slotLabel}>Meal (optional)</Text>
-          <View style={styles.slotRow}>
-            {MEAL_SLOTS.map((slot) => {
-              const selected = addMealSlot === slot.id;
-              return (
-                <Chip
-                  key={slot.id}
-                  compact
-                  selected={selected}
-                  onPress={() => setAddMealSlot(selected ? '' : slot.id)}
-                  style={selected ? styles.slotChipOn : undefined}
-                >
-                  {slot.label}
-                </Chip>
-              );
-            })}
-          </View>
-          <TextInput label="Date" value={addCookedOn} onChangeText={setAddCookedOn} mode="outlined" style={styles.input} />
-          <TextInput label="Notes (optional)" value={addNotes} onChangeText={setAddNotes} mode="outlined" style={styles.input} multiline />
-          {addError ? <Text style={styles.err}>{addError}</Text> : null}
-          <View style={styles.modalActions}>
-            <Button mode="outlined" onPress={() => setAddModalVisible(false)} disabled={addSaving}>
-              Cancel
-            </Button>
-            <Button mode="contained" onPress={() => void handleAddMeal()} loading={addSaving} buttonColor="#7B1FA2">
-              Save
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <LogMealModal
+        visible={addModalVisible}
+        onDismiss={() => setAddModalVisible(false)}
+        onLogged={() => void refreshHistory()}
+      />
     </View>
   );
 }
@@ -290,13 +198,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
-    backgroundColor: '#FAF5FC',
+    backgroundColor: '#F1F8E9',
     borderWidth: 1,
-    borderColor: '#E1BEE7',
+    borderColor: '#C8E6C9',
   },
   dietHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   dietHeaderText: { flex: 1 },
-  dietTitle: { fontWeight: '800', color: '#4A148C' },
+  dietTitle: { fontWeight: '800', color: '#1A1A1A' },
   dietSub: { color: '#666', marginTop: 4, lineHeight: 18 },
   dietMeta: { color: '#555', lineHeight: 18, marginBottom: 8 },
   warn: { color: '#E65100', marginBottom: 8 },
@@ -333,19 +241,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     gap: 10,
   },
-  historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#7B1FA2' },
+  historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2E7D32' },
   historyBody: { flex: 1 },
   historyName: { fontWeight: '600', color: '#222' },
   historyMeta: { color: '#888', marginTop: 2 },
-  sourceChip: { backgroundColor: '#F3E5F5' },
+  sourceChip: { backgroundColor: '#E8F5E9' },
   sourceChipText: { fontSize: 10 },
-  addModal: { margin: 24, padding: 20, borderRadius: 16, backgroundColor: '#fff' },
-  addModalSub: { color: '#666', marginTop: 4, marginBottom: 8 },
-  divider: { marginVertical: 12 },
-  input: { marginBottom: 10, backgroundColor: '#fff' },
-  slotLabel: { marginBottom: 6, color: '#666' },
-  slotRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  slotChipOn: { backgroundColor: '#F3E5F5' },
-  err: { color: '#C62828', marginBottom: 8 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
 });

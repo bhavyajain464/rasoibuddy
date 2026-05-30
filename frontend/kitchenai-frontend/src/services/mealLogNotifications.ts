@@ -168,7 +168,7 @@ async function ensureAndroidChannel(Notifications: NotificationsModule): Promise
     name: 'Meal log reminders',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#4CAF50',
+    lightColor: '#2E7D32',
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: false,
     description: 'Reminders to log what you ate',

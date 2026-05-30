@@ -5,57 +5,38 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import {
   Text,
-  TextInput,
   IconButton,
   Surface,
   Portal,
   Dialog,
   Button,
   ActivityIndicator,
-  Modal,
   Checkbox,
   Icon,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../services/api';
 import { OrderSuggestItem, UserShoppingItem } from '../types';
-import { layout } from '../theme';
+import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
-import { DEFAULT_UNIT, UnitDropdown } from '../components/UnitDropdown';
-import { formatShoppingQty, parseShoppingQtyInput } from '../utils/shoppingFormat';
-
-type DraftRow = {
-  key: string;
-  name: string;
-  qty: string;
-  unit: string;
-};
-
-let draftRowCounter = 0;
-
-function newDraftRow(unit = DEFAULT_UNIT): DraftRow {
-  draftRowCounter += 1;
-  return { key: `row-${draftRowCounter}`, name: '', qty: '', unit };
-}
-
-function initialDraftRows(count = 1): DraftRow[] {
-  return Array.from({ length: count }, () => newDraftRow());
-}
+import { formatShoppingQty } from '../utils/shoppingFormat';
+import { AddShoppingModal } from '../components/modals/AddShoppingModal';
+import { DEFAULT_UNIT } from '../components/UnitPillSelector';
+import { useAppRefresh } from '../context/AppRefreshContext';
 
 export function ShoppingScreen() {
   const insets = useSafeAreaInsets();
+  const { contentPaddingBottom } = useTabBarLayout();
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [adding, setAdding] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [draftRows, setDraftRows] = useState<DraftRow[]>(initialDraftRows);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
@@ -68,22 +49,11 @@ export function ShoppingScreen() {
   const [hiddenSuggest, setHiddenSuggest] = useState<Record<string, boolean>>({});
   const lastSuggestNamesRef = useRef<string[]>([]);
   const [suggestExpanded, setSuggestExpanded] = useState(false);
+  const { version: refreshVersion } = useAppRefresh();
 
   const selectedList = useMemo(
     () => items.filter((i) => selectedIds[i.id]),
     [items, selectedIds],
-  );
-
-  const filledRows = useMemo(
-    () =>
-      draftRows
-        .map((row) => ({
-          name: row.name.trim(),
-          qty: parseShoppingQtyInput(row.qty),
-          unit: row.unit || DEFAULT_UNIT,
-        }))
-        .filter((row) => row.name.length > 0),
-    [draftRows],
   );
 
   const loadItems = useCallback(async () => {
@@ -124,10 +94,16 @@ export function ShoppingScreen() {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      void loadItems();
+      void loadOrderSuggestions();
+    }, [loadItems, loadOrderSuggestions]),
+  );
+
   useEffect(() => {
     void loadItems();
-    void loadOrderSuggestions();
-  }, [loadItems, loadOrderSuggestions]);
+  }, [loadItems, refreshVersion]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -214,52 +190,7 @@ export function ShoppingScreen() {
   };
 
   const openAddModal = () => {
-    setDraftRows(initialDraftRows());
     setAddModalVisible(true);
-  };
-
-  const closeAddModal = () => {
-    if (adding) return;
-    setAddModalVisible(false);
-    setDraftRows(initialDraftRows());
-  };
-
-  const updateDraftRow = (key: string, patch: Partial<Omit<DraftRow, 'key'>>) => {
-    setDraftRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
-  };
-
-  const addDraftRow = () => {
-    setDraftRows((prev) => [...prev, newDraftRow(prev[prev.length - 1]?.unit ?? DEFAULT_UNIT)]);
-  };
-
-  const removeDraftRow = (key: string) => {
-    setDraftRows((prev) => (prev.length <= 1 ? prev : prev.filter((row) => row.key !== key)));
-  };
-
-  const submitDraftRows = async () => {
-    if (!filledRows.length) return;
-    setAdding(true);
-    try {
-      if (filledRows.length === 1) {
-        const row = filledRows[0];
-        const item = await api.addShoppingItem(row.name, row.qty, row.unit);
-        setItems((prev) => [item, ...prev]);
-      } else {
-        const res = await api.addBulkShoppingItems(filledRows);
-        const added: UserShoppingItem[] = Array.isArray(res?.items) ? res.items : [];
-        if (added.length > 0) {
-          setItems((prev) => [...added, ...prev]);
-        } else {
-          await loadItems();
-        }
-      }
-      setAddModalVisible(false);
-      setDraftRows(initialDraftRows());
-    } catch {
-      showAppError('Could not add items.');
-    } finally {
-      setAdding(false);
-    }
   };
 
   const removeFromList = async (ids: string[]) => {
@@ -361,14 +292,14 @@ export function ShoppingScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: layout.tabBarHeight + insets.bottom + (selectionMode ? 88 : 24) },
+          { paddingBottom: contentPaddingBottom(selectionMode ? 88 : 24) },
         ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-          <View style={styles.headerRow}>
+          <View style={styles.headerTopRow}>
             <View style={styles.headerText}>
               <Text variant="headlineSmall" style={styles.headerTitle}>Shopping List</Text>
               <Text variant="bodyMedium" style={styles.headerSub}>
@@ -377,18 +308,7 @@ export function ShoppingScreen() {
                   : 'Nothing to buy yet'}
               </Text>
             </View>
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={openAddModal}
-              style={styles.headerAddBtn}
-              labelStyle={styles.headerAddLabel}
-              buttonColor="#fff"
-              textColor="#1976D2"
-              compact
-            >
-              Add
-            </Button>
+            <ProfileHeaderButton />
           </View>
         </View>
 
@@ -403,7 +323,7 @@ export function ShoppingScreen() {
             >
               <View style={styles.suggestTitleRow}>
                 <View style={styles.suggestIconWrap}>
-                  <Icon source="lightbulb-on-outline" size={22} color="#6A1B9A" />
+                  <Icon source="lightbulb-on-outline" size={22} color="#2E7D32" />
                 </View>
                 <View style={styles.suggestTitleText}>
                   <Text variant="titleSmall" style={styles.suggestTitle}>
@@ -417,7 +337,7 @@ export function ShoppingScreen() {
                 <Icon
                   source={suggestExpanded ? 'chevron-up' : 'chevron-down'}
                   size={22}
-                  color="#6A1B9A"
+                  color="#888888"
                 />
               </View>
             </Pressable>
@@ -432,7 +352,7 @@ export function ShoppingScreen() {
 
           {!suggestExpanded ? (
             orderLoading ? (
-              <ActivityIndicator style={styles.suggestLoaderCollapsed} size="small" color="#6A1B9A" />
+              <ActivityIndicator style={styles.suggestLoaderCollapsed} size="small" color="#2E7D32" />
             ) : (
               <Text variant="bodySmall" style={styles.suggestCollapsedHint} numberOfLines={2}>
                 {displaySuggestions.length > 0
@@ -441,7 +361,7 @@ export function ShoppingScreen() {
               </Text>
             )
           ) : orderLoading ? (
-            <ActivityIndicator style={styles.suggestLoader} size="small" color="#6A1B9A" />
+            <ActivityIndicator style={styles.suggestLoader} size="small" color="#2E7D32" />
           ) : (
             <>
               {orderSummary && displaySuggestions.length > 0 ? (
@@ -459,8 +379,8 @@ export function ShoppingScreen() {
                       loading={addingSuggest === '__all__'}
                       disabled={addingSuggest != null}
                       style={styles.suggestAddAll}
-                      buttonColor="#F3E5F5"
-                      textColor="#6A1B9A"
+                      buttonColor="#E8F5E9"
+                      textColor="#2E7D32"
                     >
                       Add all {displaySuggestions.length}
                     </Button>
@@ -483,7 +403,7 @@ export function ShoppingScreen() {
                           </View>
                           <IconButton
                             icon="plus-circle-outline"
-                            iconColor="#6A1B9A"
+                            iconColor="#2E7D32"
                             size={26}
                             onPress={() => void addSuggestionToList(s)}
                             disabled={addingSuggest != null}
@@ -511,20 +431,41 @@ export function ShoppingScreen() {
 
         <Text variant="labelLarge" style={styles.listSectionTitle}>Your list</Text>
 
-        {!loading && items.length > 0 ? (
+        {!loading ? (
           <View style={styles.listToolbar}>
-            {selectionMode ? (
-              <Button mode="text" compact onPress={exitSelection}>
-                Cancel
-              </Button>
-            ) : (
-              <Button mode="text" compact icon="checkbox-multiple-marked" onPress={() => setSelectionMode(true)}>
-                Select
-              </Button>
-            )}
-            {selectionMode ? (
-              <Button mode="text" compact onPress={selectAll}>
-                All
+            <View style={styles.listToolbarLeft}>
+              {items.length > 0 ? (
+                selectionMode ? (
+                  <>
+                    <Button mode="text" compact onPress={exitSelection}>
+                      Cancel
+                    </Button>
+                    <Button mode="text" compact onPress={selectAll}>
+                      All
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    mode="text"
+                    compact
+                    icon="checkbox-multiple-marked"
+                    onPress={() => setSelectionMode(true)}
+                  >
+                    Select
+                  </Button>
+                )
+              ) : null}
+            </View>
+            {!selectionMode ? (
+              <Button
+                mode="contained"
+                onPress={openAddModal}
+                buttonColor="#2E7D32"
+                style={styles.listAddBtn}
+                contentStyle={styles.listAddBtnContent}
+                labelStyle={styles.listAddBtnLabel}
+              >
+                Add
               </Button>
             ) : null}
           </View>
@@ -536,14 +477,12 @@ export function ShoppingScreen() {
           <View style={styles.listWrap}>{items.map(renderItem)}</View>
         ) : (
           <Surface style={styles.emptyCard} elevation={1}>
-            <IconButton icon="cart-outline" iconColor="#2196F3" size={44} style={{ margin: 0 }} />
+            <IconButton icon="cart-outline" iconColor="#2E7D32" size={44} style={{ margin: 0 }} />
             <Text variant="titleMedium" style={styles.emptyTitle}>Your list is empty</Text>
             <Text variant="bodyMedium" style={styles.emptySub}>
-              Add what you need. When you buy something, add it to inventory — we&apos;ll estimate expiry for you.
+              Tap <Text style={styles.emptyAddHint}>Add</Text> on the right to build your list. When you buy
+              something, move it to inventory — we&apos;ll estimate expiry for you.
             </Text>
-            <Button mode="contained" icon="plus" onPress={openAddModal} style={styles.emptyAddBtn} buttonColor="#2196F3">
-              Add items
-            </Button>
           </Surface>
         )}
 
@@ -552,7 +491,7 @@ export function ShoppingScreen() {
 
       {selectionMode && selectedList.length > 0 ? (
         <Surface
-          style={[styles.selectionBar, { paddingBottom: insets.bottom + layout.tabBarHeight + 8 }]}
+          style={[styles.selectionBar, { paddingBottom: contentPaddingBottom(8) }]}
           elevation={4}
         >
           <Text variant="labelLarge" style={styles.selectionCount}>
@@ -583,89 +522,13 @@ export function ShoppingScreen() {
         </Surface>
       ) : null}
 
+      <AddShoppingModal
+        visible={addModalVisible}
+        onDismiss={() => setAddModalVisible(false)}
+        onAdded={() => void loadItems()}
+      />
+
       <Portal>
-        <Modal
-          visible={addModalVisible}
-          onDismiss={closeAddModal}
-          contentContainerStyle={[styles.addModal, { marginTop: insets.top + 24 }]}
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Text variant="titleLarge" style={styles.modalTitle}>Add items</Text>
-            <Text variant="bodySmall" style={styles.modalSub}>
-              Name required · quantity optional
-            </Text>
-
-            <ScrollView
-              style={styles.modalScroll}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {draftRows.map((row, index) => (
-                <View key={row.key} style={styles.draftRow}>
-                  <Text variant="labelSmall" style={styles.rowIndex}>{index + 1}</Text>
-                  <TextInput
-                    mode="outlined"
-                    placeholder="Item name"
-                    value={row.name}
-                    onChangeText={(name) => updateDraftRow(row.key, { name })}
-                    style={styles.nameInput}
-                    dense
-                    outlineColor="#E0E0E0"
-                    activeOutlineColor="#2196F3"
-                    outlineStyle={{ borderRadius: 10 }}
-                  />
-                  <TextInput
-                    mode="outlined"
-                    placeholder="Qty"
-                    value={row.qty}
-                    onChangeText={(qty) => updateDraftRow(row.key, { qty })}
-                    keyboardType="decimal-pad"
-                    style={styles.qtyInput}
-                    dense
-                    outlineColor="#E0E0E0"
-                    activeOutlineColor="#2196F3"
-                    outlineStyle={{ borderRadius: 10 }}
-                  />
-                  <UnitDropdown
-                    value={row.unit}
-                    onChange={(unit) => updateDraftRow(row.key, { unit })}
-                    compact
-                    style={styles.unitDropdown}
-                  />
-                  <IconButton
-                    icon="close"
-                    size={18}
-                    iconColor="#999"
-                    onPress={() => removeDraftRow(row.key)}
-                    disabled={draftRows.length <= 1}
-                    style={{ margin: 0 }}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-
-            <Button mode="text" icon="plus" onPress={addDraftRow} style={styles.addRowBtn}>
-              Add another row
-            </Button>
-
-            <View style={styles.modalActions}>
-              <Button mode="outlined" onPress={closeAddModal} disabled={adding} style={styles.modalBtn}>
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={submitDraftRows}
-                loading={adding}
-                disabled={!filledRows.length || adding}
-                buttonColor="#2196F3"
-                style={styles.modalBtn}
-              >
-                {filledRows.length > 1 ? `Add ${filledRows.length} items` : 'Add to list'}
-              </Button>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-
         <Dialog visible={confirmBulkDelete} onDismiss={() => setConfirmBulkDelete(false)} style={styles.dialog}>
           <Dialog.Title>Remove {selectedList.length} item{selectedList.length !== 1 ? 's' : ''}?</Dialog.Title>
           <Dialog.Content>
@@ -688,25 +551,26 @@ export function ShoppingScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F9FA' },
+  root: { flex: 1, backgroundColor: '#FAFAFA' },
   container: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
 
   header: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 20,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  headerText: { flex: 1 },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  headerText: { flex: 1, minWidth: 0 },
   headerTitle: { color: '#fff', fontWeight: '800' },
   headerSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4 },
-  headerAddBtn: { borderRadius: 20 },
-  headerAddLabel: { fontWeight: '700', fontSize: 13 },
-
   suggestCard: {
     marginHorizontal: 20,
     marginTop: 16,
@@ -716,7 +580,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 12,
     borderWidth: 1,
-    borderColor: '#EDE7F6',
+    borderColor: '#E8E8E8',
   },
   suggestHeader: {
     flexDirection: 'row',
@@ -736,13 +600,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3E5F5',
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   suggestTitleText: { flex: 1 },
-  suggestTitle: { fontWeight: '800', color: '#4A148C' },
-  suggestBadge: { color: '#9575CD', marginTop: 2 },
+  suggestTitle: { fontWeight: '800', color: '#1A1A1A' },
+  suggestBadge: { color: '#888888', marginTop: 2 },
   suggestLoader: { marginVertical: 16 },
   suggestSummary: { color: '#666', marginTop: 10, lineHeight: 18 },
   suggestAddAll: { alignSelf: 'flex-start', marginTop: 12, borderRadius: 10 },
@@ -758,22 +622,49 @@ const styles = StyleSheet.create({
   suggestRowInfo: { flex: 1, paddingVertical: 6 },
   suggestName: { fontWeight: '700', color: '#333' },
   suggestReason: { color: '#888', marginTop: 2, lineHeight: 16 },
-  suggestQty: { color: '#B39DDB', marginTop: 4 },
+  suggestQty: { color: '#888888', marginTop: 4 },
   suggestEmpty: { color: '#999', marginTop: 12, lineHeight: 18 },
   listSectionTitle: {
     marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 4,
-    color: '#555',
+    marginTop: 16,
+    marginBottom: 0,
+    color: '#1A1A1A',
     fontWeight: '700',
   },
-
   listToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    marginTop: 14,
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 4,
+    minHeight: 44,
+  },
+  listToolbarLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listAddBtn: {
+    borderRadius: 10,
+    minWidth: 96,
+    alignSelf: 'center',
+  },
+  listAddBtnContent: {
+    height: 40,
+    paddingHorizontal: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listAddBtnLabel: {
+    fontWeight: '700',
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: 0,
+    marginVertical: 0,
+    marginHorizontal: 0,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 
   listWrap: { paddingHorizontal: 20, marginTop: 8, gap: 8 },
@@ -784,7 +675,7 @@ const styles = StyleSheet.create({
   },
   itemCardSelected: {
     borderWidth: 1.5,
-    borderColor: '#2196F3',
+    borderColor: '#2E7D32',
   },
   itemRow: {
     flexDirection: 'row',
@@ -797,12 +688,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
-  itemNumText: { color: '#1976D2', fontWeight: '700', fontSize: 13 },
+  itemNumText: { color: '#666666', fontWeight: '700', fontSize: 13 },
   itemInfo: { flex: 1 },
   itemName: { fontWeight: '600', color: '#333' },
   itemQty: { color: '#888', marginTop: 2 },
@@ -831,36 +722,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontWeight: '700', color: '#555', marginTop: 12 },
   emptySub: { color: '#999', marginTop: 6, textAlign: 'center', lineHeight: 20 },
-  emptyAddBtn: { marginTop: 20, borderRadius: 12 },
-
-  addModal: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: '82%',
-  },
-  modalTitle: { fontWeight: '800', color: '#222' },
-  modalSub: { color: '#888', marginTop: 4, marginBottom: 14 },
-  modalScroll: { maxHeight: 340 },
-  draftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  rowIndex: { width: 16, color: '#aaa', textAlign: 'center' },
-  nameInput: { flex: 1, backgroundColor: '#fff', minWidth: 0 },
-  qtyInput: { width: 52, backgroundColor: '#fff' },
-  unitDropdown: { width: 72 },
-  addRowBtn: { alignSelf: 'flex-start', marginTop: 4 },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 16,
-  },
-  modalBtn: { borderRadius: 10, minWidth: 108 },
+  emptyAddHint: { fontWeight: '700', color: '#2E7D32' },
 
   dialog: { borderRadius: 16 },
 });
