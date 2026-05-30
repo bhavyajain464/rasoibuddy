@@ -86,3 +86,4 @@ DOTENV_CONFIG_PATH=staging.env npm run web
 - Google OAuth clients (add staging redirect URIs only)
 
 Splitting staging DB or Kafka topics is a later step when you want isolated data.
+
