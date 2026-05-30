@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 prod.env
+staging.env
 *.prod.env
 
 # Node

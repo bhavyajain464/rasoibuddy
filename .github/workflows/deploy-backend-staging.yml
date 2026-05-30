@@ -1,0 +1,115 @@
+name: Deploy backend to Cloud Run (staging)
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend-staging.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-backend-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: kitchmate-495620
+  REGION: asia-south1
+  SERVICE: kitchenai-backend-staging
+  IMAGE: gcr.io/kitchmate-495620/kitchenai-backend-staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/208103249970/locations/global/workloadIdentityPools/github/providers/github-provider
+          service_account: github-deployer@kitchmate-495620.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker auth for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build container image
+        working-directory: backend
+        run: |
+          IMAGE_SHA="${IMAGE}:${GITHUB_SHA}"
+          echo "IMAGE_SHA=${IMAGE_SHA}" >> "$GITHUB_ENV"
+          docker build -t "${IMAGE}:latest" -t "${IMAGE_SHA}" .
+
+      - name: Push image
+        run: |
+          docker push "${IMAGE}:latest"
+          docker push "${IMAGE_SHA}"
+
+      - name: Deploy to Cloud Run (staging)
+        env:
+          RUN_SECRETS: >-
+            /secrets/kafka-ca.pem=kafka-ca-pem:latest,
+            DATABASE_URL=database-url:latest,
+            GEMINI_API_KEY=gemini-api-key:latest,
+            GROQ_API_KEY=groq-api-key:latest,
+            SESSION_TOKEN_SECRET=session-token-secret:latest,
+            REDIS_URL=redis-url:latest,
+            KAFKA_PASSWORD=kafka-sasl-password:latest,
+            RAZORPAY_KEY_ID_STAGING=razorpay-key-id-staging:latest,
+            RAZORPAY_KEY_SECRET_STAGING=razorpay-key-secret-staging:latest,
+            RAZORPAY_WEBHOOK_SECRET_STAGING=razorpay-webhook-secret-staging:latest,
+            SMTP_PASS=smtp-pass:latest
+          RUN_ENV_VARS: >-
+            ENVIRONMENT=staging,
+            GEMINI_MODEL=gemini-2.5-flash-lite,
+            LLM_PROVIDER=groq,
+            GROQ_MODEL=llama-3.3-70b-versatile,
+            GROQ_NLU_MODEL=llama-3.3-70b-versatile,
+            GROQ_VISION_MODEL=llama-3.3-70b-versatile,
+            RAZORPAY_ENV=staging,
+            SMTP_HOST=smtp.gmail.com,
+            SMTP_PORT=587,
+            SMTP_USER=kitchmateai@gmail.com,
+            SMTP_FROM=Kitchen AI <kitchmateai@gmail.com>,
+            WHATSAPP_TEST_MODE=true,
+            GOOGLE_WEB_CLIENT_ID=208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com,
+            GOOGLE_IOS_CLIENT_ID=208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com,
+            GOOGLE_ANDROID_CLIENT_ID=208103249970-ssbd98i8gqndd1o10vbaa6e5nfhkfcft.apps.googleusercontent.com,
+            KAFKA_ENABLED=true,
+            KAFKA_BROKERS=kafka-2ee49b67-bhavyajain464-358c.d.aivencloud.com:24210,
+            KAFKA_TOPIC_SHELFLIFE=shelf-life-estimate,
+            KAFKA_CA_FILE=/secrets/kafka-ca.pem,
+            KAFKA_SASL_ENABLED=true,
+            KAFKA_SASL_MECHANISM=PLAIN,
+            KAFKA_USERNAME=avnadmin,
+            KAFKA_TLS_ENABLED=true
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE_SHA}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --platform managed \
+            --port 8080 \
+            --memory 256Mi \
+            --cpu 1 \
+            --allow-unauthenticated \
+            --set-secrets "${RUN_SECRETS}" \
+            --set-env-vars "${RUN_ENV_VARS}" \
+            --quiet
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe "${SERVICE}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --format='value(status.url)'
