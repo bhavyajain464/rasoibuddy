@@ -38,7 +38,9 @@ One Vercel project, two environments via **branch-scoped env vars**:
 | `EXPO_PUBLIC_WEB_REDIRECT_URI` | `https://kitchmate-one.vercel.app` | `https://kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app` |
 | `EXPO_PUBLIC_GOOGLE_*` | Same on both (add staging redirect URI in Google Cloud Console) | Same |
 
-Pushes to **`develop`** create a preview deployment with staging API/OAuth redirect settings. Pushes to **`main`** update production.
+Pushes to **`develop`** create a **preview** deployment only (staging API/OAuth). **Production** web updates only when code lands on **`main`** (merge `develop` → `main`).
+
+**Vercel (required):** In project **kitchmate** → Settings → Git → set **Production Branch** to `main`. Do not promote preview deployments to production manually from the dashboard.
 
 **Google OAuth:** Add the develop preview origin to your Web client (see `GOOGLE_OAUTH_SETUP.md`):
 

@@ -1,15 +1,16 @@
-name: Deploy backend to Cloud Run
+name: Deploy backend to Cloud Run (production)
 
+# Production only: merges/pushes to main. Staging uses deploy-backend-staging.yml on develop.
 on:
   push:
     branches: [main]
     paths:
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 concurrency:
-  group: deploy-backend
+  group: deploy-backend-production
   cancel-in-progress: false
 
 permissions:
@@ -24,6 +25,7 @@ env:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

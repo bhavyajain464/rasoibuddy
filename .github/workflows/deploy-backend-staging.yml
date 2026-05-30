@@ -1,5 +1,6 @@
 name: Deploy backend to Cloud Run (staging)
 
+# Staging only: develop branch. Never deploys production Cloud Run.
 on:
   push:
     branches: [develop]
@@ -24,6 +25,7 @@ env:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

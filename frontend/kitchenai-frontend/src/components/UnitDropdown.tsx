@@ -278,19 +278,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 9998,
     elevation: 9998,
-    ...Platform.select({
-      web: { position: 'fixed' as const },
-      default: {},
-    }),
-  },
+    ...(Platform.OS === 'web' ? { position: 'fixed' as ViewStyle['position'] } : {}),
+  } as ViewStyle,
   portalScrim: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 9998,
-    ...Platform.select({
-      web: { position: 'fixed' as const },
-      default: {},
-    }),
-  },
+    ...(Platform.OS === 'web' ? { position: 'fixed' as ViewStyle['position'] } : {}),
+  } as ViewStyle,
   menu: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -307,15 +301,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   menuFloating: {
-    position: 'absolute',
+    position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as ViewStyle['position'],
     zIndex: 9999,
     elevation: 9999,
     maxHeight: 200,
-    ...Platform.select({
-      web: { position: 'fixed' as const },
-      default: {},
-    }),
-  },
+  } as ViewStyle,
   menuScroll: {
     maxHeight: 200,
   },
