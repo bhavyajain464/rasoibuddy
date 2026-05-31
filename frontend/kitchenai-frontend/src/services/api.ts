@@ -37,6 +37,7 @@ import {
   CheckoutOrderResponse,
   VerifyCheckoutRequest,
 } from '../types';
+import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { fileUriToBase64 } from '../utils/imageToBase64';
 import { normalizeUnit } from '../utils/units';
 
@@ -693,14 +694,16 @@ export async function getSmartMeals(
 }
 
 /** Today's meal-of-the-day from Redis (refreshed at midnight IST). */
+export type MealOfDayCategory = {
+  id: string;
+  title: string;
+  description: string;
+  meals: MealOfDayMeal[];
+};
+
 export async function getMealOfDay(): Promise<{
   date: string;
-  categories: Array<{
-    id: string;
-    title: string;
-    description: string;
-    meals: Array<Record<string, unknown>>;
-  }>;
+  categories: MealOfDayCategory[];
   generated_at: string;
   source: string;
 } | null> {

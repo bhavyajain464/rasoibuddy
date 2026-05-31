@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     ...(Platform.OS === 'web'
-      ? { width: 'max-content' as const, maxWidth: 'none' as const }
+      ? ({ width: 'max-content', maxWidth: 'none' } as unknown as ViewStyle)
       : null),
   },
   pillSlot: {

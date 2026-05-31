@@ -24,6 +24,7 @@ import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import type { MainTabParamList } from '../navigation/types';
 import * as api from '../services/api';
+import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
@@ -77,6 +78,18 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   medium: '#689F38',
   hard: '#1B5E20',
 };
+
+function mealOfDayToSmartMeal(meal: MealOfDayMeal): SmartMeal {
+  return {
+    meal_slot: meal.meal_slot,
+    name: meal.name,
+    description: meal.description ?? '',
+    ingredients: meal.ingredients ?? [],
+    cooking_time_mins: meal.cooking_time_mins ?? 30,
+    difficulty: meal.difficulty ?? 'easy',
+    why_this_meal: meal.why_this_meal ?? '',
+  };
+}
 
 const MEAL_TYPE_FILTERS = [
   { id: 'lunch_dinner', label: 'Lunch / Dinner' },
@@ -262,13 +275,17 @@ export function MealsScreen() {
     setResult(null);
     try {
       const res = await api.getMealOfDay();
-      const categories: MealCategory[] = (res?.categories as MealCategory[]) || [];
-      const match = categories.find((c) => c.id === 'meal_of_day') || categories[0] || null;
+      const match = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0] ?? null;
       if (!match?.meals?.length) {
         setError("Today's meal is prepared at midnight (12:00 AM). Check back after it refreshes.");
         setResult(null);
       } else {
-        setResult(match);
+        setResult({
+          id: match.id,
+          title: match.title,
+          description: match.description,
+          meals: match.meals.map(mealOfDayToSmartMeal),
+        });
       }
     } catch (e: unknown) {
       if (e instanceof UpgradeRequiredError) {

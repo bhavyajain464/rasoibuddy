@@ -74,7 +74,7 @@ export function HomeScreen({ navigation }: any) {
     try {
       const res = await api.getMealOfDay();
       const cat = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0];
-      const list = (cat?.meals ?? []) as MealOfDayMeal[];
+      const list = cat?.meals ?? [];
       const withNames = list.filter((m) => m?.name?.trim());
       setMealOfDayMeals(withNames);
       setMealOfDayNotReady(withNames.length === 0);
