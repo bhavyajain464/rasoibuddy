@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Button, Icon, Text } from 'react-native-paper';
+import { Button, Icon } from 'react-native-paper';
 import * as api from '../../services/api';
 import {
   DEFAULT_UNIT,
@@ -111,15 +111,9 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
     }
   };
 
-  const submitLabel = !filledRows.length
-    ? 'Save to list'
-    : filledRows.length === 1
-      ? 'Save 1 item to list'
-      : `Save ${filledRows.length} items to list`;
+  const submitLabel = 'Save to list';
 
-  const sheetTitle = draftRows.length === 1
-    ? 'Add to list'
-    : `Add to list (${draftRows.length})`;
+  const sheetTitle = 'Add to list';
 
   return (
     <BottomSheet
@@ -152,8 +146,6 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
 
         return (
           <View key={row.key} style={styles.draftRow}>
-            <Text variant="labelSmall" style={styles.rowIndex}>{index + 1}</Text>
-
             <ItemNameBox
               label="Name"
               value={row.name}
@@ -163,18 +155,23 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
               style={styles.nameField}
             />
 
-            <QuantityBox
-              label="Qty"
-              value={row.qty}
-              onChangeText={(qty) => updateDraftRow(row.key, { qty })}
-              compact
-            />
+            <View style={styles.qtyUnitStrip}>
+              <QuantityBox
+                label="Qty"
+                value={row.qty}
+                onChangeText={(qty) => updateDraftRow(row.key, { qty })}
+                compact
+                embedded
+              />
 
-            <UnitPillSelector
-              value={row.unit}
-              onChange={(unit) => updateDraftRow(row.key, { unit })}
-              compact
-            />
+              <UnitPillSelector
+                value={row.unit}
+                onChange={(unit) => updateDraftRow(row.key, { unit })}
+                compact
+                hugContent
+                embedded
+              />
+            </View>
 
             {isLastRow ? (
               <Pressable
@@ -230,16 +227,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingTop: 4,
   },
-  rowIndex: {
-    width: 16,
-    color: palette.textMuted,
-    textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: 10,
-  },
   nameField: {
     flex: 1,
     minWidth: 0,
+  },
+  qtyUnitStrip: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingTop: 6,
   },
   rowActionBtn: {
     width: 36,

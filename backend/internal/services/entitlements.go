@@ -9,13 +9,16 @@ import (
 const (
 	FreeBillScanLimit  = 2
 	billScanTimezone   = "Asia/Kolkata"
-	FreeMealCategory   = "daily"
+	FreeMealCategory    = "daily"
+	FreeMealOfDayCategory = "meal_of_day"
 )
+
+// FreeMealCategories are available on the free plan (meal_of_day is served from global Redis cache).
+var FreeMealCategories = []string{FreeMealCategory, FreeMealOfDayCategory}
 
 // ProMealCategories are smart-meal category ids beyond the free tier.
 var ProMealCategories = []string{
 	"rescue_meal",
-	"meal_of_day",
 	"most_healthy",
 	"most_tasty",
 	"long_lasting",
@@ -45,12 +48,14 @@ func GetEntitlements(db *sql.DB, userID string) (Entitlements, error) {
 	var expires sql.NullTime
 	var scans int
 	var scanDate sql.NullTime
+	var email string
 
 	err := db.QueryRow(`
 		SELECT COALESCE(plan_tier, 'free'), plan_interval, plan_expires_at,
-		       COALESCE(bill_scan_count, 0), bill_scan_count_date
+		       COALESCE(bill_scan_count, 0), bill_scan_count_date,
+		       COALESCE(email, '')
 		FROM users WHERE user_id = $1
-	`, userID).Scan(&tier, &interval, &expires, &scans, &scanDate)
+	`, userID).Scan(&tier, &interval, &expires, &scans, &scanDate, &email)
 	if err != nil {
 		return Entitlements{}, err
 	}
@@ -63,6 +68,7 @@ func GetEntitlements(db *sql.DB, userID string) (Entitlements, error) {
 	if interval.Valid {
 		intervalStr = interval.String
 	}
+	tier, intervalStr, expPtr = applyComplimentaryPremium(email, tier, intervalStr, expPtr)
 	return buildEntitlements(tier, intervalStr, expPtr, effectiveBillScansUsed(scans, scanDate)), nil
 }
 
@@ -122,7 +128,7 @@ func buildEntitlements(tier, interval string, expiresAt *time.Time, scans int) E
 		BillScansUsed:      scans,
 		BillScanLimit:      limit,
 		BillScansRemaining: remaining,
-		FreeMealCategories: []string{FreeMealCategory},
+		FreeMealCategories: append([]string(nil), FreeMealCategories...),
 		ProMealCategories:  append([]string(nil), ProMealCategories...),
 		AvailablePlans:     PlanCatalog(),
 	}
@@ -160,10 +166,10 @@ func CanUseMealCategory(ent Entitlements, category string) (bool, string) {
 	if ent.IsPro {
 		return true, ""
 	}
-	if cat == FreeMealCategory {
+	if cat == FreeMealCategory || cat == FreeMealOfDayCategory {
 		return true, ""
 	}
-	return false, "Daily meal ideas are free. Rescue, Meal of Day, Healthy, Tasty, and Meal Prep require Pro."
+	return false, "Daily and Meal of the Day are free. Rescue, Healthy, Tasty, and Meal Prep require Pro."
 }
 
 // CanUseDietAnalysis gates the upcoming elite feature.

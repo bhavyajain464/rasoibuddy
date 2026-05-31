@@ -1,8 +1,15 @@
+export interface InventoryFoodGroup {
+  id: string;
+  label: string;
+  sort: number;
+}
+
 export interface InventoryItem {
   item_id: string;
   canonical_name: string;
   qty: number;
   unit: string;
+  food_group?: string;
   estimated_expiry?: string;
   is_manual: boolean;
 }
@@ -12,6 +19,7 @@ export interface ExpiringItem {
   canonical_name: string;
   qty: number;
   unit: string;
+  food_group?: string;
   estimated_expiry: string;
   days_until_expiry: number;
 }
@@ -137,6 +145,7 @@ export interface ScanResult {
     quantity: number;
     unit: string;
     shelf_life_days?: number;
+    food_group?: string;
     price_per_unit?: number;
     total_price?: number;
   }>;

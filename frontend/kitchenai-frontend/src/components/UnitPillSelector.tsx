@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   TextInput as RNTextInput,
   View,
@@ -16,10 +15,12 @@ export { DEFAULT_UNIT, UNIT_OPTIONS };
 const CONTROL_HEIGHT = 48;
 const COMPACT_HEIGHT = 40;
 /** Min width per unit pill so "pcs" / "ml" never truncate. */
-const COMPACT_SEGMENT_MIN_WIDTH = 34;
+const COMPACT_SEGMENT_MIN_WIDTH = 32;
 /** Intrinsic width for inline rows (all unit pills, no extra empty space). */
 export const COMPACT_UNIT_STRIP_WIDTH =
-  UNIT_OPTIONS.length * COMPACT_SEGMENT_MIN_WIDTH + (UNIT_OPTIONS.length - 1) + 12;
+  UNIT_OPTIONS.length * COMPACT_SEGMENT_MIN_WIDTH +
+  (UNIT_OPTIONS.length - 1) +
+  8;
 
 function sanitizeDecimalInput(raw: string): string {
   const cleaned = raw.replace(/[^\d.]/g, '');
@@ -165,13 +166,13 @@ export function UnitPillSelector({
 }: UnitPillSelectorProps) {
   const selected = value.trim() || DEFAULT_UNIT;
 
+  const hug = hugContent || (compact && !fillWidth);
+
   const segmentLayoutStyle = !compact
     ? styles.segmentFlex
-    : hugContent
+    : hug
       ? styles.segmentCompact
-      : fillWidth
-        ? styles.segmentDistributed
-        : styles.segmentCompact;
+      : styles.segmentDistributed;
 
   const segments = UNIT_OPTIONS.map((unit) => {
     const active = selected === unit;
@@ -209,23 +210,21 @@ export function UnitPillSelector({
         styles.capsule,
         compact && styles.capsuleCompact,
         fillWidth && styles.capsuleFill,
-        hugContent && styles.capsuleCompactRow,
+        hug && styles.capsuleCompactRow,
       ]}
     >
       {segments}
     </View>
   );
 
-  /** Scroll only for fixed-width compact; fillWidth distributes pills across the row. */
-  const useCompactScroll = compact && !hugContent && !fillWidth;
 
   return (
     <View
       style={[
         styles.unitRoot,
-        compact && !fillWidth && !hugContent && styles.unitRootCompact,
+        compact && styles.unitRootCompact,
         fillWidth && styles.unitRootFill,
-        hugContent && styles.unitRootHug,
+        hug && styles.unitRootHug,
         embedded && styles.unitRootEmbedded,
         style,
       ]}
@@ -235,23 +234,11 @@ export function UnitPillSelector({
           styles.unitBox,
           compact && styles.unitBoxCompact,
           fillWidth && styles.unitBoxFill,
-          hugContent && styles.unitBoxHug,
+          hug && styles.unitBoxHug,
         ]}
       >
         <BorderFieldLabel label={label} align="left" />
-        {useCompactScroll ? (
-          <View style={styles.capsuleViewport}>
-            <ScrollView
-              horizontal
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              style={styles.capsuleScroll}
-              contentContainerStyle={styles.capsuleScrollContent}
-            >
-              {capsuleBody}
-            </ScrollView>
-          </View>
-        ) : fillWidth && compact ? (
+        {fillWidth && compact ? (
           <View style={styles.capsuleViewportFill}>{capsuleBody}</View>
         ) : (
           capsuleBody
@@ -355,16 +342,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   unitRoot: {
-    flex: 1,
-    minWidth: 0,
     marginBottom: 12,
     paddingTop: 6,
   },
   unitRootCompact: {
     marginBottom: 0,
     paddingTop: 6,
-    minWidth: 108,
-    maxWidth: 132,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   unitRootFill: {
     flex: 1,

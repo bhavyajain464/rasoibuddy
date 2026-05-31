@@ -24,7 +24,7 @@ func EstimateShelfLifeForConfig(ctx context.Context, cfg *config.Config, itemNam
 		defer g.Close()
 		return g.EstimateShelfLife(itemNames)
 	default:
-		if cfg.GroqAPIKey == "" {
+		if !cfg.HasGroqAPIKey() {
 			return nil, fmt.Errorf("LLM_PROVIDER=groq but GROQ_API_KEY is empty")
 		}
 		return EstimateShelfLifeGroq(ctx, cfg, itemNames)
@@ -52,7 +52,7 @@ func ScanBillBase64ForConfig(ctx context.Context, cfg *config.Config, base64Imag
 		defer g.Close()
 		return g.ScanBillFromBase64(base64Image, imageType)
 	default:
-		if cfg.GroqAPIKey == "" {
+		if !cfg.HasGroqAPIKey() {
 			return nil, fmt.Errorf("LLM_PROVIDER=groq but GROQ_API_KEY is empty")
 		}
 		return ScanBillGroqFromBase64(ctx, cfg, base64Image, imageType)
@@ -80,7 +80,7 @@ func ScanBillBytesForConfig(ctx context.Context, cfg *config.Config, imageData [
 		defer g.Close()
 		return g.ScanBill(imageData, imageType)
 	default:
-		if cfg.GroqAPIKey == "" {
+		if !cfg.HasGroqAPIKey() {
 			return nil, fmt.Errorf("LLM_PROVIDER=groq but GROQ_API_KEY is empty")
 		}
 		return ScanBillGroqFromBytes(ctx, cfg, imageData, imageType)
@@ -108,7 +108,7 @@ func scanBillPDFBytes(ctx context.Context, cfg *config.Config, pdfData []byte, i
 		defer g.Close()
 		return g.ScanBill(pdfData, imageType)
 	default:
-		if cfg.GroqAPIKey == "" {
+		if !cfg.HasGroqAPIKey() {
 			return nil, fmt.Errorf("LLM_PROVIDER=groq but GROQ_API_KEY is empty")
 		}
 		return ScanBillGroqFromPDF(ctx, cfg, pdfData)

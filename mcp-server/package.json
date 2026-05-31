@@ -1,7 +1,7 @@
 {
   "name": "kitchenai-mcp-server",
   "version": "1.0.0",
-  "description": "MCP Server for Kitchen AI - provides tools for LLM to interact with kitchen inventory",
+  "description": "MCP Server for Kitchmate - provides tools for LLM to interact with kitchen inventory",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -20,6 +20,6 @@
     "typescript": "^5.3.3"
   },
   "keywords": ["mcp", "kitchen", "ai", "inventory", "postgresql"],
-  "author": "Kitchen AI Team",
+  "author": "Kitchmate Team",
   "license": "MIT"
 }

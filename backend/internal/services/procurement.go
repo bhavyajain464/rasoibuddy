@@ -27,9 +27,9 @@ var LowStockThreshold = map[string]struct {
 	Default float64 // Default quantity to buy when restocking
 }{
 	"milk":    {MinQty: 0.5, Unit: "liters", Default: 2.0},
-	"tomato":  {MinQty: 3, Unit: "pieces", Default: 10.0},
-	"onion":   {MinQty: 2, Unit: "pieces", Default: 5.0},
-	"potato":  {MinQty: 3, Unit: "pieces", Default: 10.0},
+	"tomato":  {MinQty: 3, Unit: "pcs", Default: 10.0},
+	"onion":   {MinQty: 2, Unit: "pcs", Default: 5.0},
+	"potato":  {MinQty: 3, Unit: "pcs", Default: 10.0},
 	"rice":    {MinQty: 0.5, Unit: "kg", Default: 5.0},
 	"wheat":   {MinQty: 0.5, Unit: "kg", Default: 5.0},
 	"oil":     {MinQty: 0.2, Unit: "liters", Default: 1.0},
@@ -39,7 +39,7 @@ var LowStockThreshold = map[string]struct {
 	"curd":    {MinQty: 200, Unit: "grams", Default: 500.0},
 	"butter":  {MinQty: 50, Unit: "grams", Default: 200.0},
 	"bread":   {MinQty: 2, Unit: "slices", Default: 10.0},
-	"eggs":    {MinQty: 2, Unit: "pieces", Default: 12.0},
+	"eggs":    {MinQty: 2, Unit: "pcs", Default: 12.0},
 	"flour":   {MinQty: 0.5, Unit: "kg", Default: 5.0},
 	"lentils": {MinQty: 0.2, Unit: "kg", Default: 2.0},
 	"spices":  {MinQty: 10, Unit: "grams", Default: 100.0},

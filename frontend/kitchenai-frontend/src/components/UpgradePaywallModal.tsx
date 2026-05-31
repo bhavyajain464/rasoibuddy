@@ -28,6 +28,7 @@ type ComparisonRow = {
 
 const COMPARISON: ComparisonRow[] = [
   { label: 'Daily meal ideas', free: true, pro: true, elite: true },
+  { label: 'Meal of the Day', free: true, pro: true, elite: true },
   { label: 'Rescue (use expiring food)', free: false, pro: true, elite: true },
   { label: 'Meal of the Day', free: false, pro: true, elite: true },
   { label: 'Healthy & Tasty modes', free: false, pro: true, elite: true },

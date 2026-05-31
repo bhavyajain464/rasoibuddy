@@ -260,7 +260,7 @@ func (s *WhatsAppService) buildShoppingListMessage(items []models.ShoppingListIt
 
 // PrepareTestWhatsApp returns a sample compose link (no cook profile required).
 func (s *WhatsAppService) PrepareTestWhatsApp() (body, waURL string, err error) {
-	body = "Test message from Kitchen AI — WhatsApp compose link check."
+	body = "Test message from Kitchmate — WhatsApp compose link check."
 	waURL, err = BuildWaMeURL("+919876543210", body)
 	return body, waURL, err
 }

@@ -1,0 +1,5 @@
+/* Prevent sub-pixel gap under scaled logo on web */
+.login-logo-slot img {
+  display: block;
+  background-color: #ffffff;
+}

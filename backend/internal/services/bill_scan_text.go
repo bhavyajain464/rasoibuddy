@@ -39,7 +39,7 @@ func trimInvoiceTextForLLM(raw string) string {
 }
 
 func scanBillGroqFromInvoiceText(ctx context.Context, cfg *config.Config, invoiceText string) ([]BillItem, error) {
-	if cfg.GroqAPIKey == "" {
+	if !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("groq API key not configured")
 	}
 	text := trimInvoiceTextForLLM(invoiceText)
@@ -48,7 +48,7 @@ func scanBillGroqFromInvoiceText(ctx context.Context, cfg *config.Config, invoic
 	}
 	prompt := billScanGroqTextPrompt + "\n\n--- INVOICE TEXT ---\n" + text
 	model := cfg.EffectiveGroqModel()
-	out, err := groqChat(ctx, cfg.GroqAPIKey, model, 0.1, groqMaxTokensBillScan, []groqMessage{
+	out, err := groqChat(ctx, cfg.PickGroqAPIKey(), model, 0.1, groqMaxTokensBillScan, []groqMessage{
 		{Role: "user", Content: prompt},
 	})
 	if err != nil {

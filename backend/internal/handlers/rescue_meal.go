@@ -137,7 +137,7 @@ func TestRescueMeal(db *sql.DB) http.HandlerFunc {
 						"item_id":           "test_1",
 						"canonical_name":    "tomato",
 						"qty":               5.0,
-						"unit":              "pieces",
+						"unit":              "pcs",
 						"estimated_expiry":  "2026-05-09",
 						"days_until_expiry": 2,
 					},

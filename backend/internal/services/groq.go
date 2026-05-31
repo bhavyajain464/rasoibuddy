@@ -222,7 +222,7 @@ func GroqChatVision(ctx context.Context, apiKey, model string, temperature float
 }
 
 func EstimateShelfLifeGroq(ctx context.Context, cfg *config.Config, itemNames []string) ([]ShelfLifeEstimate, error) {
-	if cfg.GroqAPIKey == "" {
+	if !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("groq API key not configured")
 	}
 	maxOut := groqMaxTokensShelfLife
@@ -234,7 +234,7 @@ func EstimateShelfLifeGroq(ctx context.Context, cfg *config.Config, itemNames []
 	}
 	prompt := fmt.Sprintf(`Shelf life in days (Indian home storage) for: %s. JSON array only: [{"name":"...","shelf_life_days":N}]`, strings.Join(itemNames, ", "))
 
-	text, err := groqChat(ctx, cfg.GroqAPIKey, cfg.EffectiveGroqModel(), 0.1, maxOut, []groqMessage{
+	text, err := groqChat(ctx, cfg.PickGroqAPIKey(), cfg.EffectiveGroqModel(), 0.1, maxOut, []groqMessage{
 		{Role: "user", Content: prompt},
 	})
 	if err != nil {
@@ -303,25 +303,29 @@ func salvageShelfLifeObjects(s string) []ShelfLifeEstimate {
 	return out
 }
 
-const billScanGroqUserPrompt = `Read this Indian grocery bill. Edible/kitchen items only (no soap, detergent, etc.).
+var (
+	billScanGroqUserPrompt = `Read this Indian grocery bill. Edible/kitchen items only (no soap, detergent, etc.).
 Per item: name, quantity, unit, price_per_unit (0 if unknown), total_price (0 if unknown), shelf_life_days.
+` + billScanFoodGroupField() + `
 JSON array only, no markdown:
-[{"name":"Basmati Rice","quantity":5,"unit":"kg","price_per_unit":120,"total_price":600,"shelf_life_days":60}]`
+[{"name":"Basmati Rice","quantity":5,"unit":"kg","price_per_unit":120,"total_price":600,"shelf_life_days":60,"food_group":"grains_pulses"}]`
 
-const billScanGroqTextPrompt = `You are reading plain text from an Indian grocery invoice (Swiggy Instamart, Blinkit, Zepto, BigBasket, or a store receipt).
+	billScanGroqTextPrompt = `You are reading plain text from an Indian grocery invoice (Swiggy Instamart, Blinkit, Zepto, BigBasket, or a store receipt).
 
 Extract ONLY edible/kitchen items. EXCLUDE: handling fees, delivery charges, bags, discounts summary rows, tax annexures, and any non-food product.
 
 Rules:
 - Use the product description as name (normalize spacing; keep brand + variant).
 - quantity: numeric quantity sold (often 1 on delivery apps).
-- unit: map NOS/pcs to "pieces"; use kg, g, L, ml, packets when visible in the name or UQC.
+- unit: use pcs for count/NOS items; use kg, g, L, ml when visible in the name or UQC.
 - total_price: line item total in rupees (last amount column for that row); 0 if unclear.
 - price_per_unit: 0 if unknown.
 - shelf_life_days: reasonable estimate for Indian home storage.
+` + billScanFoodGroupField() + `
 
 Return ONLY a JSON array, no markdown:
-[{"name":"Potato","quantity":1,"unit":"kg","price_per_unit":0,"total_price":26,"shelf_life_days":14}]`
+[{"name":"Potato","quantity":1,"unit":"kg","price_per_unit":0,"total_price":26,"shelf_life_days":14,"food_group":"vegetables"}]`
+)
 
 func ScanBillGroqFromPDF(ctx context.Context, cfg *config.Config, pdfData []byte) ([]BillItem, error) {
 	text, err := ExtractPDFText(pdfData)
@@ -332,11 +336,11 @@ func ScanBillGroqFromPDF(ctx context.Context, cfg *config.Config, pdfData []byte
 }
 
 func ScanBillGroqFromBase64(ctx context.Context, cfg *config.Config, base64Image, imageType string) ([]BillItem, error) {
-	if cfg.GroqAPIKey == "" {
+	if !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("groq API key not configured")
 	}
 	model := cfg.EffectiveGroqModel()
-	text, err := GroqChatVision(ctx, cfg.GroqAPIKey, model, 0.1, billScanGroqUserPrompt, imageType, base64Image)
+	text, err := GroqChatVision(ctx, cfg.PickGroqAPIKey(), model, 0.1, billScanGroqUserPrompt, imageType, base64Image)
 	if err != nil {
 		return nil, fmt.Errorf("groq bill scan: %w", err)
 	}

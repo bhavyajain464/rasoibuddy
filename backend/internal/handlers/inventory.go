@@ -3,14 +3,20 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/middleware"
 	"kitchenai-backend/internal/models"
+	invgroup "kitchenai-backend/internal/services/inventory"
+	"kitchenai-backend/internal/services"
+	"kitchenai-backend/pkg/config"
+	"kitchenai-backend/pkg/units"
 
 	"github.com/gorilla/mux"
 )
@@ -77,13 +83,200 @@ func purgeStaleExpired(db *sql.DB, userID string) {
 	}
 }
 
+type backfillFoodGroupsResponse struct {
+	Enriched int      `json:"enriched"`
+	ItemIDs  []string `json:"item_ids"`
+}
+
+func listInventoryItemIDs(db *sql.DB, userID string) ([]string, error) {
+	return listInventoryItemIDsForFoodGroupBackfill(db, userID, "all")
+}
+
+// listInventoryItemIDsForFoodGroupBackfill selects item IDs to LLM-classify.
+// scope "expired" = expired rows in the retention window missing a real food_group.
+func listInventoryItemIDsForFoodGroupBackfill(db *sql.DB, userID, scope string) ([]string, error) {
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	if scope == "" {
+		scope = "all"
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	switch scope {
+	case "expired":
+		if userID == "" {
+			rows, err = db.Query(`
+				SELECT item_id::text FROM inventory
+				WHERE estimated_expiry IS NOT NULL
+					AND estimated_expiry < CURRENT_DATE
+					AND estimated_expiry >= CURRENT_DATE - ($1 || ' days')::interval
+					AND COALESCE(NULLIF(TRIM(food_group), ''), 'other') = 'other'
+				ORDER BY canonical_name
+			`, expiredRetentionDays)
+		} else {
+			rows, err = db.Query(`
+				SELECT item_id::text FROM inventory
+				WHERE (user_id = $1 OR user_id IS NULL)
+					AND estimated_expiry IS NOT NULL
+					AND estimated_expiry < CURRENT_DATE
+					AND estimated_expiry >= CURRENT_DATE - ($2 || ' days')::interval
+					AND COALESCE(NULLIF(TRIM(food_group), ''), 'other') = 'other'
+				ORDER BY canonical_name
+			`, userID, expiredRetentionDays)
+		}
+	case "all":
+		if userID == "" {
+			rows, err = db.Query(`SELECT item_id::text FROM inventory ORDER BY canonical_name`)
+		} else {
+			rows, err = db.Query(
+				`SELECT item_id::text FROM inventory WHERE user_id = $1 OR user_id IS NULL ORDER BY canonical_name`,
+				userID,
+			)
+		}
+	default:
+		return nil, fmt.Errorf("invalid scope %q (use all or expired)", scope)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// BackfillInventoryFoodGroups POST — LLM-classifies food_group.
+// Optional JSON body: { "scope": "all" | "expired" } (default "all").
+// "expired" only targets expired items in the retention window with food_group empty/other.
+func BackfillInventoryFoodGroups(db *sql.DB, cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		if userID == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			Scope string `json:"scope"`
+		}
+		if r.Body != nil {
+			_ = json.NewDecoder(r.Body).Decode(&req)
+		}
+
+		ids, err := listInventoryItemIDsForFoodGroupBackfill(db, userID, req.Scope)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(ids) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(backfillFoodGroupsResponse{Enriched: 0, ItemIDs: []string{}})
+			return
+		}
+
+		log.Printf("[inventory] backfill food_group user=%s scope=%q items=%d", userID, strings.TrimSpace(req.Scope), len(ids))
+		n := kafkalib.EnrichItemsByIDs(db, cfg, ids, userID)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(backfillFoodGroupsResponse{Enriched: n, ItemIDs: ids})
+	}
+}
+
+// AdminBackfillInventoryFoodGroups POST /admin/inventory/backfill-food-groups
+// Optional JSON body: { "user_id": "...", "scope": "all" | "expired" }.
+func AdminBackfillInventoryFoodGroups(db *sql.DB, cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			UserID string `json:"user_id"`
+			Scope  string `json:"scope"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		userID := strings.TrimSpace(req.UserID)
+
+		ids, err := listInventoryItemIDsForFoodGroupBackfill(db, userID, req.Scope)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(ids) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(backfillFoodGroupsResponse{Enriched: 0, ItemIDs: []string{}})
+			return
+		}
+
+		log.Printf("[admin] backfill food_group user_filter=%q scope=%q items=%d", userID, strings.TrimSpace(req.Scope), len(ids))
+		n := kafkalib.EnrichItemsByIDs(db, cfg, ids, userID)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(backfillFoodGroupsResponse{Enriched: n, ItemIDs: ids})
+	}
+}
+
+func dietaryTagsForUser(db *sql.DB, userID string) []string {
+	prefs, err := services.LoadUserPrefs(db, userID)
+	if err != nil || prefs == nil {
+		return nil
+	}
+	return prefs.DietaryTags
+}
+
+// GetInventoryFoodGroups returns filter group metadata for the inventory UI.
+func GetInventoryFoodGroups(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		tags := dietaryTagsForUser(db, userID)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(invgroup.ListFoodGroupsForDietary(tags))
+	}
+}
+
+func scanInventoryItem(
+	rows interface {
+		Scan(dest ...interface{}) error
+	},
+) (models.Inventory, error) {
+	var item models.Inventory
+	var expiry sql.NullTime
+	var foodGroup sql.NullString
+	err := rows.Scan(
+		&item.ItemID,
+		&item.CanonicalName,
+		&item.Qty,
+		&item.Unit,
+		&foodGroup,
+		&expiry,
+		&item.IsManual,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return item, err
+	}
+	if foodGroup.Valid && foodGroup.String != "" {
+		item.FoodGroup = foodGroup.String
+	} else {
+		item.FoodGroup = "other"
+	}
+	item.EstimatedExpiry = models.NullTime(expiry)
+	item.Unit = units.Normalize(item.Unit)
+	return item, nil
+}
+
 // GetInventory returns non-expired inventory items for the authenticated user
 func GetInventory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 		schedulePurgeStaleExpired(db, userID)
 		rows, err := db.Query(`
-			SELECT item_id, canonical_name, qty, unit, estimated_expiry, is_manual, created_at, updated_at
+			SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
 			FROM inventory
 			WHERE (user_id = $1 OR user_id IS NULL)
 				AND (estimated_expiry IS NULL OR estimated_expiry >= CURRENT_DATE)
@@ -97,23 +290,11 @@ func GetInventory(db *sql.DB) http.HandlerFunc {
 
 		items := make([]models.Inventory, 0)
 		for rows.Next() {
-			var item models.Inventory
-			var expiry sql.NullTime
-			err := rows.Scan(
-				&item.ItemID,
-				&item.CanonicalName,
-				&item.Qty,
-				&item.Unit,
-				&expiry,
-				&item.IsManual,
-				&item.CreatedAt,
-				&item.UpdatedAt,
-			)
+			item, err := scanInventoryItem(rows)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			item.EstimatedExpiry = models.NullTime(expiry)
 			items = append(items, item)
 		}
 
@@ -131,8 +312,9 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 
 		var item models.Inventory
 		var expiry sql.NullTime
+		var foodGroup sql.NullString
 		err := db.QueryRow(`
-			SELECT item_id, canonical_name, qty, unit, estimated_expiry, is_manual, created_at, updated_at
+			SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
 			FROM inventory
 			WHERE item_id = $1 AND (user_id = $2 OR user_id IS NULL)
 		`, id, userID).Scan(
@@ -140,6 +322,7 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 			&item.CanonicalName,
 			&item.Qty,
 			&item.Unit,
+			&foodGroup,
 			&expiry,
 			&item.IsManual,
 			&item.CreatedAt,
@@ -155,7 +338,13 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		if foodGroup.Valid && foodGroup.String != "" {
+			item.FoodGroup = foodGroup.String
+		} else {
+			item.FoodGroup = "other"
+		}
 		item.EstimatedExpiry = models.NullTime(expiry)
+		item.Unit = units.Normalize(item.Unit)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(item)
 	}
@@ -171,6 +360,7 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 			return
 		}
 
+		req.Unit = units.Normalize(req.Unit)
 		if req.CanonicalName == "" || req.Qty <= 0 || req.Unit == "" {
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
@@ -186,26 +376,31 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 			expiry = &parsedTime
 		}
 
+		foodGroup := "other"
+		if strings.TrimSpace(req.FoodGroup) != "" {
+			foodGroup = invgroup.NormalizeFoodGroupForDietary(req.FoodGroup, dietaryTagsForUser(db, userID))
+		}
+
 		var itemID string
 		var createdAt, updatedAt time.Time
 		var dbExpiry sql.NullTime
 
 		if expiry != nil {
 			err := db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, is_manual, user_id)
-				VALUES ($1, $2, $3, $4, $5, $6)
+				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, is_manual, user_id, food_group)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, req.CanonicalName, req.Qty, req.Unit, *expiry, req.IsManual, userID).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, req.CanonicalName, req.Qty, req.Unit, *expiry, req.IsManual, userID, foodGroup).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
 			err := db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id)
-				VALUES ($1, $2, $3, $4, $5)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, food_group)
+				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, req.CanonicalName, req.Qty, req.Unit, req.IsManual, userID).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, req.CanonicalName, req.Qty, req.Unit, req.IsManual, userID, foodGroup).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -217,6 +412,7 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 			CanonicalName:   req.CanonicalName,
 			Qty:             req.Qty,
 			Unit:            req.Unit,
+			FoodGroup:       foodGroup,
 			EstimatedExpiry: models.NullTime(dbExpiry),
 			IsManual:        req.IsManual,
 			CreatedAt:       createdAt,
@@ -225,7 +421,9 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 
 		RemoveFromShoppingList(db, userID, req.CanonicalName)
 
-		if expiry == nil && producer != nil {
+		// Bill scan supplies expiry + food_group; skip Kafka. Otherwise enrich via consumer.
+		needsEnrich := strings.TrimSpace(req.FoodGroup) == "" || expiry == nil
+		if needsEnrich && producer != nil {
 			producer.PublishShelfLifeEvent(kafkalib.ShelfLifeEvent{
 				ItemIDs: []string{itemID},
 				UserID:  userID,
@@ -252,7 +450,7 @@ func UpdateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 			return
 		}
 
-		// Validate required fields
+		req.Unit = units.Normalize(req.Unit)
 		if req.CanonicalName == "" || req.Qty <= 0 || req.Unit == "" {
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
@@ -367,7 +565,7 @@ func GetExpiringItems(db *sql.DB) http.HandlerFunc {
 		userID := getUserID(r)
 		rows, err := db.Query(`
 			SELECT
-				item_id, canonical_name, qty, unit, estimated_expiry,
+				item_id, canonical_name, qty, unit, food_group, estimated_expiry,
 				(estimated_expiry - CURRENT_DATE) as days_until_expiry
 			FROM inventory
 			WHERE estimated_expiry IS NOT NULL
@@ -385,10 +583,18 @@ func GetExpiringItems(db *sql.DB) http.HandlerFunc {
 		items := make([]models.ExpiringItem, 0)
 		for rows.Next() {
 			var item models.ExpiringItem
-			err := rows.Scan(&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &item.EstimatedExpiry, &item.DaysUntilExpiry)
+			var foodGroup sql.NullString
+			err := rows.Scan(
+				&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
+				&item.EstimatedExpiry, &item.DaysUntilExpiry,
+			)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+			item.Unit = units.Normalize(item.Unit)
+			if foodGroup.Valid && foodGroup.String != "" {
+				item.FoodGroup = foodGroup.String
 			}
 			items = append(items, item)
 		}
@@ -406,7 +612,7 @@ func GetExpiredItems(db *sql.DB) http.HandlerFunc {
 		schedulePurgeStaleExpired(db, userID)
 		rows, err := db.Query(`
 			SELECT
-				item_id, canonical_name, qty, unit, estimated_expiry,
+				item_id, canonical_name, qty, unit, food_group, estimated_expiry,
 				(CURRENT_DATE - estimated_expiry) as days_since_expiry
 			FROM inventory
 			WHERE estimated_expiry IS NOT NULL
@@ -424,10 +630,18 @@ func GetExpiredItems(db *sql.DB) http.HandlerFunc {
 		items := make([]models.ExpiringItem, 0)
 		for rows.Next() {
 			var item models.ExpiringItem
-			err := rows.Scan(&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &item.EstimatedExpiry, &item.DaysUntilExpiry)
+			var foodGroup sql.NullString
+			err := rows.Scan(
+				&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
+				&item.EstimatedExpiry, &item.DaysUntilExpiry,
+			)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+			item.Unit = units.Normalize(item.Unit)
+			if foodGroup.Valid && foodGroup.String != "" {
+				item.FoodGroup = foodGroup.String
 			}
 			items = append(items, item)
 		}

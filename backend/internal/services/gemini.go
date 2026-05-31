@@ -9,6 +9,9 @@ import (
 	"io"
 	"strings"
 
+	invgroup "kitchenai-backend/internal/services/inventory"
+	"kitchenai-backend/pkg/units"
+
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 )
@@ -61,7 +64,7 @@ EXCLUDE: non-food items like toilet paper, baby wipes, detergent, soap, shampoo,
 For each edible item provide:
 - name: standardized common Indian grocery name
 - quantity: numeric quantity
-- unit: kg, liters, pieces, grams, packets, etc.
+- unit: kg, L, ml, g, pcs (count items), etc.
 - price_per_unit: price per unit if visible (0 if not)
 - total_price: total price if visible (0 if not)
 - shelf_life_days: estimated shelf life in days stored at home in Indian conditions:
@@ -76,11 +79,12 @@ For each edible item provide:
   * Fruits: 3-7 days
   * Oil/ghee: 90 days
   * Packaged/canned food: 60-180 days
+` + billScanFoodGroupField() + `
 
 Return ONLY a JSON array, no markdown, no explanation:
 [
-  {"name": "Basmati Rice", "quantity": 5, "unit": "kg", "price_per_unit": 120, "total_price": 600, "shelf_life_days": 60},
-  {"name": "Tomatoes", "quantity": 2, "unit": "kg", "price_per_unit": 40, "total_price": 80, "shelf_life_days": 7}
+  {"name": "Basmati Rice", "quantity": 5, "unit": "kg", "price_per_unit": 120, "total_price": 600, "shelf_life_days": 60, ` + billScanFoodGroupExample + `},
+  {"name": "Tomatoes", "quantity": 2, "unit": "kg", "price_per_unit": 40, "total_price": 80, "shelf_life_days": 7, "food_group": "vegetables"}
 ]`
 
 	// Build multimodal parts (images or PDF).
@@ -164,6 +168,7 @@ type BillItem struct {
 	PricePerUnit  float64 `json:"price_per_unit,omitempty"`
 	TotalPrice    float64 `json:"total_price,omitempty"`
 	ShelfLifeDays int     `json:"shelf_life_days,omitempty"`
+	FoodGroup     string  `json:"food_group,omitempty"`
 }
 
 // ShelfLifeEstimate holds an item name and its estimated shelf life
@@ -279,10 +284,8 @@ func ParseBillItems(jsonResponse string) ([]BillItem, error) {
 		if items[i].Quantity <= 0 {
 			items[i].Quantity = 1
 		}
-		// Ensure unit is not empty
-		if items[i].Unit == "" {
-			items[i].Unit = "pieces"
-		}
+		items[i].Unit = units.Normalize(items[i].Unit)
+		items[i].FoodGroup = invgroup.NormalizeFoodGroup(items[i].FoodGroup)
 	}
 
 	return items, nil

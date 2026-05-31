@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "groups": [
+    { "id": "vegetables", "label": "Vegetables", "sort": 10 },
+    { "id": "fruits", "label": "Fruits", "sort": 20 },
+    { "id": "spices", "label": "Spices", "sort": 30 },
+    { "id": "dairy", "label": "Dairy", "sort": 40 },
+    { "id": "grains_pulses", "label": "Grains & Pulses", "sort": 50 },
+    { "id": "oils_fats", "label": "Oils & Fats", "sort": 60 },
+    { "id": "non_veg", "label": "Non-Veg", "sort": 70 },
+    { "id": "condiments", "label": "Condiments", "sort": 80 },
+    { "id": "bakery", "label": "Bakery", "sort": 90 },
+    { "id": "beverages", "label": "Beverages", "sort": 100 },
+    { "id": "prepared", "label": "Prepared", "sort": 110 },
+    { "id": "other", "label": "Other", "sort": 999 }
+  ]
+}

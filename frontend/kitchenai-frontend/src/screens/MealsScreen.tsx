@@ -6,6 +6,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  BackHandler,
 } from 'react-native';
 import {
   Text,
@@ -20,12 +21,13 @@ import {
   SegmentedButtons,
 } from 'react-native-paper';
 import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import type { MainTabParamList } from '../navigation/types';
 import * as api from '../services/api';
+import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
-import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
+import { TabScreenHeader } from '../components/TabScreenHeader';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { navigateToUpgradePlan } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
@@ -41,6 +43,7 @@ const GRID_GAP = 14;
 const GRID_PAD = 18;
 
 interface SmartMeal {
+  meal_slot?: string;
   name: string;
   description: string;
   ingredients: string[];
@@ -64,7 +67,7 @@ interface MealCategory {
 const CATEGORIES = [
   { id: 'daily', title: 'Daily', subtitle: 'Just a dish idea', icon: 'calendar-today' },
   { id: 'rescue_meal', title: 'Rescue', subtitle: 'Use expiring items', icon: 'alert-circle-outline' },
-  { id: 'meal_of_day', title: 'Meal of Day', subtitle: 'Best from inventory', icon: 'star-circle' },
+  { id: 'meal_of_day', title: 'Meal of Day', subtitle: 'Your breakfast, lunch & dinner', icon: 'star-circle' },
   { id: 'most_healthy', title: 'Healthy', subtitle: 'Nutrient-rich picks', icon: 'heart-pulse' },
   { id: 'most_tasty', title: 'Tasty', subtitle: 'Crowd pleasers', icon: 'fire' },
   { id: 'long_lasting', title: 'Meal Prep', subtitle: 'Cook now, eat later', icon: 'clock-outline' },
@@ -75,6 +78,18 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   medium: '#689F38',
   hard: '#1B5E20',
 };
+
+function mealOfDayToSmartMeal(meal: MealOfDayMeal): SmartMeal {
+  return {
+    meal_slot: meal.meal_slot,
+    name: meal.name,
+    description: meal.description ?? '',
+    ingredients: meal.ingredients ?? [],
+    cooking_time_mins: meal.cooking_time_mins ?? 30,
+    difficulty: meal.difficulty ?? 'easy',
+    why_this_meal: meal.why_this_meal ?? '',
+  };
+}
 
 const MEAL_TYPE_FILTERS = [
   { id: 'lunch_dinner', label: 'Lunch / Dinner' },
@@ -165,12 +180,12 @@ type MealsRouteParams = {
   openLog?: boolean;
   generateCategory?: string;
   mealType?: MealTypeFilterId;
+  returnToTab?: keyof MainTabParamList;
 };
 
 export function MealsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ Meals: MealsRouteParams }, 'Meals'>>();
-  const insets = useSafeAreaInsets();
   const { contentPaddingBottom } = useTabBarLayout();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [result, setResult] = useState<MealCategory | null>(null);
@@ -253,11 +268,53 @@ export function MealsScreen() {
     navigation.navigate('Cook', { dishItems: [meal.name, ...pairs] });
   };
 
+  const loadMealOfDayFromCache = useCallback(async () => {
+    setSelectedCategory('meal_of_day');
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await api.getMealOfDay();
+      const match = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0] ?? null;
+      if (!match?.meals?.length) {
+        setError("Today's meal is prepared at midnight (12:00 AM). Check back after it refreshes.");
+        setResult(null);
+      } else {
+        setResult({
+          id: match.id,
+          title: match.title,
+          description: match.description,
+          meals: match.meals.map(mealOfDayToSmartMeal),
+        });
+      }
+    } catch (e: unknown) {
+      if (e instanceof UpgradeRequiredError) {
+        navigateToUpgradePlan(navigation, {
+          source: 'locked_meal',
+          mealCategoryId: 'meal_of_day',
+          preferredTier: 'pro',
+          preferredInterval: 'monthly',
+        });
+        setError(null);
+        setSelectedCategory(null);
+        void refreshEntitlements();
+      } else {
+        setError((e as Error).message || 'Failed to load meal of the day.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation, refreshEntitlements]);
+
   const generateForCategory = useCallback(async (
     catId: string,
     excludeDish?: string,
     mealTypeOverride?: MealTypeFilterId,
   ) => {
+    if (catId === 'meal_of_day') {
+      void loadMealOfDayFromCache();
+      return;
+    }
     const activeMealType = mealTypeOverride ?? mealTypeFilter;
     setSelectedCategory(catId);
     setLoading(true);
@@ -292,7 +349,7 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation]);
+  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, loadMealOfDayFromCache]);
 
   const onCategoryPress = useCallback(
     (catId: string) => {
@@ -332,11 +389,31 @@ export function MealsScreen() {
     void generateForCategory(catId, undefined, mealType);
   }, [route.params?.generateCategory, route.params?.mealType, navigation, isMealCategoryFree, generateForCategory]);
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
+    const returnTo = route.params?.returnToTab;
+    if (returnTo) {
+      navigation.navigate(returnTo);
+      navigation.setParams({ returnToTab: undefined });
+      return;
+    }
     setSelectedCategory(null);
     setResult(null);
     setError(null);
-  };
+  }, [navigation, route.params?.returnToTab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const returnTo = route.params?.returnToTab;
+      if (!returnTo || !selectedCategory) return undefined;
+
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        navigation.navigate(returnTo);
+        navigation.setParams({ returnToTab: undefined });
+        return true;
+      });
+      return () => sub.remove();
+    }, [navigation, route.params?.returnToTab, selectedCategory]),
+  );
 
   const activeCat = CATEGORIES.find((c) => c.id === selectedCategory);
 
@@ -346,43 +423,32 @@ export function MealsScreen() {
       contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom() }]}
       showsVerticalScrollIndicator={false}
     >
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + 14 },
+      <TabScreenHeader
+        leading={
+          selectedCategory ? (
+            <Pressable onPress={goBack} style={styles.backRow}>
+              <IconButton icon="arrow-left" iconColor="#fff" size={20} style={{ margin: 0 }} />
+              <Text style={styles.backText}>Back</Text>
+            </Pressable>
+          ) : undefined
+        }
+        title={
           activeCat
-            ? { backgroundColor: '#2E7D32' }
+            ? activeCat.title
             : mealsTab === 'history'
-              ? { backgroundColor: '#2E7D32' }
-              : { backgroundColor: '#2E7D32' },
-        ]}
-      >
-        <View style={styles.headerTopRow}>
-          <View style={styles.headerContent}>
-            {selectedCategory && (
-              <Pressable onPress={goBack} style={styles.backRow}>
-                <IconButton icon="arrow-left" iconColor="#fff" size={20} style={{ margin: 0 }} />
-                <Text style={styles.backText}>Back</Text>
-              </Pressable>
-            )}
-            <Text variant="headlineSmall" style={styles.headerTitle}>
-              {activeCat
-                ? activeCat.title
-                : mealsTab === 'history'
-                  ? 'History & diet'
-                  : 'Smart Meals'}
-            </Text>
-            <Text variant="bodyMedium" style={styles.headerSub}>
-              {activeCat
-                ? activeCat.subtitle
-                : mealsTab === 'history'
-                  ? 'Log what you ate · nightly diet email'
-                  : 'AI-powered meal ideas from your kitchen'}
-            </Text>
-          </View>
-          <ProfileHeaderButton />
-        </View>
-      </View>
+              ? 'History & diet'
+              : 'Smart Meals'
+        }
+        subtitle={
+          activeCat?.id === 'meal_of_day'
+            ? 'Personalized for you · refreshes at midnight'
+            : activeCat
+              ? activeCat.subtitle
+              : mealsTab === 'history'
+                ? 'Log what you ate · nightly diet email'
+                : 'AI-powered meal ideas from your kitchen'
+        }
+      />
 
       {!selectedCategory && (
         <View style={styles.tabBar}>
@@ -467,8 +533,10 @@ export function MealsScreen() {
               mode="contained"
               compact
               onPress={() =>
-                selectedCategory &&
-                generateForCategory(selectedCategory, result?.meals?.[0]?.name)
+                selectedCategory === 'meal_of_day'
+                  ? loadMealOfDayFromCache()
+                  : selectedCategory &&
+                    generateForCategory(selectedCategory, result?.meals?.[0]?.name)
               }
               buttonColor="#C62828"
             >
@@ -481,37 +549,52 @@ export function MealsScreen() {
 
       {mealsTab === 'suggest' && result && !loading && (
         <View style={styles.resultWrap}>
-          <View style={styles.regenRow}>
-            <TextInput
-              mode="outlined"
-              placeholder="Change preference..."
-              value={userPrompt}
-              onChangeText={setUserPrompt}
-              style={styles.regenInput}
-              outlineColor="#E0E0E0"
-              activeOutlineColor="#2E7D32"
-              outlineStyle={{ borderRadius: 12 }}
-              dense
-            />
-          </View>
+          {selectedCategory !== 'meal_of_day' ? (
+            <>
+              <View style={styles.regenRow}>
+                <TextInput
+                  mode="outlined"
+                  placeholder="Change preference..."
+                  value={userPrompt}
+                  onChangeText={setUserPrompt}
+                  style={styles.regenInput}
+                  outlineColor="#E0E0E0"
+                  activeOutlineColor="#2E7D32"
+                  outlineStyle={{ borderRadius: 12 }}
+                  dense
+                />
+              </View>
 
-          <View style={styles.filterRow}>
-            <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
-            <Pressable
-              onPress={() =>
-                selectedCategory &&
-                generateForCategory(selectedCategory, result?.meals?.[0]?.name)
-              }
-              style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.88 }]}
-            >
-              <IconButton icon="refresh" iconColor="#fff" size={18} style={{ margin: 0 }} />
-              <Text style={styles.regenBtnText}>Regenerate Ideas</Text>
-            </Pressable>
-          </View>
+              <View style={styles.filterRow}>
+                <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
+                <Pressable
+                  onPress={() =>
+                    selectedCategory &&
+                    generateForCategory(selectedCategory, result?.meals?.[0]?.name)
+                  }
+                  style={({ pressed }) => [styles.regenBtn, pressed && { opacity: 0.88 }]}
+                >
+                  <IconButton icon="refresh" iconColor="#fff" size={18} style={{ margin: 0 }} />
+                  <Text style={styles.regenBtnText}>Regenerate Ideas</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <Surface style={styles.mealOfDayNote} elevation={0}>
+              <Text variant="bodySmall" style={styles.mealOfDayNoteText}>
+                This suggestion updates once per day at 12:00 AM.
+              </Text>
+            </Surface>
+          )}
 
           {result.meals?.map((meal, idx) => (
             <Card key={idx} style={styles.mealCard} mode="elevated">
               <Card.Content>
+                {meal.meal_slot && selectedCategory === 'meal_of_day' ? (
+                  <Text variant="labelLarge" style={styles.mealSlotLabel}>
+                    {meal.meal_slot === 'breakfast' ? 'Breakfast' : meal.meal_slot === 'lunch' ? 'Lunch' : meal.meal_slot === 'dinner' ? 'Dinner' : meal.meal_slot}
+                  </Text>
+                ) : null}
                 <View style={styles.mealHeader}>
                   <Text variant="titleMedium" style={styles.mealName}>{meal.name}</Text>
                   <View style={styles.mealHeaderRight}>
@@ -540,7 +623,11 @@ export function MealsScreen() {
                   </View>
                 </View>
 
-                <Text variant="bodyMedium" style={styles.mealDesc}>{meal.description}</Text>
+                {meal.description?.trim() &&
+                meal.description.trim() !==
+                  'A home-style option from your personalized shortlist.' ? (
+                  <Text variant="bodyMedium" style={styles.mealDesc}>{meal.description}</Text>
+                ) : null}
 
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
@@ -600,11 +687,6 @@ export function MealsScreen() {
                   </>
                 )}
 
-                <Surface style={styles.whyBox} elevation={0}>
-                  <Text variant="labelSmall" style={styles.whyLabel}>Why this meal?</Text>
-                  <Text variant="bodySmall" style={styles.whyText}>{meal.why_this_meal}</Text>
-                </Surface>
-
                 {meal.nutrition_notes ? (
                   <Text variant="bodySmall" style={styles.nutritionText}>{meal.nutrition_notes}</Text>
                 ) : null}
@@ -640,26 +722,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollContent: { paddingBottom: 24 },
 
-  header: {
-    backgroundColor: '#2E7D32',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  headerContent: { flex: 1, minWidth: 0 },
   backRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginLeft: -8 },
   backText: { color: 'rgba(255,255,255,0.9)', fontWeight: '600', fontSize: 14 },
-  headerTitle: { color: '#fff', fontWeight: '800' },
-  headerSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4 },
 
-  tabBar: { paddingHorizontal: GRID_PAD, paddingTop: 14, paddingBottom: 4 },
+  tabBar: { paddingHorizontal: GRID_PAD, paddingTop: 12, paddingBottom: 4 },
   segmented: { backgroundColor: '#fff' },
   tabBtn: { backgroundColor: '#fff' },
   tabBtnActive: { backgroundColor: '#E8F5E9' },
@@ -896,6 +962,15 @@ const styles = StyleSheet.create({
   errorActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
 
   resultWrap: { paddingHorizontal: GRID_PAD, paddingTop: 4 },
+  mealOfDayNote: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  mealOfDayNoteText: { color: '#2E7D32', textAlign: 'center' },
   regenRow: { marginBottom: 10, gap: 10 },
   regenInput: { backgroundColor: '#fff' },
   filterRow: {
@@ -919,6 +994,11 @@ const styles = StyleSheet.create({
 
   mealCard: { marginBottom: 14, borderRadius: 16 },
   mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mealSlotLabel: {
+    color: '#2E7D32',
+    fontWeight: '700',
+    marginBottom: 8,
+  },
   mealName: { fontWeight: '700', color: '#333', flex: 1 },
   mealHeaderRight: { flexDirection: 'row', alignItems: 'center' },
   starWrap: { flexDirection: 'row', alignItems: 'center', marginRight: 4 },
@@ -946,10 +1026,6 @@ const styles = StyleSheet.create({
   orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
   orderChip: { height: 28, backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },
   orderChipText: { fontSize: 11, color: '#E65100' },
-
-  whyBox: { backgroundColor: '#FFF8E1', padding: 14, borderRadius: 12, marginBottom: 8 },
-  whyLabel: { color: '#F57F17', fontWeight: '700', marginBottom: 4 },
-  whyText: { color: '#555555', lineHeight: 18 },
 
   nutritionText: { color: '#666666', fontStyle: 'italic', marginBottom: 8 },
 

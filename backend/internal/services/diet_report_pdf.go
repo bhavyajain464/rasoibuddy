@@ -52,7 +52,7 @@ func drawReportHeader(pdf *gofpdf.Fpdf, report *DietDayReport) {
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetXY(pdfMarginL+4, pdfMarginT+5)
 	pdf.SetFont("Helvetica", "B", 16)
-	pdf.CellFormat(pdfContentW-8, 7, pdfASCII("Kitchen AI - Daily Diet Report"), "", 1, "L", false, 0, "")
+	pdf.CellFormat(pdfContentW-8, 7, pdfASCII("Kitchmate - Daily Diet Report"), "", 1, "L", false, 0, "")
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.CellFormat(pdfContentW-8, 5, pdfASCII(report.Date), "", 1, "L", false, 0, "")
 	pdf.SetXY(pdfMarginL, pdfMarginT+26)

@@ -67,7 +67,18 @@ curl -X POST http://localhost:8080/api/v1/admin/subscriptions/cancel \
   -d '{"email":"user@example.com","reason":"support request"}'
 ```
 
-Use `user_id` instead of `email` if you have the UUID. Razorpay is not auto-refunded; this only updates Kitchen AI entitlements.
+Use `user_id` instead of `email` if you have the UUID. Razorpay is not auto-refunded; this only updates Kitchmate entitlements.
+
+Refresh **per-user** Meal of the Day in Redis (respects dietary prefs; free tier reads `GET /meals/meal-of-day`). Requires `REDIS_URL`:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/meal-of-day/refresh \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Key: $ADMIN_API_KEY" \
+  -d '{"email":"you@example.com"}'
+```
+
+Or refresh all users: `-d '{}'`. The API also generates on first load if today's cache is missing.
 
 ### 3. Backend Setup
 ```bash
@@ -129,7 +140,7 @@ Expected output:
 1. Open Expo Go app on your phone
 2. Scan QR code from terminal
 3. App should show:
-   - Kitchen AI header
+   - Kitchmate header
    - Inventory stats
    - Expiring items (sample data)
    - Quick action buttons
@@ -247,5 +258,5 @@ For issues or questions:
 
 ---
 
-**🎉 Your Kitchen AI foundation is now set up!** 
+**🎉 Your Kitchmate foundation is now set up!** 
 Proceed to Week 2 implementation as per the project plan.

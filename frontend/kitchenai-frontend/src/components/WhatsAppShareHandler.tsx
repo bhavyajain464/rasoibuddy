@@ -10,7 +10,6 @@ import { Platform, StyleSheet, View } from 'react-native';
 import {
   Button,
   Text,
-  TextInput,
   ActivityIndicator,
   Divider,
   Surface,
@@ -25,12 +24,15 @@ import {
   logImportError,
   toUserFacingMessage,
 } from '../utils/whatsappAction';
-import { BottomSheet, bottomSheetInput, bottomSheetPrimaryBtn } from './BottomSheet';
+import { BottomSheet, bottomSheetPrimaryBtn } from './BottomSheet';
+import { MessageComposer } from './MessageComposer';
 import { useAppRefresh } from '../context/AppRefreshContext';
 import { palette } from '../theme';
 
 type WhatsAppShareContextValue = {
   openWithText: (text: string) => void;
+  /** Opens Review suggestion sheet with an empty message to type in the sheet. */
+  openCompose: () => void;
 };
 
 const WhatsAppShareContext = createContext<WhatsAppShareContextValue | null>(null);
@@ -202,16 +204,14 @@ function WhatsAppShareModal({
       </View>
 
       {!doneMsg ? (
-        <TextInput
+        <MessageComposer
           value={text}
           onChangeText={setText}
-          mode="outlined"
-          style={[bottomSheetInput, styles.messageInput]}
-          outlineColor={palette.border}
-          activeOutlineColor={palette.primary}
-          editable={!busy}
+          onSubmit={() => void handleReparse()}
           placeholder='e.g. "milk khatam ho gaya"'
-          returnKeyType="done"
+          disabled={busy}
+          loading={parsing}
+          accessibilityLabel="Review suggestion"
         />
       ) : (
         <View style={styles.messageBox}>
@@ -315,7 +315,11 @@ export function WhatsAppShareProvider({ children }: { children: React.ReactNode 
     setModal({ visible: true, text: clampWhatsAppMessageText(text) });
   }, []);
 
-  const value = useMemo(() => ({ openWithText }), [openWithText]);
+  const openCompose = useCallback(() => {
+    setModal({ visible: true, text: '' });
+  }, []);
+
+  const value = useMemo(() => ({ openWithText, openCompose }), [openWithText, openCompose]);
 
   return (
     <WhatsAppShareContext.Provider value={value}>
@@ -346,9 +350,6 @@ const styles = StyleSheet.create({
   },
   refreshBtn: {
     margin: 0,
-  },
-  messageInput: {
-    marginBottom: 4,
   },
   messageBox: {
     backgroundColor: '#FAFAFA',

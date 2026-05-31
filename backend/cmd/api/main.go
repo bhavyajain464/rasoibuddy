@@ -75,8 +75,10 @@ func main() {
 	redisClient := redislib.New(cfg)
 	defer redisClient.Close()
 	cookedLogSvc := services.NewCookedLogService(sqlDB, redisClient)
+	mealOfDayCache := services.NewMealOfDayCache(redisClient)
 	dietDigestSvc := services.NewDietDigestService(sqlDB, cookedLogSvc, cfg)
 	services.StartNightlyDigestScheduler(dietDigestSvc)
+	handlers.StartMealOfDayScheduler(sqlDB, cfg, cookedLogSvc, mealOfDayCache)
 
 	authService := services.NewAuthService(sqlDB, cfg)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -99,6 +101,8 @@ func main() {
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 
 	// Inventory (specific paths before {id} wildcard)
+	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
+	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.CreateInventoryItem(sqlDB, kafkaProducer)))).Methods("POST")
 	api.Handle("/inventory/expiring", middleware.RequireAuth(http.HandlerFunc(handlers.GetExpiringItems(sqlDB)))).Methods("GET", "OPTIONS")
@@ -147,6 +151,9 @@ func main() {
 	admin := router.PathPrefix("/api/v1/admin").Subrouter()
 	admin.Use(middleware.RequireAdmin(cfg.AdminAPIKey))
 	admin.HandleFunc("/subscriptions/cancel", handlers.CancelSubscription(sqlDB)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/meal-of-day/refresh", handlers.AdminRefreshMealOfDay(sqlDB, cfg, cookedLogSvc, mealOfDayCache)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/meal-of-day/clear-cache", handlers.AdminClearMealOfDayCache(mealOfDayCache)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/inventory/backfill-food-groups", handlers.AdminBackfillInventoryFoodGroups(sqlDB, cfg)).Methods("POST", "OPTIONS")
 	if cfg.AdminAPIKey != "" {
 		log.Printf("Admin API enabled at /api/v1/admin/*")
 	} else {
@@ -169,6 +176,7 @@ func main() {
 
 	// Smart Meals & cooked history
 	api.Handle("/meals/smart", middleware.RequireAuth(http.HandlerFunc(handlers.GetSmartMeals(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/meal-of-day", middleware.RequireAuth(http.HandlerFunc(handlers.GetMealOfDay(mealOfDayCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked-history", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookedHistory(cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked", middleware.RequireAuth(http.HandlerFunc(handlers.LogCookedDish(cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.GetDietAnalysisSettings(dietDigestSvc)))).Methods("GET", "OPTIONS")

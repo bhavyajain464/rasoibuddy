@@ -26,6 +26,7 @@ type MealCategory struct {
 }
 
 type SmartMeal struct {
+	MealSlot       string   `json:"meal_slot,omitempty"` // breakfast | lunch | dinner (meal of the day)
 	Name           string   `json:"name"`
 	Description    string   `json:"description"`
 	Ingredients    []string `json:"ingredients"`
@@ -52,7 +53,7 @@ var categoryMeta = map[string]struct {
 	Rule  string
 }{
 	"rescue_meal":  {Title: "Rescue Meal", Desc: "Use expiring items before they go to waste", Rule: "MUST use the expiring/expired items listed above. Use ONLY inventory items. This is urgent. \"items_to_order\" MUST be empty []."},
-	"meal_of_day":  {Title: "Meal of the Day", Desc: "Best balanced meal using only what you have", Rule: "Use ONLY items already in inventory. Pick the best balanced option. \"items_to_order\" MUST be empty []."},
+	"meal_of_day":  {Title: "Meal of the Day", Desc: "Your breakfast, lunch, and dinner for today", Rule: "Pick one familiar, practical Indian home-cooking dish from the shortlist for the requested meal slot. MUST respect the user's dietary constraints above. \"items_to_order\" may list staples not in their pantry."},
 	"most_healthy": {Title: "Most Healthy", Desc: "Nutrient-rich meals for a balanced diet", Rule: "GENERAL suggestions. You may suggest dishes that require items NOT in inventory. List any items NOT in inventory in \"items_to_order\"."},
 	"most_tasty":   {Title: "Most Tasty", Desc: "Crowd-pleasing delicious meals", Rule: "GENERAL suggestions. You may suggest dishes that require items NOT in inventory. List any items NOT in inventory in \"items_to_order\"."},
 	"long_lasting": {Title: "Cook Now, Eat Later", Desc: "Meals that store well for days", Rule: "GENERAL suggestions for batch cooking. You may suggest dishes that require items NOT in inventory. List any items NOT in inventory in \"items_to_order\"."},
@@ -67,31 +68,84 @@ const (
 	maxMemoriesInPrompt      = 5
 )
 
-func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserID(r)
-		userPrompt := r.URL.Query().Get("prompt")
-		category := r.URL.Query().Get("category")
-		mealType := r.URL.Query().Get("meal_type")
-		exclude := parseExcludeDishes(r.URL.Query().Get("exclude"))
-		effectiveMeal := services.ResolveEffectiveMealTypeFilter(mealType, userPrompt)
-		log.Printf("SmartMeals request: userID=%s, category=%q, mealType=%q (effective=%q), userPrompt=%q, exclude=%v",
-			userID, category, mealType, effectiveMeal, userPrompt, exclude)
+type smartMealsGenerateInput struct {
+	UserID     string
+	Category   string
+	MealType   string
+	UserPrompt string
+	Exclude    []string
+	// Global: deprecated shared cache (unused; meal-of-day is per-user).
+	Global bool
+	// MealOfDayForUser: personalized breakfast/lunch/dinner using prefs, allergies, and optional pantry.
+	MealOfDayForUser bool
+}
 
-		if !requireMealCategory(db, userID, category, w) {
-			return
+func generateSmartMeals(
+	ctx context.Context,
+	db *sql.DB,
+	cfg *config.Config,
+	cookedLog *services.CookedLogService,
+	in smartMealsGenerateInput,
+) (SmartMealsResponse, error) {
+	userID := strings.TrimSpace(in.UserID)
+	category := strings.TrimSpace(in.Category)
+	mealType := strings.TrimSpace(in.MealType)
+	userPrompt := strings.TrimSpace(in.UserPrompt)
+	effectiveMeal := services.ResolveEffectiveMealTypeFilter(mealType, userPrompt)
+
+	var inventory []inventoryRow
+	var userPrefs *services.UserPrefsData
+	var recentDishes []string
+	var cookedDays, suggestedDays map[string]int
+	invNames := []string(nil)
+
+	if in.Global {
+		category = "daily"
+	} else if in.MealOfDayForUser {
+		// Catalog retrieval respects diet/dislikes without requiring pantry stock.
+		if category == "" || category == services.MealOfDayCategoryID {
+			category = "daily"
 		}
-
-		inventory := fetchUserInventory(db, userID)
-		userPrefs := fetchUserPreferences(db, userID)
-
+		inventory = fetchUserInventory(db, userID)
+		userPrefs = fetchUserPreferences(db, userID)
 		if userPrefs != nil {
 			inventory = filterInventoryByDiet(inventory, userPrefs.DietaryTags)
 		}
-
-		var recentDishes []string
 		if cookedLog != nil {
-			if entries, _, err := cookedLog.ListEatenLast15Days(r.Context(), userID); err == nil {
+			if entries, _, err := cookedLog.ListEatenLast15Days(ctx, userID); err == nil {
+				seen := map[string]bool{}
+				for _, e := range entries {
+					name := strings.TrimSpace(e.DishName)
+					key := strings.ToLower(name)
+					if name == "" || seen[key] {
+						continue
+					}
+					seen[key] = true
+					recentDishes = append(recentDishes, name)
+					if len(recentDishes) >= maxRecentDishesInPrompt {
+						break
+					}
+				}
+			}
+			if m, err := cookedLog.ListRecentEatenDays(ctx, userID, services.CookedHistoryDays); err == nil {
+				cookedDays = m
+			}
+			if m, err := cookedLog.ListRecentMealSuggestionDays(ctx, userID, 14); err == nil {
+				suggestedDays = m
+			}
+		}
+		inventory = trimInventoryForMealPrompt(inventory)
+		for _, item := range inventory {
+			invNames = append(invNames, item.Name)
+		}
+	} else {
+		inventory = fetchUserInventory(db, userID)
+		userPrefs = fetchUserPreferences(db, userID)
+		if userPrefs != nil {
+			inventory = filterInventoryByDiet(inventory, userPrefs.DietaryTags)
+		}
+		if cookedLog != nil {
+			if entries, _, err := cookedLog.ListEatenLast15Days(ctx, userID); err == nil {
 				seen := map[string]bool{}
 				for _, e := range entries {
 					name := strings.TrimSpace(e.DishName)
@@ -107,95 +161,149 @@ func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLog
 				}
 			}
 		}
-
 		inventory = trimInventoryForMealPrompt(inventory)
-
-		invNames := make([]string, 0, len(inventory))
 		for _, item := range inventory {
 			invNames = append(invNames, item.Name)
 		}
-
-		var cookedDays, suggestedDays map[string]int
 		if cookedLog != nil {
-			if m, err := cookedLog.ListRecentEatenDays(r.Context(), userID, services.CookedHistoryDays); err == nil {
+			if m, err := cookedLog.ListRecentEatenDays(ctx, userID, services.CookedHistoryDays); err == nil {
 				cookedDays = m
 			}
-			if m, err := cookedLog.ListRecentMealSuggestionDays(r.Context(), userID, 14); err == nil {
+			if m, err := cookedLog.ListRecentMealSuggestionDays(ctx, userID, 14); err == nil {
 				suggestedDays = m
 			}
 		}
+	}
 
-		retrieveIn := services.DishRetrieveInput{
-			Category:           category,
-			UserPrompt:         userPrompt,
-			MealTypeFilter:     mealType,
-			CookedDaysAgo:      cookedDays,
-			SuggestedDaysAgo:   suggestedDays,
-			InventoryNames:     invNames,
-			TopK:               services.CatalogRetrieveTopK,
-			Now:                time.Now(),
-		}
-		if userPrefs != nil {
-			retrieveIn.DietaryTags = userPrefs.DietaryTags
-			retrieveIn.Allergies = userPrefs.Allergies
-			retrieveIn.Dislikes = userPrefs.Dislikes
-			retrieveIn.FavCuisines = userPrefs.FavCuisines
-			retrieveIn.Memories = userPrefs.Memories
-		}
-		globalStars, _ := services.LoadGlobalStarCounts(db)
-		userStarred, _ := services.LoadUserStarredDishes(db, userID)
-		retrieveIn.GlobalStarCounts = globalStars
-		// Stage 1: word-match catalog (prefs, memories, prompt, inventory) — no Groq.
-		candidates := services.RetrieveDishes(retrieveIn)
-		log.Printf("[meal_pipeline] stage1 word-match: %d candidates (top %d)", len(candidates), services.CatalogRetrieveTopK)
+	retrieveIn := services.DishRetrieveInput{
+		Category:         category,
+		UserPrompt:       userPrompt,
+		MealTypeFilter:   mealType,
+		CookedDaysAgo:    cookedDays,
+		SuggestedDaysAgo: suggestedDays,
+		InventoryNames:   invNames,
+		TopK:             services.CatalogRetrieveTopK,
+		Now:              time.Now(),
+	}
+	if userPrefs != nil {
+		retrieveIn.DietaryTags = userPrefs.DietaryTags
+		retrieveIn.Allergies = userPrefs.Allergies
+		retrieveIn.Dislikes = userPrefs.Dislikes
+		retrieveIn.FavCuisines = userPrefs.FavCuisines
+		retrieveIn.Memories = userPrefs.Memories
+	}
+	globalStars, _ := services.LoadGlobalStarCounts(db)
+	var userStarred map[string]bool
+	if !in.Global && userID != "" {
+		userStarred, _ = services.LoadUserStarredDishes(db, userID)
+	}
+	retrieveIn.GlobalStarCounts = globalStars
+	candidates := services.RetrieveDishes(retrieveIn)
 
-		if len(inventory) == 0 && category != "daily" {
+	if !in.Global && !in.MealOfDayForUser && len(inventory) == 0 && category != "daily" {
+		return SmartMealsResponse{
+			Categories:    []MealCategory{},
+			InventoryUsed: 0,
+			GeneratedAt:   time.Now().Format(time.RFC3339),
+			Source:        "ai",
+		}, nil
+	}
+
+	source := "ai"
+	var meals []MealCategory
+	var err error
+	if len(candidates) == 0 {
+		source = "fallback"
+		meals = fallbackMeals(inventory)
+	} else {
+		prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, effectiveMeal, recentDishes, candidates, in.Exclude, retrieveIn.GlobalStarCounts)
+		prompt += mealVarietySuffix(candidates, userPrompt, in.Exclude)
+		meals, err = callLLMFilterMeals(cfg, prompt)
+		if err == nil {
+			meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, in.Exclude, globalStars, userStarred)
+		}
+	}
+	if err != nil {
+		source = "fallback"
+		if len(candidates) > 0 {
+			meals = fallbackMealsFromCandidates(candidates, category, inventory, userPrompt, in.Exclude, globalStars, userStarred)
+		} else {
+			meals = fallbackMeals(inventory)
+		}
+	}
+
+	if in.Global {
+		meals = relabelAsGlobalMealOfDay(meals, globalStars)
+	} else if !in.MealOfDayForUser {
+		recordMealSuggestions(ctx, cookedLog, userID, meals)
+	}
+	return SmartMealsResponse{
+		Categories:    meals,
+		InventoryUsed: len(inventory),
+		GeneratedAt:   time.Now().Format(time.RFC3339),
+		Source:        source,
+	}, nil
+}
+
+func relabelAsGlobalMealOfDay(categories []MealCategory, globalStars map[string]int) []MealCategory {
+	cat := pickMealOfDayCategory(categories)
+	if cat == nil {
+		return nil
+	}
+	meta := categoryMeta[services.MealOfDayCategoryID]
+	cat.ID = services.MealOfDayCategoryID
+	cat.Title = meta.Title
+	cat.Description = meta.Desc
+	for i := range cat.Meals {
+		if cat.Meals[i].WhyThisMeal == "" {
+			cat.Meals[i].WhyThisMeal = "Today's pick for every Kitchmate home."
+		}
+		key := services.NormalizeDishName(cat.Meals[i].Name)
+		if globalStars != nil {
+			cat.Meals[i].StarCount = globalStars[key]
+		}
+		cat.Meals[i].UserStarred = false
+	}
+	return []MealCategory{*cat}
+}
+
+func GetSmartMeals(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		userPrompt := r.URL.Query().Get("prompt")
+		category := r.URL.Query().Get("category")
+		mealType := r.URL.Query().Get("meal_type")
+		exclude := parseExcludeDishes(r.URL.Query().Get("exclude"))
+		effectiveMeal := services.ResolveEffectiveMealTypeFilter(mealType, userPrompt)
+		log.Printf("SmartMeals request: userID=%s, category=%q, mealType=%q (effective=%q), userPrompt=%q, exclude=%v",
+			userID, category, mealType, effectiveMeal, userPrompt, exclude)
+
+		if !requireMealCategory(db, userID, category, w) {
+			return
+		}
+		if category == services.MealOfDayCategoryID {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(SmartMealsResponse{
-				Categories:    []MealCategory{},
-				InventoryUsed: 0,
-				GeneratedAt:   time.Now().Format(time.RFC3339),
-				Source:        "ai",
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "use_meal_of_day_endpoint",
+				"message": "Meal of the Day is served from the nightly cache. Use GET /meals/meal-of-day.",
 			})
 			return
 		}
 
-		source := "ai"
-		var meals []MealCategory
-		var err error
-		if len(candidates) == 0 {
-			log.Printf("[meal_pipeline] stage1 returned no candidates; using fallback")
-			source = "fallback"
-			meals = fallbackMeals(inventory)
-		} else {
-			// Stage 2: Groq picks one dish from shortlist + JSON details.
-			prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, effectiveMeal, recentDishes, candidates, exclude, retrieveIn.GlobalStarCounts)
-			prompt += mealVarietySuffix(candidates, userPrompt, exclude)
-			log.Printf("[meal_pipeline] stage2 groq filter from %d candidates", len(candidates))
-			meals, err = callLLMFilterMeals(cfg, prompt)
-			if err == nil {
-				meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, exclude, globalStars, userStarred)
-			}
-		}
-		if err != nil {
-			log.Printf("meal suggestion LLM error (using random from shortlist): %v", err)
-			source = "fallback"
-			if len(candidates) > 0 {
-				meals = fallbackMealsFromCandidates(candidates, category, inventory, userPrompt, exclude, globalStars, userStarred)
-			} else {
-				meals = fallbackMeals(inventory)
-			}
-		}
-
-		recordMealSuggestions(r.Context(), cookedLog, userID, meals)
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(SmartMealsResponse{
-			Categories:    meals,
-			InventoryUsed: len(inventory),
-			GeneratedAt:   time.Now().Format(time.RFC3339),
-			Source:        source,
+		resp, err := generateSmartMeals(r.Context(), db, cfg, cookedLog, smartMealsGenerateInput{
+			UserID:     userID,
+			Category:   category,
+			MealType:   mealType,
+			UserPrompt: userPrompt,
+			Exclude:    exclude,
 		})
+		if err != nil {
+			http.Error(w, "Failed to generate meals", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
 	}
 }
 
@@ -356,7 +464,7 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 	} else {
 		sb.WriteString("Context: weekend — slightly more ambitious dishes are OK.\n")
 	}
-	sb.WriteString("Use the exact shortlist dish name in JSON. Star counts are global (all KitchenAI users). Prefer dishes with more stars when the request is vague.\n")
+	sb.WriteString("Use the exact shortlist dish name in JSON. Star counts are global (all Kitchmate users). Prefer dishes with more stars when the request is vague.\n")
 
 	appendHardConstraints(&sb, prefs)
 
@@ -497,7 +605,7 @@ func callLLMFilterMeals(cfg *config.Config, prompt string) ([]MealCategory, erro
 func callGroqFilterMeals(cfg *config.Config, prompt string) ([]MealCategory, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	text, err := services.GroqChatFilterMeals(ctx, cfg.GroqAPIKey, cfg.EffectiveGroqModel(), prompt)
+	text, err := services.GroqChatFilterMeals(ctx, cfg.PickGroqAPIKey(), cfg.EffectiveGroqModel(), prompt)
 	if err != nil {
 		return nil, fmt.Errorf("Groq API error: %w", err)
 	}
@@ -766,7 +874,7 @@ func smartMealFromCatalog(d services.CatalogDish, invNames []string, category st
 	}
 	return SmartMeal{
 		Name:        d.DisplayLabel(),
-		Description: "A home-style option from your personalized shortlist.",
+		Description: "",
 		Ingredients: ing,
 		PairsWith:   pairs,
 		CookingTime: cookMins,
