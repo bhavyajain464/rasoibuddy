@@ -82,7 +82,7 @@ jobs:
             SMTP_HOST=smtp.gmail.com,
             SMTP_PORT=587,
             SMTP_USER=kitchmateai@gmail.com,
-            SMTP_FROM=Kitchen AI <kitchmateai@gmail.com>,
+            SMTP_FROM=Kitchmate <kitchmateai@gmail.com>,
             WHATSAPP_TEST_MODE=true,
             GOOGLE_WEB_CLIENT_ID=208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com,
             GOOGLE_IOS_CLIENT_ID=208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com,
@@ -94,7 +94,9 @@ jobs:
             KAFKA_SASL_ENABLED=true,
             KAFKA_SASL_MECHANISM=PLAIN,
             KAFKA_USERNAME=avnadmin,
-            KAFKA_TLS_ENABLED=true
+            KAFKA_TLS_ENABLED=true,
+            PREMIUM_GRANT_TIER=elite,
+            PREMIUM_GRANT_EMAILS=akhilshukla2000@gmail.com;avishabagdiya@gmail.com;bhavyajain464@gmail.com;houseofshringara25@gmail.com;infinitystones464@gmail.com;kitchmateai@gmail.com;prabalcs@gmail.com;prabaltikeriha@gmail.com;ritikjain3585@gmail.com;sankalpchauhan.me@gmail.com;singhjishan2@gmail.com;yash.singhania.smart@gmail.com;yashh.singhaniaa@gmail.com
         run: |
           gcloud run deploy "${SERVICE}" \
             --image "${IMAGE_SHA}" \

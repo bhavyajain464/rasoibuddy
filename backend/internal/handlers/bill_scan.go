@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
 )
@@ -81,6 +82,7 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			writeJSONResponse(w, http.StatusInternalServerError, response)
 			return
 		}
+		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -152,6 +154,7 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			writeJSONResponse(w, http.StatusInternalServerError, response)
 			return
 		}
+		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -175,9 +178,16 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 	}
 }
 
+func normalizeBillItemsFoodGroup(items []services.BillItem, dietaryTags []string) {
+	for i := range items {
+		items[i].FoodGroup = invgroup.NormalizeFoodGroupForDietary(items[i].FoodGroup, dietaryTags)
+	}
+}
+
 func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) ([]map[string]interface{}, []string) {
 	var addedItems []map[string]interface{}
 	var errors []string
+	dietary := dietaryTagsForUser(db, userID)
 
 	for _, item := range items {
 		shelfDays := item.ShelfLifeDays
@@ -185,6 +195,7 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 			shelfDays = 7
 		}
 		expiry := time.Now().AddDate(0, 0, shelfDays)
+		foodGroup := invgroup.NormalizeFoodGroupForDietary(item.FoodGroup, dietary)
 
 		var existingID string
 		err := db.QueryRow(`
@@ -196,9 +207,9 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 		if err == nil {
 			_, err = db.Exec(`
 				UPDATE inventory 
-				SET qty = qty + $1, estimated_expiry = LEAST(estimated_expiry, $2), user_id = COALESCE(user_id, $3), updated_at = NOW()
-				WHERE item_id = $4
-			`, item.Quantity, expiry, userID, existingID)
+				SET qty = qty + $1, estimated_expiry = LEAST(estimated_expiry, $2), food_group = $3, user_id = COALESCE(user_id, $4), updated_at = NOW()
+				WHERE item_id = $5
+			`, item.Quantity, expiry, foodGroup, userID, existingID)
 
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, err))
@@ -218,10 +229,10 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 		} else if err == sql.ErrNoRows {
 			var itemID string
 			err = db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, is_manual, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, false, NOW(), NOW())
+				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, is_manual, food_group, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, false, $6, NOW(), NOW())
 				RETURNING item_id
-			`, item.Name, item.Quantity, item.Unit, expiry, userID).Scan(&itemID)
+			`, item.Name, item.Quantity, item.Unit, expiry, userID, foodGroup).Scan(&itemID)
 
 			if err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to insert %s: %v", item.Name, err))
@@ -259,11 +270,11 @@ func TestScanBill(db *sql.DB) http.HandlerFunc {
 		userID := getUserID(r)
 
 		mockItems := []services.BillItem{
-			{Name: "Basmati Rice", Quantity: 5, Unit: "kg", PricePerUnit: 120, TotalPrice: 600, ShelfLifeDays: 60},
-			{Name: "Tomatoes", Quantity: 2, Unit: "kg", PricePerUnit: 40, TotalPrice: 80, ShelfLifeDays: 7},
-			{Name: "Onions", Quantity: 3, Unit: "kg", PricePerUnit: 30, TotalPrice: 90, ShelfLifeDays: 14},
-			{Name: "Potatoes", Quantity: 4, Unit: "kg", PricePerUnit: 25, TotalPrice: 100, ShelfLifeDays: 14},
-			{Name: "Milk", Quantity: 2, Unit: "litre", PricePerUnit: 60, TotalPrice: 120, ShelfLifeDays: 3},
+			{Name: "Basmati Rice", Quantity: 5, Unit: "kg", PricePerUnit: 120, TotalPrice: 600, ShelfLifeDays: 60, FoodGroup: "grains_pulses"},
+			{Name: "Tomatoes", Quantity: 2, Unit: "kg", PricePerUnit: 40, TotalPrice: 80, ShelfLifeDays: 7, FoodGroup: "vegetables"},
+			{Name: "Onions", Quantity: 3, Unit: "kg", PricePerUnit: 30, TotalPrice: 90, ShelfLifeDays: 14, FoodGroup: "vegetables"},
+			{Name: "Potatoes", Quantity: 4, Unit: "kg", PricePerUnit: 25, TotalPrice: 100, ShelfLifeDays: 14, FoodGroup: "vegetables"},
+			{Name: "Milk", Quantity: 2, Unit: "litre", PricePerUnit: 60, TotalPrice: 120, ShelfLifeDays: 3, FoodGroup: "dairy"},
 		}
 
 		addedItems, errors := addItemsToInventory(db, mockItems, userID)

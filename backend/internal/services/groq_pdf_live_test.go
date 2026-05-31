@@ -21,7 +21,7 @@ func TestGroqPDFBillScanLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
-	if cfg.LLMProvider != "groq" || cfg.GroqAPIKey == "" {
+	if cfg.LLMProvider != "groq" || !cfg.HasGroqAPIKey() {
 		t.Skip("set LLM_PROVIDER=groq and GROQ_API_KEY in backend/.env")
 	}
 	path := os.Getenv("SWIGGY_BILL_PDF")

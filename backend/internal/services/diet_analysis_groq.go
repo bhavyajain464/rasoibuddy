@@ -19,12 +19,12 @@ All numeric fields must be numbers (not strings). Use reasonable daily totals wh
 
 // GroqDietDayReport builds a structured day report from logged meals.
 func GroqDietDayReport(ctx context.Context, cfg *config.Config, dateISO string, entries []CookedLogEntry, prefs *UserPrefsData, displayName string) (*DietDayReport, error) {
-	if cfg == nil || strings.TrimSpace(cfg.GroqAPIKey) == "" {
+	if cfg == nil || !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("GROQ_API_KEY is not configured")
 	}
 	model := cfg.EffectiveGroqModel()
 	prompt := buildDietAnalysisPrompt(dateISO, entries, prefs, displayName)
-	text, err := groqChat(ctx, cfg.GroqAPIKey, model, 0.2, groqMaxTokensDiet, []groqMessage{
+	text, err := groqChat(ctx, cfg.PickGroqAPIKey(), model, 0.2, groqMaxTokensDiet, []groqMessage{
 		{Role: "system", Content: dietAnalysisSystemPrompt},
 		{Role: "user", Content: prompt},
 	})

@@ -1,6 +1,38 @@
 /** Cook WhatsApp message language codes stored in cook_profile.preferred_lang */
 export type CookMessageLang = 'en' | 'hi' | 'hing';
 
+export const MEAL_BOILERPLATE_DESCRIPTION =
+  'A home-style option from your personalized shortlist.';
+
+const MEAL_BOILERPLATE_RE = new RegExp(
+  `\\.?\\s*${MEAL_BOILERPLATE_DESCRIPTION.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.?`,
+  'gi',
+);
+const INGREDIENTS_SUFFIX_RE = /(?:\.\s*)?Ingredients:\s*.+$/is;
+const WHY_THIS_MEAL_SUFFIX_RE = /\.\s*Why this meal\?[^.]*\.?/gi;
+
+/** Strip legacy meal-card boilerplate from stored cook / log messages. */
+export function stripMealBoilerplateFromText(text: string): string {
+  return text
+    .replace(MEAL_BOILERPLATE_RE, '')
+    .replace(WHY_THIS_MEAL_SUFFIX_RE, '')
+    .replace(INGREDIENTS_SUFFIX_RE, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\.\s*\./g, '.')
+    .trim()
+    .replace(/\.$/, '');
+}
+
+export function formatCookMessageForDisplay(
+  notes: string | undefined | null,
+  dishName?: string,
+): string {
+  const raw = notes?.trim();
+  if (!raw) return dishName?.trim() || '';
+  const cleaned = stripMealBoilerplateFromText(raw);
+  return cleaned || dishName?.trim() || raw;
+}
+
 const LEGACY_KANNADA = 'kn';
 
 export function normalizeCookLang(code?: string | null): CookMessageLang {

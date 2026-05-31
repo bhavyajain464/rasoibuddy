@@ -1,11 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Platform, Image } from 'react-native';
-import { Text, Button, Surface, IconButton } from 'react-native-paper';
-import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme';
+import {
+  StyleSheet,
+  View,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 
-const logo = require('../../assets/icon.png');
+if (Platform.OS === 'web') {
+  require('../styles/login-header.web.css');
+}
+
+import { Text, Button, Surface, Icon } from 'react-native-paper';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
+import { colors, palette } from '../theme';
+import { BrandLogo } from '../components/BrandLogo';
+import { BRAND_HEADER_BG, BRAND_LOGO_ASPECT } from '../constants/brand';
+
+const FEATURES = [
+  { icon: 'package-variant', text: 'Track inventory & expiry' },
+  { icon: 'silverware-fork-knife', text: 'AI-powered meal ideas' },
+  { icon: 'cart-outline', text: 'Smart shopping lists' },
+] as const;
+
+const LOGO_WIDTH = 220;
 
 function GoogleButtonWeb() {
   const { setGoogleButtonRef, signIn, loading, ready, googleButtonRendered } = useAuth();
@@ -72,185 +92,198 @@ function GoogleButtonNative() {
 }
 
 export function LoginScreen() {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const cardWidth = Math.min(width - 40, 440);
+  const logoHeight = LOGO_WIDTH / BRAND_LOGO_ASPECT;
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
+    <View style={styles.root}>
+      <StatusBar style="dark" />
 
-      {/* Background decoration */}
-      <View style={styles.bgCircle1} />
-      <View style={styles.bgCircle2} />
-
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.logoWrap}>
-          <Surface style={styles.logoCard} elevation={3}>
-            <Image source={logo} style={styles.logoImage} resizeMode="contain" />
-          </Surface>
+      {/* Inset header — background matches flattened logo matte */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+        <View
+          style={[styles.logoSlot, { width: LOGO_WIDTH, height: logoHeight }]}
+          {...(Platform.OS === 'web' ? { className: 'login-logo-slot' as any } : {})}
+        >
+          <BrandLogo
+            width={LOGO_WIDTH}
+            height={logoHeight}
+            onHeaderMatte
+          />
         </View>
+      </View>
 
-        <Text variant="headlineMedium" style={styles.appName}>Kitchen AI</Text>
-        <Text variant="bodyMedium" style={styles.tagline}>
-          Smart Kitchen Management
-        </Text>
+      {/* Green canvas — welcome card */}
+      <View style={styles.canvas}>
+        <View style={styles.bgCircle1} />
+        <View style={styles.bgCircle2} />
 
-        {/* Features */}
-        <View style={styles.features}>
-          {[
-            { icon: 'package-variant', text: 'Track inventory & expiry' },
-            { icon: 'silverware-fork-knife', text: 'AI-powered meal ideas' },
-            { icon: 'cart-outline', text: 'Smart shopping lists' },
-          ].map((f, i) => (
-            <View key={i} style={styles.featureRow}>
-              <View style={styles.featureDot}>
-                <IconButton icon={f.icon} iconColor="#fff" size={16} style={{ margin: 0 }} />
-              </View>
-              <Text style={styles.featureText}>{f.text}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Surface style={[styles.card, { width: cardWidth, marginTop: 24 }]} elevation={4}>
+            <Text variant="headlineSmall" style={styles.cardTitle}>
+              Welcome
+            </Text>
+            <Text variant="bodyLarge" style={styles.cardDesc}>
+              Sign in to manage your kitchen, get personalized meal suggestions, and communicate with your cook.
+            </Text>
+
+            <View style={styles.features}>
+              {FEATURES.map((f, i) => (
+                <View key={i} style={styles.featureRow}>
+                  <View style={styles.featureIconWrap}>
+                    <Icon source={f.icon} size={26} color={palette.primaryDark} />
+                  </View>
+                  <Text style={styles.featureText}>{f.text}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        {/* Login card */}
-        <Surface style={styles.card} elevation={4}>
-          <Text variant="titleLarge" style={styles.cardTitle}>Welcome</Text>
-          <Text variant="bodyMedium" style={styles.cardDesc}>
-            Sign in to manage your kitchen, get personalized meal suggestions, and communicate with your cook.
-          </Text>
+            {Platform.OS === 'web' ? <GoogleButtonWeb /> : <GoogleButtonNative />}
 
-          {Platform.OS === 'web' ? <GoogleButtonWeb /> : <GoogleButtonNative />}
-
-          <Text variant="bodySmall" style={styles.note}>
-            Secured with Google Authentication
-          </Text>
-        </Surface>
-
-        <Text variant="bodySmall" style={styles.footer}>
-          Kitchen AI — Bengaluru Edition
-        </Text>
+            <Text variant="bodySmall" style={styles.note}>
+              Secured with Google Authentication
+            </Text>
+          </Surface>
+        </ScrollView>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#388E3C',
+    backgroundColor: BRAND_HEADER_BG,
+  },
+  logoSlot: {
+    backgroundColor: BRAND_HEADER_BG,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: BRAND_HEADER_BG,
+    alignItems: 'center',
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.borderLight,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+      default: {},
+    }),
+  },
+  canvas: {
+    flex: 1,
+    backgroundColor: palette.primaryLight,
     overflow: 'hidden',
   },
   bgCircle1: {
     position: 'absolute',
-    top: -80,
+    top: -60,
     right: -60,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   bgCircle2: {
     position: 'absolute',
-    bottom: -100,
-    left: -80,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    bottom: -80,
+    left: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-
-  logoWrap: { alignItems: 'center', marginBottom: 16 },
-  logoCard: {
-    width: 200,
-    height: 160,
-    borderRadius: 18,
-    backgroundColor: '#000',
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    paddingTop: 8,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
   },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  appName: {
-    color: '#fff',
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  tagline: {
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-
-  features: {
-    marginTop: 28,
-    marginBottom: 28,
-    gap: 12,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  featureText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
   card: {
-    borderRadius: 20,
-    padding: 28,
-    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+    backgroundColor: palette.surface,
+    maxWidth: '100%',
   },
   cardTitle: {
     textAlign: 'center',
     fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
+    color: palette.text,
+    marginBottom: 10,
+    fontSize: 28,
+    lineHeight: 34,
   },
   cardDesc: {
     textAlign: 'center',
-    color: '#888',
-    lineHeight: 22,
+    color: palette.textSecondary,
+    lineHeight: 26,
     marginBottom: 24,
+    fontSize: 16,
+  },
+  features: {
+    gap: 16,
+    marginBottom: 28,
+    paddingVertical: 4,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  featureIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: palette.primaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featureText: {
+    flex: 1,
+    color: palette.text,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    letterSpacing: 0.15,
   },
   gisContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     minHeight: 50,
   },
   googleButton: {
     borderRadius: 14,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   googleButtonContent: {
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   googleButtonLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
   },
   note: {
     textAlign: 'center',
-    color: '#bbb',
-  },
-
-  footer: {
-    textAlign: 'center',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 28,
+    color: palette.textMuted,
+    fontSize: 13,
   },
 });

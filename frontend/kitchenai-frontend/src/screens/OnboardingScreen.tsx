@@ -23,8 +23,8 @@ import * as api from '../services/api';
 import { showAppError } from '../utils/alertMessage';
 import { DEFAULT_ONBOARDING_STAPLES, type OnboardingStaple } from '../data/onboardingStaples';
 import { STAPLE_IMAGES } from '../data/stapleImages';
-
-const ONBOARDING_MOTTO = 'Less waste. Smarter meals. Calmer evenings.';
+import { BrandLogo } from '../components/BrandLogo';
+import { BRAND_LOGO_ASPECT, BRAND_MOTTO } from '../constants/brand';
 
 const INTRO_STEPS = [
   {
@@ -182,8 +182,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {step === 0 && (
           <View style={styles.stepWrap}>
             <View style={styles.introHero}>
+              <BrandLogo
+                width={260}
+                height={260 / BRAND_LOGO_ASPECT}
+                style={styles.introLogo}
+              />
               <Text variant="headlineMedium" style={styles.welcomeMotto}>
-                {ONBOARDING_MOTTO}
+                {BRAND_MOTTO}
               </Text>
               <Text variant="bodyLarge" style={styles.introLead}>
                 Let's set up your kitchen in 2 quick steps.
@@ -427,6 +432,7 @@ const styles = StyleSheet.create({
   stepWrap: { paddingHorizontal: 20 },
 
   introHero: { marginTop: 12, paddingHorizontal: 4 },
+  introLogo: { marginBottom: 16, alignSelf: 'center' },
   welcomeMotto: { fontWeight: '800', color: '#1B5E20', textAlign: 'left', lineHeight: 34 },
   introLead: { color: '#333', marginTop: 16, fontWeight: '600', lineHeight: 24 },
   introNote: { color: '#777', marginTop: 8, lineHeight: 22 },

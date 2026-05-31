@@ -34,6 +34,9 @@ func TestCanUseMealCategory(t *testing.T) {
 	if ok, _ := CanUseMealCategory(free, "daily"); !ok {
 		t.Fatal("daily should be free")
 	}
+	if ok, _ := CanUseMealCategory(free, "meal_of_day"); !ok {
+		t.Fatal("meal_of_day should be free")
+	}
 	if ok, _ := CanUseMealCategory(free, "rescue_meal"); ok {
 		t.Fatal("rescue should require pro")
 	}

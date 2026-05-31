@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
 
@@ -20,6 +21,7 @@ import (
 type itemRow struct {
 	ItemID        string
 	CanonicalName string
+	NeedsExpiry   bool
 }
 
 func StartShelfLifeConsumer(db *sql.DB, cfg *config.Config) {
@@ -135,33 +137,60 @@ func processMessage(db *sql.DB, cfg *config.Config, raw []byte) {
 	}
 
 	log.Printf("[kafka-consumer] processing %d item(s) for user %s", len(event.ItemIDs), event.UserID)
+	n := EnrichItemsByIDs(db, cfg, event.ItemIDs, event.UserID)
+	if n == 0 {
+		log.Printf("[kafka-consumer] no items found for enrichment")
+	}
+}
 
-	items := fetchItemsNeedingExpiry(db, event.ItemIDs)
+func dietaryTagsForUser(db *sql.DB, userID string) []string {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil
+	}
+	prefs, err := services.LoadUserPrefs(db, userID)
+	if err != nil || prefs == nil {
+		return nil
+	}
+	return prefs.DietaryTags
+}
+
+// EnrichItemsByIDs runs the configured LLM to set food_group for every ID (and
+// estimated_expiry only when it is currently NULL). Returns how many rows were processed.
+func EnrichItemsByIDs(db *sql.DB, cfg *config.Config, itemIDs []string, userID string) int {
+	if len(itemIDs) == 0 {
+		return 0
+	}
+	items := fetchItemsForEnrichment(db, itemIDs)
 	if len(items) == 0 {
-		log.Printf("[kafka-consumer] no items need expiry update")
-		return
+		return 0
 	}
 
 	haveLLMKey := (cfg.LLMProvider == "gemini" && cfg.GeminiAPIKey != "") ||
-		(cfg.LLMProvider == "groq" && cfg.GroqAPIKey != "")
+		(cfg.LLMProvider == "groq" && cfg.HasGroqAPIKey())
 	if !haveLLMKey {
-		log.Printf("[kafka-consumer] no API key for LLM_PROVIDER=%s, applying defaults", cfg.LLMProvider)
+		log.Printf("[inventory-enrich] no API key for LLM_PROVIDER=%s, applying defaults", cfg.LLMProvider)
 		applyDefaults(db, items)
-		return
+		return len(items)
 	}
 
 	batchSize := cfg.KafkaConsumerGeminiBatchSize
+	if batchSize < 1 {
+		batchSize = 20
+	}
+	dietary := dietaryTagsForUser(db, userID)
 	pause := time.Duration(cfg.KafkaConsumerPauseBetweenBatchesMs) * time.Millisecond
 	for i := 0; i < len(items); i += batchSize {
 		end := i + batchSize
 		if end > len(items) {
 			end = len(items)
 		}
-		processBatch(db, cfg, items[i:end])
+		processBatch(db, cfg, items[i:end], dietary)
 		if pause > 0 && end < len(items) {
 			time.Sleep(pause)
 		}
 	}
+	return len(items)
 }
 
 // bulkSetEstimatedExpiry applies all expiry updates in a single round-trip.
@@ -183,12 +212,13 @@ func bulkSetEstimatedExpiry(dbConn *sql.DB, ids []string, exps []time.Time) erro
 	return err
 }
 
-func fetchItemsNeedingExpiry(db *sql.DB, itemIDs []string) []itemRow {
+func fetchItemsForEnrichment(db *sql.DB, itemIDs []string) []itemRow {
 	if len(itemIDs) == 0 {
 		return nil
 	}
 	rows, err := db.Query(
-		`SELECT item_id, canonical_name FROM inventory WHERE item_id = ANY($1) AND estimated_expiry IS NULL`,
+		`SELECT item_id, canonical_name, (estimated_expiry IS NULL) AS needs_expiry
+		 FROM inventory WHERE item_id = ANY($1)`,
 		pq.Array(itemIDs),
 	)
 	if err != nil {
@@ -200,7 +230,7 @@ func fetchItemsNeedingExpiry(db *sql.DB, itemIDs []string) []itemRow {
 	var items []itemRow
 	for rows.Next() {
 		var it itemRow
-		if err := rows.Scan(&it.ItemID, &it.CanonicalName); err != nil {
+		if err := rows.Scan(&it.ItemID, &it.CanonicalName, &it.NeedsExpiry); err != nil {
 			log.Printf("[kafka-consumer] scan item: %v", err)
 			continue
 		}
@@ -212,56 +242,101 @@ func fetchItemsNeedingExpiry(db *sql.DB, itemIDs []string) []itemRow {
 	return items
 }
 
-func processBatch(db *sql.DB, cfg *config.Config, items []itemRow) {
+func processBatch(db *sql.DB, cfg *config.Config, items []itemRow, dietaryTags []string) {
 	names := make([]string, len(items))
 	for i, it := range items {
 		names[i] = it.CanonicalName
 	}
 
-	estimates, err := services.EstimateShelfLifeForConfig(context.Background(), cfg, names)
+	enriched, err := services.EnrichInventoryItemsForConfig(context.Background(), cfg, names, dietaryTags)
 	if err != nil {
-		log.Printf("[kafka-consumer] LLM estimation failed, using defaults: %v", err)
+		log.Printf("[kafka-consumer] LLM enrich failed, using defaults: %v", err)
 		applyDefaults(db, items)
 		return
 	}
 
-	estimateMap := make(map[string]int)
-	for _, e := range estimates {
-		estimateMap[strings.ToLower(e.Name)] = e.ShelfLifeDays
+	enrichMap := make(map[string]services.InventoryEnrichment)
+	for _, e := range enriched {
+		enrichMap[strings.ToLower(strings.TrimSpace(e.Name))] = e
 	}
 
 	now := time.Now()
-	ids := make([]string, len(items))
-	exps := make([]time.Time, len(items))
+	allIDs := make([]string, len(items))
+	allGroups := make([]string, len(items))
+	var expiryIDs []string
+	var exps []time.Time
+
 	for i, it := range items {
-		days, ok := estimateMap[strings.ToLower(it.CanonicalName)]
-		if !ok || days <= 0 {
-			days = DefaultShelfLife(it.CanonicalName)
+		key := strings.ToLower(strings.TrimSpace(it.CanonicalName))
+		e, ok := enrichMap[key]
+		group := "other"
+		days := DefaultShelfLife(it.CanonicalName)
+		if ok {
+			group = invgroup.NormalizeFoodGroupForDietary(e.FoodGroup, dietaryTags)
+			if e.ShelfLifeDays > 0 {
+				days = e.ShelfLifeDays
+			}
 		}
-		ids[i] = it.ItemID
-		exps[i] = now.AddDate(0, 0, days)
+		allIDs[i] = it.ItemID
+		allGroups[i] = group
+		if it.NeedsExpiry {
+			expiryIDs = append(expiryIDs, it.ItemID)
+			exps = append(exps, now.AddDate(0, 0, days))
+		}
 	}
-	if err := bulkSetEstimatedExpiry(db, ids, exps); err != nil {
-		log.Printf("[kafka-consumer] bulk update error: %v", err)
-		return
+
+	if err := bulkSetFoodGroups(db, allIDs, allGroups); err != nil {
+		log.Printf("[kafka-consumer] bulk food_group error: %v", err)
 	}
-	log.Printf("[kafka-consumer] updated %d items in batch", len(ids))
+	if len(expiryIDs) > 0 {
+		if err := bulkSetEstimatedExpiry(db, expiryIDs, exps); err != nil {
+			log.Printf("[kafka-consumer] bulk expiry error: %v", err)
+			return
+		}
+		log.Printf("[kafka-consumer] enriched %d item(s) (%d expiry set)", len(allIDs), len(expiryIDs))
+	} else {
+		log.Printf("[kafka-consumer] enriched food_group for %d item(s)", len(allIDs))
+	}
 }
 
 func applyDefaults(db *sql.DB, items []itemRow) {
 	now := time.Now()
-	ids := make([]string, len(items))
-	exps := make([]time.Time, len(items))
+	allIDs := make([]string, len(items))
+	allGroups := make([]string, len(items))
+	var expiryIDs []string
+	var exps []time.Time
+
 	for i, it := range items {
-		days := DefaultShelfLife(it.CanonicalName)
-		ids[i] = it.ItemID
-		exps[i] = now.AddDate(0, 0, days)
+		allIDs[i] = it.ItemID
+		allGroups[i] = "other"
+		if it.NeedsExpiry {
+			expiryIDs = append(expiryIDs, it.ItemID)
+			exps = append(exps, now.AddDate(0, 0, DefaultShelfLife(it.CanonicalName)))
+		}
 	}
-	if err := bulkSetEstimatedExpiry(db, ids, exps); err != nil {
-		log.Printf("[kafka-consumer] bulk default update error: %v", err)
-		return
+	_ = bulkSetFoodGroups(db, allIDs, allGroups)
+	if len(expiryIDs) > 0 {
+		_ = bulkSetEstimatedExpiry(db, expiryIDs, exps)
 	}
-	log.Printf("[kafka-consumer] applied default expiry to %d items", len(items))
+	log.Printf("[kafka-consumer] applied defaults to %d item(s)", len(items))
+}
+
+func bulkSetFoodGroups(dbConn *sql.DB, ids []string, groups []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if len(ids) != len(groups) {
+		return errors.New("bulkSetFoodGroups: length mismatch")
+	}
+	_, err := dbConn.Exec(`
+		UPDATE inventory AS inv
+		SET food_group = u.grp, updated_at = NOW()
+		FROM (
+			SELECT * FROM unnest($1::text[], $2::text[]) AS u(item_id, grp)
+		) AS u
+		WHERE inv.item_id = u.item_id::uuid
+	`, pq.Array(ids), pq.Array(groups))
+	return err
 }
 
 func DefaultShelfLife(name string) int {

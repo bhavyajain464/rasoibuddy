@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { AuthUser } from '../types';
 import { googleLogin, logoutApi, setAuthToken, setOnUnauthorized } from '../services/api';
+import { clearOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
 
 function getRequiredEnv(value: string | undefined, name: 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID') {
   const trimmedValue = value?.trim();
@@ -187,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Google sign-in error:', e);
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
-        showAppError('Cannot reach Kitchen AI servers. Check your internet connection.');
+        showAppError('Cannot reach Kitchmate servers. Check your internet connection.');
       } else if (msg.includes('401') || msg.includes('invalid audience') || msg.includes('verification failed')) {
         showAppError('Server rejected this Google account. Contact support if this persists.');
       } else {
@@ -263,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await logoutApi(token).catch(() => {});
       }
       await AsyncStorage.multiRemove(['authToken', 'authUser']);
+      await clearOrderSuggestionsCache();
       setToken(null);
       setUser(null);
       setAuthToken(null);

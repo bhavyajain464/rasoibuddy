@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"kitchenai-backend/pkg/config"
+	"kitchenai-backend/pkg/units"
 )
 
 var (
@@ -80,7 +81,7 @@ func SuggestOrderItems(ctx context.Context, cfg *config.Config, in OrderSuggestI
 		return OrderSuggestResult{}, ErrOrderSuggestNoMeals
 	}
 
-	if cfg == nil || strings.TrimSpace(cfg.GroqAPIKey) == "" {
+	if cfg == nil || !cfg.HasGroqAPIKey() {
 		return OrderSuggestResult{}, ErrOrderSuggestNotConfigured
 	}
 
@@ -88,7 +89,7 @@ func SuggestOrderItems(ctx context.Context, cfg *config.Config, in OrderSuggestI
 	log.Printf("[order_suggest] prompt context: eaten_catalog=%d unmatched=%d related=%d missing_staples=%d",
 		len(suggestCtx.EatenRows), len(suggestCtx.UnmatchedEaten), len(suggestCtx.RelatedDishes), len(suggestCtx.MissingStaples))
 	seed := randomGroqSeed()
-	text, err := GroqChatOrderSuggest(ctx, cfg.GroqAPIKey, cfg.EffectiveGroqModel(), prompt, seed)
+	text, err := GroqChatOrderSuggest(ctx, cfg.PickGroqAPIKey(), cfg.EffectiveGroqModel(), prompt, seed)
 	if err != nil {
 		log.Printf("[order_suggest] groq error: %v", err)
 		return OrderSuggestResult{}, fmt.Errorf("%w: %v", ErrOrderSuggestGroq, err)
@@ -108,10 +109,7 @@ func SuggestOrderItems(ctx context.Context, cfg *config.Config, in OrderSuggestI
 	for _, it := range parsed.Items {
 		names := expandOrderSuggestNames(it.Name)
 		reason := strings.TrimSpace(it.Reason)
-		unit := it.Unit
-		if unit == "" {
-			unit = "pcs"
-		}
+		unit := units.Normalize(it.Unit)
 		qty := it.Qty
 		if qty < 0 {
 			qty = 0

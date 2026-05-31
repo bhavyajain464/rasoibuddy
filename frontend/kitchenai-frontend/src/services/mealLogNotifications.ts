@@ -131,7 +131,7 @@ export async function ensureNotificationPermission(): Promise<PermissionResult> 
   if (Platform.OS === 'android' && existing.status === 'denied' && existing.canAskAgain === false) {
     return {
       granted: false,
-      message: 'Notifications are blocked. Open Settings → Kitchen AI → Notifications and allow them.',
+      message: 'Notifications are blocked. Open Settings → Kitchmate → Notifications and allow them.',
     };
   }
 
@@ -152,7 +152,7 @@ export async function ensureNotificationPermission(): Promise<PermissionResult> 
     return {
       granted: false,
       message:
-        'Allow notifications when Android asks, or enable them in Settings → Kitchen AI → Notifications.',
+        'Allow notifications when Android asks, or enable them in Settings → Kitchmate → Notifications.',
     };
   }
 

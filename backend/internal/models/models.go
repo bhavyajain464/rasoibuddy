@@ -11,6 +11,7 @@ type Inventory struct {
 	CanonicalName   string     `json:"canonical_name"`
 	Qty             float64    `json:"qty"`
 	Unit            string     `json:"unit"`
+	FoodGroup       string     `json:"food_group"`
 	EstimatedExpiry *time.Time `json:"estimated_expiry,omitempty"`
 	IsManual        bool       `json:"is_manual"`
 	CreatedAt       time.Time  `json:"created_at"`
@@ -23,6 +24,7 @@ type InventoryRequest struct {
 	Qty             float64 `json:"qty" validate:"required,gt=0"`
 	Unit            string  `json:"unit" validate:"required"`
 	EstimatedExpiry string  `json:"estimated_expiry,omitempty"`
+	FoodGroup       string  `json:"food_group,omitempty"`
 	IsManual        bool    `json:"is_manual"`
 }
 
@@ -121,6 +123,7 @@ type ExpiringItem struct {
 	CanonicalName   string    `json:"canonical_name"`
 	Qty             float64   `json:"qty"`
 	Unit            string    `json:"unit"`
+	FoodGroup       string    `json:"food_group,omitempty"`
 	EstimatedExpiry time.Time `json:"estimated_expiry"`
 	DaysUntilExpiry int       `json:"days_until_expiry"`
 }

@@ -9,6 +9,7 @@ import {
 } from '../utils/whatsappAction';
 import {
   InventoryItem,
+  InventoryFoodGroup,
   ExpiringItem,
   RescueMealResponse,
   LowStockItem,
@@ -37,8 +38,20 @@ import {
   VerifyCheckoutRequest,
 } from '../types';
 import { fileUriToBase64 } from '../utils/imageToBase64';
+import { normalizeUnit } from '../utils/units';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
+function resolveApiBaseUrl(): string {
+  const url = process.env.EXPO_PUBLIC_API_BASE_URL!;
+  if (
+    Platform.OS === 'android' &&
+    (url.includes('localhost') || url.includes('127.0.0.1'))
+  ) {
+    return url.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
+  }
+  return url;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 let _authToken: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
@@ -214,6 +227,29 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
   return res.json();
 }
 
+export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
+  const res = await authFetch(`${API_BASE_URL}/inventory/food-groups`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export type FoodGroupBackfillScope = 'all' | 'expired';
+
+export async function backfillInventoryFoodGroups(options?: {
+  scope?: FoodGroupBackfillScope;
+}): Promise<{ enriched: number; item_ids: string[] }> {
+  const res = await authFetch(`${API_BASE_URL}/inventory/backfill-food-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options ?? {}),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchExpiringItems(): Promise<ExpiringItem[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory/expiring`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -231,11 +267,12 @@ export async function addInventoryItem(item: {
   qty: number;
   unit: string;
   estimated_expiry?: string;
+  food_group?: string;
 }): Promise<InventoryItem> {
   const res = await authFetch(`${API_BASE_URL}/inventory`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(item),
+    body: JSON.stringify({ ...item, unit: normalizeUnit(item.unit) }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -264,7 +301,7 @@ export async function updateInventoryItem(
     body: JSON.stringify({
       canonical_name: patch.canonical_name,
       qty: patch.qty,
-      unit: patch.unit,
+      unit: normalizeUnit(patch.unit),
       estimated_expiry: patch.estimated_expiry ?? '',
       is_manual: patch.is_manual ?? false,
     }),
@@ -652,6 +689,27 @@ export async function getSmartMeals(
   if (excludeDish?.trim()) qp.set('exclude', excludeDish.trim());
   const res = await authFetch(`${API_BASE_URL}/meals/smart?${qp.toString()}`);
   if (!res.ok) await parseApiError(res, `HTTP ${res.status}`);
+  return res.json();
+}
+
+/** Today's meal-of-the-day from Redis (refreshed at midnight IST). */
+export async function getMealOfDay(): Promise<{
+  date: string;
+  categories: Array<{
+    id: string;
+    title: string;
+    description: string;
+    meals: Array<Record<string, unknown>>;
+  }>;
+  generated_at: string;
+  source: string;
+} | null> {
+  const res = await authFetch(`${API_BASE_URL}/meals/meal-of-day`);
+  if (res.status === 404) return null;
+  if (res.status === 503) {
+    throw new Error('Meal of the Day is temporarily unavailable. The server needs Redis configured.');
+  }
+  if (!res.ok) await parseApiError(res, 'Failed to load meal of the day');
   return res.json();
 }
 

@@ -16,7 +16,8 @@ type Config struct {
 	Environment     string
 	GeminiAPIKey    string
 	GeminiModel     string
-	GroqAPIKey      string
+	GroqAPIKey      string   // first key; prefer PickGroqAPIKey() for API calls
+	GroqAPIKeys     []string // from comma-separated GROQ_API_KEY
 	GroqModel       string
 	GroqNLUModel    string // legacy env GROQ_NLU_MODEL (EffectiveGroqModel uses GROQ_MODEL)
 	GroqVisionModel string // legacy env GROQ_VISION_MODEL (EffectiveGroqModel uses GROQ_MODEL)
@@ -117,7 +118,11 @@ func Load() (*Config, error) {
 	environment := getEnv("ENVIRONMENT", "development")
 	geminiAPIKey := getEnv("GEMINI_API_KEY", "")
 	geminiModel := getEnv("GEMINI_MODEL", "gemini-1.5-pro")
-	groqAPIKey := getEnv("GROQ_API_KEY", "")
+	groqAPIKeys := parseGroqAPIKeys(getEnv("GROQ_API_KEY", ""))
+	groqAPIKey := ""
+	if len(groqAPIKeys) > 0 {
+		groqAPIKey = groqAPIKeys[0]
+	}
 	groqModel := getEnv("GROQ_MODEL", DefaultGroqModel)
 	groqNLUModel := getEnv("GROQ_NLU_MODEL", DefaultGroqModel)
 	groqVisionModel := getEnv("GROQ_VISION_MODEL", DefaultGroqModel)
@@ -246,6 +251,7 @@ func Load() (*Config, error) {
 		GeminiAPIKey:                       geminiAPIKey,
 		GeminiModel:                        geminiModel,
 		GroqAPIKey:                         groqAPIKey,
+		GroqAPIKeys:                        groqAPIKeys,
 		GroqModel:                          groqModel,
 		GroqNLUModel:                       groqNLUModel,
 		GroqVisionModel:                    groqVisionModel,

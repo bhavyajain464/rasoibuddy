@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { ExpiringItem } from '../types';
+import { formatQtyWithUnit } from '../utils/units';
 
 interface ExpiringItemCardProps {
   item: ExpiringItem;
@@ -25,7 +26,7 @@ export function ExpiringItemCard({ item, horizontal }: ExpiringItemCardProps) {
           {item.canonical_name}
         </Text>
         <Text variant="bodySmall" style={styles.qty}>
-          {item.qty} {item.unit}
+          {formatQtyWithUnit(item.qty, item.unit)}
         </Text>
         <Text
           variant="labelSmall"

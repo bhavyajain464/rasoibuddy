@@ -17,20 +17,22 @@ import {
   Checkbox,
   Icon,
 } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../services/api';
-import { OrderSuggestItem, UserShoppingItem } from '../types';
+import { OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
-import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
+import { TabScreenHeader } from '../components/TabScreenHeader';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { formatShoppingQty } from '../utils/shoppingFormat';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { DEFAULT_UNIT } from '../components/UnitPillSelector';
 import { useAppRefresh } from '../context/AppRefreshContext';
+import {
+  readOrderSuggestionsCache,
+  writeOrderSuggestionsCache,
+} from '../utils/orderSuggestionsCache';
 
 export function ShoppingScreen() {
-  const insets = useSafeAreaInsets();
   const { contentPaddingBottom } = useTabBarLayout();
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,22 +69,40 @@ export function ShoppingScreen() {
     }
   }, []);
 
+  const applyOrderSuggestResponse = useCallback((data: OrderSuggestResponse) => {
+    if (data.source === 'error') {
+      setOrderSuggestions([]);
+      setOrderSummary(data.summary || 'Nothing to suggest right now.');
+      setOrderSuggestFailed(true);
+      lastSuggestNamesRef.current = [];
+      return;
+    }
+    const next = Array.isArray(data.items) ? data.items : [];
+    setOrderSuggestions(next);
+    setOrderSummary(data.summary ?? '');
+    setOrderSuggestFailed(false);
+    lastSuggestNamesRef.current = next.map((s) => s.name.trim()).filter(Boolean);
+  }, []);
+
   const loadOrderSuggestions = useCallback(async (opts?: { refresh?: boolean }) => {
     setOrderLoading(true);
+
+    if (!opts?.refresh) {
+      const cached = await readOrderSuggestionsCache();
+      if (cached) {
+        applyOrderSuggestResponse(cached.response);
+        lastSuggestNamesRef.current = cached.lastSuggestNames;
+        setOrderLoading(false);
+        return;
+      }
+    }
+
     const exclude = opts?.refresh ? lastSuggestNamesRef.current : [];
     try {
       const data = await api.getOrderSuggestions(exclude);
-      if (data.source === 'error') {
-        setOrderSuggestions([]);
-        setOrderSummary(data.summary || 'Nothing to suggest right now.');
-        setOrderSuggestFailed(true);
-        lastSuggestNamesRef.current = [];
-      } else {
-        const next = Array.isArray(data.items) ? data.items : [];
-        setOrderSuggestions(next);
-        setOrderSummary(data.summary ?? '');
-        setOrderSuggestFailed(false);
-        lastSuggestNamesRef.current = next.map((s) => s.name.trim()).filter(Boolean);
+      applyOrderSuggestResponse(data);
+      if (data.source !== 'error') {
+        await writeOrderSuggestionsCache(data, lastSuggestNamesRef.current);
       }
     } catch {
       setOrderSuggestions([]);
@@ -92,7 +112,7 @@ export function ShoppingScreen() {
     } finally {
       setOrderLoading(false);
     }
-  }, []);
+  }, [applyOrderSuggestResponse]);
 
   useFocusEffect(
     useCallback(() => {
@@ -298,19 +318,14 @@ export function ShoppingScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.headerTitle}>Shopping List</Text>
-              <Text variant="bodyMedium" style={styles.headerSub}>
-                {items.length > 0
-                  ? `${items.length} item${items.length !== 1 ? 's' : ''} to buy`
-                  : 'Nothing to buy yet'}
-              </Text>
-            </View>
-            <ProfileHeaderButton />
-          </View>
-        </View>
+        <TabScreenHeader
+          title="Shopping List"
+          subtitle={
+            items.length > 0
+              ? `${items.length} item${items.length !== 1 ? 's' : ''} to buy`
+              : 'Nothing to buy yet'
+          }
+        />
 
         <Surface style={styles.suggestCard} elevation={1}>
           <View style={styles.suggestHeader}>
@@ -555,25 +570,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
 
-  header: {
-    backgroundColor: '#2E7D32',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  headerText: { flex: 1, minWidth: 0 },
-  headerTitle: { color: '#fff', fontWeight: '800' },
-  headerSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4 },
   suggestCard: {
-    marginHorizontal: 20,
-    marginTop: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
     borderRadius: 18,
     backgroundColor: '#fff',
     paddingHorizontal: 14,

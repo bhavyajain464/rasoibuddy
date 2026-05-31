@@ -13,6 +13,7 @@ import (
 	"kitchenai-backend/internal/models"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
+	"kitchenai-backend/pkg/units"
 
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -57,6 +58,7 @@ func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 				log.Printf("scan shopping item: %v", err)
 				continue
 			}
+			item.Unit = units.Normalize(item.Unit)
 			items = append(items, item)
 		}
 
@@ -83,9 +85,7 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 		if req.Qty < 0 {
 			req.Qty = 0
 		}
-		if req.Unit == "" {
-			req.Unit = "pcs"
-		}
+		req.Unit = units.Normalize(req.Unit)
 
 		var item ShoppingItem
 		err := db.QueryRow(`
@@ -123,9 +123,7 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 			if req.Qty < 0 {
 				req.Qty = 0
 			}
-			if req.Unit == "" {
-				req.Unit = "pcs"
-			}
+			req.Unit = units.Normalize(req.Unit)
 			var item ShoppingItem
 			err := db.QueryRow(`
 				INSERT INTO shopping_items (user_id, name, qty, unit)
@@ -247,10 +245,7 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 			if qty <= 0 {
 				qty = 1
 			}
-			unit := shop.Unit
-			if unit == "" {
-				unit = "pcs"
-			}
+			unit := units.Normalize(shop.Unit)
 
 			var itemID string
 			var createdAt, updatedAt time.Time
@@ -276,6 +271,7 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 				CanonicalName:   shop.Name,
 				Qty:             qty,
 				Unit:            unit,
+				FoodGroup:       "other",
 				EstimatedExpiry: models.NullTime(dbExpiry),
 				IsManual:        true,
 				CreatedAt:       createdAt,

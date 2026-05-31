@@ -9,10 +9,13 @@ import {
 } from 'react-native';
 import { Icon, Portal, Text } from 'react-native-paper';
 import { palette } from '../theme';
+import {
+  DEFAULT_UNIT,
+  UNIT_OPTIONS,
+  normalizeUnit,
+} from '../utils/units';
 
-export const UNIT_OPTIONS = ['pcs', 'kg', 'g', 'L', 'ml'] as const;
-
-export const DEFAULT_UNIT = 'pcs';
+export { DEFAULT_UNIT, UNIT_OPTIONS, normalizeUnit };
 
 type MenuRect = {
   top: number;
@@ -89,7 +92,7 @@ export function UnitDropdown({
   const [internalOpen, setInternalOpen] = useState(false);
   const [menuRect, setMenuRect] = useState<MenuRect | null>(null);
   const open = controlledOpen ?? internalOpen;
-  const display = value.trim() || DEFAULT_UNIT;
+  const display = normalizeUnit(value);
 
   const setOpen = useCallback(
     (next: boolean) => {

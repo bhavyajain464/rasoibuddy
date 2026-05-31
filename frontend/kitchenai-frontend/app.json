@@ -1,24 +1,24 @@
 {
   "expo": {
-    "name": "Kitchen AI",
+    "name": "Kitchmate",
     "slug": "kitchenai-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "kitchenai",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kitchenai.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Kitchen AI needs camera access to scan grocery bills.",
-        "NSPhotoLibraryUsageDescription": "Kitchen AI needs photo library access to select grocery bill images.",
+        "NSCameraUsageDescription": "Kitchmate needs camera access to scan grocery bills.",
+        "NSPhotoLibraryUsageDescription": "Kitchmate needs photo library access to select grocery bill images.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "tez",
@@ -31,8 +31,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -64,7 +64,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Kitchen AI needs camera access to scan grocery bills."
+          "cameraPermission": "Kitchmate needs camera access to scan grocery bills."
         }
       ],
       [
@@ -76,7 +76,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/logo.png",
           "color": "#4CAF50",
           "defaultChannel": "meal-log-reminders"
         }

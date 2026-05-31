@@ -19,7 +19,7 @@ const PRO_FEATURES = [
   'Rescue & Meal of the Day',
   'Healthy, Tasty & Meal Prep modes',
 ];
-const FREE_FEATURES = ['Daily meal ideas', '2 bill scans per day'];
+const FREE_FEATURES = ['Daily meal ideas', 'Meal of the Day', '2 bill scans per day'];
 const ELITE_FEATURES = [
   'Everything in Pro',
   'Nightly diet email from your meal log',

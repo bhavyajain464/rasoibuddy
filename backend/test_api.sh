@@ -1,5 +1,5 @@
 #!/bin/bash
-# End-to-end API test script for KitchenAI backend
+# End-to-end API test script for Kitchmate backend
 # Usage: ./test_api.sh [BASE_URL]
 #   BASE_URL defaults to http://localhost:8080
 
@@ -23,7 +23,7 @@ check() {
   fi
 }
 
-bold "=== KitchenAI API Tests ==="
+bold "=== Kitchmate API Tests ==="
 bold "Target: $BASE_URL"
 echo ""
 

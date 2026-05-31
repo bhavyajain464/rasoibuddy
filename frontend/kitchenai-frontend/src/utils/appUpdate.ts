@@ -40,7 +40,7 @@ export async function openAppStoreForUpdate(): Promise<{ ok: boolean; message?: 
       await Linking.openURL(web);
       return { ok: true };
     } catch {
-      return { ok: false, message: 'Could not open Google Play. Try searching for Kitchen AI in the Play Store.' };
+      return { ok: false, message: 'Could not open Google Play. Try searching for Kitchmate in the Play Store.' };
     }
   }
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"kitchenai-backend/pkg/config"
+	"kitchenai-backend/pkg/units"
 )
 
 // WhatsAppParseIntent classifies a forwarded WhatsApp message from cook or family.
@@ -69,7 +70,7 @@ func ParseWhatsAppMessage(ctx context.Context, cfg *config.Config, rawText strin
 	if len(rawText) > maxWhatsAppMessageLen {
 		rawText = rawText[:maxWhatsAppMessageLen]
 	}
-	if cfg.GroqAPIKey == "" {
+	if !cfg.HasGroqAPIKey() {
 		return UnknownWhatsAppAction("AI parsing is not configured on the server."), nil
 	}
 
@@ -86,7 +87,7 @@ Entities: item_name (English grocery), qty (default 1), unit (default pcs), dish
 JSON only:
 {"intent":"...","confidence":0.9,"summary":"...","entities":{}}`, rawText)
 
-	text, err := GroqChatNLU(ctx, cfg.GroqAPIKey, model, prompt)
+	text, err := GroqChatNLU(ctx, cfg.PickGroqAPIKey(), model, prompt)
 	if err != nil {
 		log.Printf("[whatsapp-parse] groq failed: %v", err)
 		return UnknownWhatsAppAction(""), nil
@@ -147,11 +148,9 @@ func normalizeWhatsAppAction(a *WhatsAppParsedAction) {
 	a.Summary = strings.TrimSpace(a.Summary)
 	a.Entities.ItemName = strings.TrimSpace(a.Entities.ItemName)
 	a.Entities.Unit = strings.TrimSpace(a.Entities.Unit)
+	a.Entities.Unit = units.Normalize(a.Entities.Unit)
 	if a.Entities.Qty <= 0 {
 		a.Entities.Qty = 1
-	}
-	if a.Entities.Unit == "" {
-		a.Entities.Unit = "pcs"
 	}
 	switch a.Intent {
 	case IntentAddShopping, IntentMarkOutOfStock, IntentAddInventory, IntentNoteDislike, IntentReportCookedDish:

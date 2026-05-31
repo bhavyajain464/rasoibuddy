@@ -7,6 +7,8 @@ export type MainTabParamList = {
     openLog?: boolean;
     generateCategory?: string;
     mealType?: string;
+    /** When set, in-category Back returns to this tab (e.g. Home → Meal of Day → Back). */
+    returnToTab?: 'Home';
   } | undefined;
   Cook: { dishItems?: string[] } | undefined;
   Shopping: undefined;

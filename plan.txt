@@ -30,8 +30,8 @@ Managing a household kitchen in urban India involves high cognitive load due to 
     *   *Variety signal to AI:* "avoid dishes cooked in the last 5 days" and "rotate complexity tiers across the week".
     *   *Diet view in app:* simple weekly bar — protein-heavy / grain-heavy / veg-heavy days — so the user can spot imbalances at a glance.
     *   *Cook performance:* highlights which `dishes_known` are actually being used vs. dormant.
-*   **WhatsApp Share-In (Inbound Bridge):** Today the bridge is **one-way out** (user → cook via `wa.me`). Add a one-way in path so the user can forward a WhatsApp message into Kitchen AI and have it acted upon.
-    *   *Android:* register an intent filter for `ACTION_SEND` + `text/plain` so "Kitchen AI" appears in WhatsApp's native share sheet.
+    *   **WhatsApp Share-In (Inbound Bridge):** Today the bridge is **one-way out** (user → cook via `wa.me`). Add a one-way in path so the user can forward a WhatsApp message into Kitchmate and have it acted upon.
+    *   *Android:* register an intent filter for `ACTION_SEND` + `text/plain` so "Kitchmate" appears in WhatsApp's native share sheet.
     *   *iOS:* ship a Share Extension target with the same behaviour.
     *   *Backend NLU pipeline:* the shared text hits a new endpoint `POST /v1/whatsapp/parse`. Groq/Gemini classifies intent (`add_to_shopping_list`, `mark_out_of_stock`, `report_cooked_dish`, `note_dislike`) and extracts entities — works for Hinglish/Hindi/Kannada phrasing like:
         *   "bhaiya daal khatm ho gayi" → `add_to_shopping_list(item="toor dal", qty="default")` + `mark_out_of_stock(item="toor dal")`

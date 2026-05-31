@@ -14,17 +14,20 @@ import {
   Icon,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_HEADER } from '../components/TabScreenHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useAuth } from '../context/AuthContext';
 import { useAppRefresh } from '../context/AppRefreshContext';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem } from '../types';
-import { MessageImportCard } from '../components/MessageImportCard';
+import { QuickActionsCarousel } from '../components/QuickActionsCarousel';
 import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { AddInventoryModal } from '../components/modals/AddInventoryModal';
 import { LogMealModal } from '../components/modals/LogMealModal';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
+import { palette } from '../theme';
+import { MealOfDayCard, MealOfDayMeal } from '../components/MealOfDayCard';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -62,7 +65,26 @@ export function HomeScreen({ navigation }: any) {
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [logMealModalOpen, setLogMealModalOpen] = useState(false);
   const [shoppingModalOpen, setShoppingModalOpen] = useState(false);
+  const [mealOfDayMeals, setMealOfDayMeals] = useState<MealOfDayMeal[]>([]);
+  const [mealOfDayLoading, setMealOfDayLoading] = useState(false);
+  const [mealOfDayNotReady, setMealOfDayNotReady] = useState(false);
   const { version: refreshVersion } = useAppRefresh();
+  const loadMealOfDay = useCallback(async () => {
+    setMealOfDayLoading(true);
+    try {
+      const res = await api.getMealOfDay();
+      const cat = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0];
+      const list = (cat?.meals ?? []) as MealOfDayMeal[];
+      const withNames = list.filter((m) => m?.name?.trim());
+      setMealOfDayMeals(withNames);
+      setMealOfDayNotReady(withNames.length === 0);
+    } catch {
+      setMealOfDayMeals([]);
+      setMealOfDayNotReady(true);
+    } finally {
+      setMealOfDayLoading(false);
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -81,7 +103,8 @@ export function HomeScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, []);
+    void loadMealOfDay();
+  }, [loadMealOfDay]);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,7 +135,7 @@ export function HomeScreen({ navigation }: any) {
       showsVerticalScrollIndicator={false}
     >
       {/* ── Hero Header ──────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <View style={styles.headerTop}>
           <View style={styles.headerText}>
             <Text variant="bodyMedium" style={styles.greeting}>{getGreeting()},</Text>
@@ -126,54 +149,51 @@ export function HomeScreen({ navigation }: any) {
         <ActivityIndicator style={{ marginTop: 40 }} size="large" />
       ) : (
         <>
-          <MessageImportCard />
-
-          {/* ── Quick Actions ─────────────────────────────── */}
           <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionRow}>
-            <ActionCard
-              icon="plus-box-outline"
-              label="Add item"
-              onPress={() => setInventoryModalOpen(true)}
-            />
-            <ActionCard
-              icon="lightbulb-on-outline"
-              label="Meal idea"
-              onPress={() => navigation.navigate('Meals', {
+          <QuickActionsCarousel
+            onAddItem={() => setInventoryModalOpen(true)}
+            onMealIdea={() =>
+              navigation.navigate('Meals', {
                 generateCategory: 'daily',
                 mealType: 'lunch_dinner',
-              })}
-            />
-            <ActionCard
-              icon="notebook-plus-outline"
-              label="Log meal"
-              onPress={() => setLogMealModalOpen(true)}
-            />
-            <ActionCard
-              icon="cart-plus"
-              label="Add to list"
-              onPress={() => setShoppingModalOpen(true)}
-            />
-          </View>
+              })
+            }
+            onLogMeal={() => setLogMealModalOpen(true)}
+            onAddToList={() => setShoppingModalOpen(true)}
+          />
+
+          <Text variant="titleMedium" style={styles.sectionTitle}>Meal of the Day</Text>
+          <MealOfDayCard
+            meals={mealOfDayMeals}
+            loading={mealOfDayLoading}
+            notReady={mealOfDayNotReady}
+            onPress={() =>
+              navigation.navigate('Meals', {
+                generateCategory: 'meal_of_day',
+                returnToTab: 'Home',
+              })
+            }
+          />
 
           {/* ── Expired Items Alert ───────────────────────── */}
           {expiredItems.length > 0 && (
             <Pressable
               onPress={() => navigation.navigate('Inventory', { tab: 'expired' })}
-              style={styles.expiredBanner}
+              style={({ pressed }) => [styles.expiredBanner, pressed && styles.expiredBannerPressed]}
             >
-              <View style={styles.expiredBannerIcon}>
-                <IconButton icon="alert-circle" iconColor="#C62828" size={24} style={{ margin: 0 }} />
+              <View style={styles.expiredBannerIconWrap}>
+                <Icon source="alert-circle-outline" size={22} color={palette.error} />
               </View>
               <View style={styles.expiredBannerText}>
-                <Text variant="titleSmall" style={{ color: '#C62828', fontWeight: '700' }}>
-                  {expiredItems.length} expired item{expiredItems.length !== 1 ? 's' : ''}
+                <Text variant="titleSmall" style={styles.expiredBannerTitle}>
+                  ⚠️ {expiredItems.length} item{expiredItems.length !== 1 ? 's' : ''} removed from inventory
+                  (Expired)
                 </Text>
-                <Text variant="bodySmall" style={{ color: '#D32F2F' }}>
-                  Tap to review & reorder
+                <Text variant="bodySmall" style={styles.expiredBannerSub}>
+                  Tap to reorder
                 </Text>
               </View>
-              <IconButton icon="chevron-right" iconColor="#C62828" size={20} style={{ margin: 0 }} />
+              <Icon source="chevron-right" size={22} color={palette.error} />
             </Pressable>
           )}
 
@@ -305,27 +325,6 @@ export function HomeScreen({ navigation }: any) {
   );
 }
 
-/* ── Action Card Component ────────────────────────────────── */
-
-function ActionCard({ icon, label, onPress }: {
-  icon: string;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionCard, pressed && { opacity: 0.88 }]}>
-      <Surface style={styles.actionSurface} elevation={0}>
-        <View style={styles.actionIconWrap}>
-          <IconButton icon={icon} iconColor="#2E7D32" size={22} style={{ margin: 0 }} />
-        </View>
-        <Text variant="labelMedium" style={styles.actionLabel} numberOfLines={2}>
-          {label}
-        </Text>
-      </Surface>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -337,11 +336,11 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: '#2E7D32',
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    backgroundColor: TAB_HEADER.backgroundColor,
+    paddingHorizontal: TAB_HEADER.paddingHorizontal,
+    paddingBottom: TAB_HEADER.paddingBottom,
+    borderBottomLeftRadius: TAB_HEADER.borderRadius,
+    borderBottomRightRadius: TAB_HEADER.borderRadius,
   },
   headerTop: {
     flexDirection: 'row',
@@ -371,7 +370,7 @@ const styles = StyleSheet.create({
   },
   expiringSection: {
     marginHorizontal: 24,
-    marginTop: 12,
+    marginTop: 10,
     marginBottom: 20,
   },
   expiringSectionStandalone: {
@@ -503,59 +502,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // Quick actions — compact glass row
-  actionRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: 8,
-    gap: 8,
-  },
-  actionCard: {
-    flex: 1,
-    minWidth: 0,
-  },
-  actionSurface: {
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.95)',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  actionIconWrap: {
-    position: 'relative',
-    marginBottom: 4,
-  },
-  actionLabel: {
-    fontWeight: '600',
-    fontSize: 10,
-    color: '#1A1A1A',
-    textAlign: 'center',
-    lineHeight: 13,
-  },
-
-  // Expired banner
+  // Expired — outline alert (muted; expiring soon stays primary)
   expiredBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 24,
     marginTop: 20,
     marginBottom: 0,
-    backgroundColor: '#FFEBEE',
+    backgroundColor: palette.surface,
     borderRadius: 16,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: palette.error,
+    gap: 4,
   },
-  expiredBannerIcon: {
-    marginRight: 4,
+  expiredBannerPressed: {
+    backgroundColor: palette.errorBg,
+    opacity: 0.96,
+  },
+  expiredBannerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: palette.errorBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   expiredBannerText: {
     flex: 1,
+    minWidth: 0,
+    marginRight: 4,
+  },
+  expiredBannerTitle: {
+    color: palette.error,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  expiredBannerSub: {
+    color: '#9E4747',
+    fontWeight: '500',
+    marginTop: 2,
   },
 
   emptyPantry: {
