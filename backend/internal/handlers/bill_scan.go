@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/internal/services"
+	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/pkg/config"
 )
 
@@ -217,12 +217,12 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 			}
 
 			addedItems = append(addedItems, map[string]interface{}{
-				"item_id":         existingID,
-				"name":            item.Name,
-				"quantity":        item.Quantity,
-				"unit":            item.Unit,
-				"action":          "updated",
-				"shelf_life_days": shelfDays,
+				"item_id":          existingID,
+				"name":             item.Name,
+				"quantity":         item.Quantity,
+				"unit":             item.Unit,
+				"action":           "updated",
+				"shelf_life_days":  shelfDays,
 				"estimated_expiry": expiry.Format("2006-01-02"),
 			})
 			RemoveFromShoppingList(db, userID, item.Name)
@@ -240,12 +240,12 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 			}
 
 			addedItems = append(addedItems, map[string]interface{}{
-				"item_id":         itemID,
-				"name":            item.Name,
-				"quantity":        item.Quantity,
-				"unit":            item.Unit,
-				"action":          "added",
-				"shelf_life_days": shelfDays,
+				"item_id":          itemID,
+				"name":             item.Name,
+				"quantity":         item.Quantity,
+				"unit":             item.Unit,
+				"action":           "added",
+				"shelf_life_days":  shelfDays,
 				"estimated_expiry": expiry.Format("2006-01-02"),
 			})
 			RemoveFromShoppingList(db, userID, item.Name)
