@@ -43,6 +43,7 @@ upsert_secret() {
 
 upsert_secret "database-url" "$(get_env DATABASE_URL)"
 upsert_secret "gemini-api-key" "$(get_env GEMINI_API_KEY)"
+upsert_secret "google-vision-api-key" "$(get_env GOOGLE_VISION_API_KEY)"
 upsert_secret "groq-api-key" "$(get_env GROQ_API_KEY)"
 upsert_secret "session-token-secret" "$(get_env SESSION_TOKEN_SECRET)"
 upsert_secret "redis-url" "$(get_env REDIS_URL)"

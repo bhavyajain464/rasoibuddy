@@ -166,7 +166,7 @@ DATABASE_URL=postgres://user:password@localhost:5432/kitchenai
 ### Week 2: Vision Engine
 1. Bill scanning is implemented against **Groq (default)** or **Gemini** via `LLM_PROVIDER`
 2. Tune prompts and parsing in `backend/internal/services/` (`gemini.go`, `groq.go`, `llm_provider.go`)
-3. Optional: wire additional image preprocessing before LLM calls
+3. Bill photos: configure `GOOGLE_VISION_API_KEY` on the backend (see `docs/GOOGLE_VISION_SETUP.md`)
 
 ### Cook / WhatsApp (current behavior)
 1. Store cook **`phone_number`** (and optional **`cook_name`**) via **`PUT /api/v1/cook/profile`**
