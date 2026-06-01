@@ -63,6 +63,7 @@ jobs:
             /secrets/kafka-ca.pem=kafka-ca-pem:latest,
             DATABASE_URL=database-url:latest,
             GEMINI_API_KEY=gemini-api-key:latest,
+            GOOGLE_VISION_API_KEY=google-vision-api-key:latest,
             GROQ_API_KEY=groq-api-key:latest,
             SESSION_TOKEN_SECRET=session-token-secret:latest,
             REDIS_URL=redis-url:latest,

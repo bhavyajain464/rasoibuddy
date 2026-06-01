@@ -144,7 +144,7 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		// Scan the bill (LLM_PROVIDER selects gemini vs groq; PDF text → Groq, images → vision)
+		// Scan the bill (LLM_PROVIDER selects gemini vs groq; PDF/images → OCR + text, vision fallback)
 		items, err := services.ScanBillBytesForConfig(r.Context(), cfg, fileData, imageType)
 		if err != nil {
 			response := ScanBillResponse{

@@ -24,10 +24,10 @@ var systemKnowledge string
 var mealCatalogKnowledge string
 
 const (
-	groqMaxTokensDefault  = 2048
-	groqMaxTokensMeals    = 2400 // 3 meals JSON; 1400 caused truncation → silent fallback in UI
-	groqMaxTokensNLU      = 220
-	groqMaxTokensShelfLife = 512
+	groqMaxTokensDefault      = 2048
+	groqMaxTokensMeals        = 2400 // 3 meals JSON; 1400 caused truncation → silent fallback in UI
+	groqMaxTokensNLU          = 220
+	groqMaxTokensShelfLife    = 512
 	groqMaxTokensBillScan     = 1800
 	groqMaxTokensOrderSuggest = 720
 
@@ -92,10 +92,10 @@ func withSystemPrompt(messages []groqMessage) []groqMessage {
 }
 
 func groqChat(ctx context.Context, apiKey, model string, temperature float64, maxTokens int, messages []groqMessage) (string, error) {
-	return groqChatWithSampling(ctx, apiKey, model, temperature, nil, nil, maxTokens, messages)
+	return groqChatWithSampling(ctx, apiKey, model, temperature, nil, nil, maxTokens, messages, true)
 }
 
-func groqChatWithSampling(ctx context.Context, apiKey, model string, temperature float64, topP *float64, seed *int64, maxTokens int, messages []groqMessage) (string, error) {
+func groqChatWithSampling(ctx context.Context, apiKey, model string, temperature float64, topP *float64, seed *int64, maxTokens int, messages []groqMessage, includeSystemKnowledge bool) (string, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return "", fmt.Errorf("groq API key is empty")
 	}
@@ -106,9 +106,13 @@ func groqChatWithSampling(ctx context.Context, apiKey, model string, temperature
 		maxTokens = groqMaxTokensDefault
 	}
 
+	msgs := messages
+	if includeSystemKnowledge {
+		msgs = withSystemPrompt(messages)
+	}
 	body, err := json.Marshal(groqChatRequest{
 		Model:       model,
-		Messages:    withSystemPrompt(messages),
+		Messages:    msgs,
 		Temperature: temperature,
 		MaxTokens:   maxTokens,
 		TopP:        topP,
@@ -170,7 +174,7 @@ Rules: pick ONLY dish names from the numbered list; never invent new dishes; res
 func GroqChatTextMeals(ctx context.Context, apiKey, model, user string) (string, error) {
 	topP := 0.98
 	tp := topP
-	return groqChatWithSampling(ctx, apiKey, model, 1.0, &tp, nil, groqMaxTokensMeals, mealMessages(user))
+	return groqChatWithSampling(ctx, apiKey, model, 1.0, &tp, nil, groqMaxTokensMeals, mealMessages(user), true)
 }
 
 // GroqChatFilterMeals stage-2: refine top word-matched candidates into one final meal.
@@ -178,7 +182,7 @@ func GroqChatFilterMeals(ctx context.Context, apiKey, model, user string) (strin
 	return groqChatWithSampling(ctx, apiKey, model, 0.55, nil, nil, groqMaxTokensMeals, []groqMessage{
 		{Role: "system", Content: mealFilterSystemPrompt},
 		{Role: "user", Content: user},
-	})
+	}, true)
 }
 
 // GroqChatOrderSuggest proposes groceries missing from pantry for frequent meals.
@@ -187,7 +191,7 @@ func GroqChatOrderSuggest(ctx context.Context, apiKey, model, user string, seed 
 	return groqChatWithSampling(ctx, apiKey, model, 0.8, &topP, seed, groqMaxTokensOrderSuggest, []groqMessage{
 		{Role: "system", Content: orderSuggestSystemPrompt},
 		{Role: "user", Content: user},
-	})
+	}, true)
 }
 
 func mealMessages(user string) []groqMessage {
@@ -216,9 +220,10 @@ func GroqChatVision(ctx context.Context, apiKey, model string, temperature float
 		{Type: "text", Text: userText},
 		{Type: "image_url", ImageURL: &groqImageURL{URL: dataURL}},
 	}
-	return groqChat(ctx, apiKey, model, temperature, groqMaxTokensBillScan, []groqMessage{
+	// Vision models require multipart content; do not use the text-only Groq model or meal system prompt.
+	return groqChatWithSampling(ctx, apiKey, model, temperature, nil, nil, groqMaxTokensBillScan, []groqMessage{
 		{Role: "user", Content: parts},
-	})
+	}, false)
 }
 
 func EstimateShelfLifeGroq(ctx context.Context, cfg *config.Config, itemNames []string) ([]ShelfLifeEstimate, error) {
@@ -339,14 +344,40 @@ func ScanBillGroqFromBase64(ctx context.Context, cfg *config.Config, base64Image
 	if !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("groq API key not configured")
 	}
-	model := cfg.EffectiveGroqModel()
-	text, err := GroqChatVision(ctx, cfg.PickGroqAPIKey(), model, 0.1, billScanGroqUserPrompt, imageType, base64Image)
+	imageData, err := decodeBase64BillData(base64Image)
+	if err != nil {
+		return nil, err
+	}
+	return scanBillGroqFromImage(ctx, cfg, imageData, imageType)
+}
+
+func ScanBillGroqFromBytes(ctx context.Context, cfg *config.Config, imageData []byte, imageType string) ([]BillItem, error) {
+	if !cfg.HasGroqAPIKey() {
+		return nil, fmt.Errorf("groq API key not configured")
+	}
+	return scanBillGroqFromImage(ctx, cfg, imageData, imageType)
+}
+
+// scanBillGroqFromImage prefers OCR → text LLM (low tokens); vision model is fallback only.
+func scanBillGroqFromImage(ctx context.Context, cfg *config.Config, imageData []byte, imageType string) ([]BillItem, error) {
+	ocrText, ocrErr := ExtractBillImageText(ctx, cfg, imageData)
+	if ocrErr == nil && len(strings.TrimSpace(ocrText)) >= minBillOCRChars {
+		items, parseErr := scanBillGroqFromInvoiceText(ctx, cfg, ocrText)
+		if parseErr == nil && len(items) > 0 {
+			log.Printf("[bill-scan] %d item(s) from OCR + text model", len(items))
+			return items, nil
+		}
+		if parseErr != nil {
+			log.Printf("[bill-scan] OCR ok but text parse failed: %v", parseErr)
+		}
+	} else if ocrErr != nil {
+		log.Printf("[bill-scan] OCR skipped: %v", ocrErr)
+	}
+
+	visionModel := cfg.EffectiveGroqVisionModel()
+	text, err := GroqChatVision(ctx, cfg.PickGroqAPIKey(), visionModel, 0.1, billScanGroqUserPrompt, imageType, base64.StdEncoding.EncodeToString(imageData))
 	if err != nil {
 		return nil, fmt.Errorf("groq bill scan: %w", err)
 	}
 	return ParseBillItems(text)
-}
-
-func ScanBillGroqFromBytes(ctx context.Context, cfg *config.Config, imageData []byte, imageType string) ([]BillItem, error) {
-	return ScanBillGroqFromBase64(ctx, cfg, base64.StdEncoding.EncodeToString(imageData), imageType)
 }

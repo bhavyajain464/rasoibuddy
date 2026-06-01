@@ -81,11 +81,7 @@ For each edible item provide:
   * Packaged/canned food: 60-180 days
 ` + billScanFoodGroupField() + `
 
-Return ONLY a JSON array, no markdown, no explanation:
-[
-  {"name": "Basmati Rice", "quantity": 5, "unit": "kg", "price_per_unit": 120, "total_price": 600, "shelf_life_days": 60, ` + billScanFoodGroupExample + `},
-  {"name": "Tomatoes", "quantity": 2, "unit": "kg", "price_per_unit": 40, "total_price": 80, "shelf_life_days": 7, "food_group": "vegetables"}
-]`
+` + billScanJSONOutputSpec()
 
 	// Build multimodal parts (images or PDF).
 	parts := []genai.Part{
@@ -135,7 +131,7 @@ Return ONLY a JSON array, no markdown, no explanation:
 		return nil, fmt.Errorf("failed to parse bill items: %w", err)
 	}
 
-	return items, nil
+	return SanitizeBillItems(items), nil
 }
 
 // ScanBillFromBase64 processes a base64-encoded image
@@ -274,19 +270,20 @@ func ParseBillItems(jsonResponse string) ([]BillItem, error) {
 		}
 	}
 
-	// Validate and normalize items
+	return SanitizeBillItems(items), nil
+}
+
+// SanitizeBillItems normalizes parsed bill line items (names, units, food groups).
+func SanitizeBillItems(items []BillItem) []BillItem {
 	for i := range items {
-		// Ensure name is not empty
 		if items[i].Name == "" {
 			items[i].Name = "Unknown Item"
 		}
-		// Ensure quantity is positive
 		if items[i].Quantity <= 0 {
 			items[i].Quantity = 1
 		}
 		items[i].Unit = units.Normalize(items[i].Unit)
 		items[i].FoodGroup = invgroup.NormalizeFoodGroup(items[i].FoodGroup)
 	}
-
-	return items, nil
+	return items
 }
