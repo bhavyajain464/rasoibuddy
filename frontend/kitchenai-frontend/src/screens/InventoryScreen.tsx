@@ -17,6 +17,7 @@ import {
   useRoute,
   useNavigation,
   useFocusEffect,
+  useIsFocused,
   RouteProp,
 } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -30,9 +31,7 @@ import { ScanBillBottomSheet } from '../components/modals/ScanBillBottomSheet';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, InventoryFoodGroup } from '../types';
 import {
-  INVENTORY_FOOD_GROUPS,
   foodGroupLabel,
-  foodGroupsForDiet,
 } from '../constants/inventoryFoodGroups';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useEntitlements } from '../context/EntitlementsContext';
@@ -40,7 +39,7 @@ import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { showUpgradeMessage } from '../utils/upgrade';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 import { TabScreenHeader, TabScreenToolbarRow } from '../components/TabScreenHeader';
-import { useAppRefresh } from '../context/AppRefreshContext';
+import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
 import type { MainTabParamList } from '../navigation/types';
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 
@@ -126,7 +125,9 @@ export function InventoryScreen() {
   const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<TabValue>('all');
+  const [tab, setTab] = useState<TabValue>(() =>
+    route.params?.tab === 'expired' ? 'expired' : 'all',
+  );
   const [expiringSoonFilter, setExpiringSoonFilter] = useState(false);
   const [foodGroups, setFoodGroups] = useState<InventoryFoodGroup[]>([]);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
@@ -156,7 +157,6 @@ export function InventoryScreen() {
 
   const [scanSheetVisible, setScanSheetVisible] = useState(false);
 
-  const [dietaryTags, setDietaryTags] = useState<string[]>([]);
   const inventoryScrollRef = useRef<ScrollView>(null);
   const skipMountLoadData = useRef(true);
   const skipFilterScrollReset = useRef(true);
@@ -164,16 +164,13 @@ export function InventoryScreen() {
   const pendingScrollPinRef = useRef(false);
   const loadSeqRef = useRef(0);
   const webScrollPinCleanupRef = useRef<(() => void) | null>(null);
-  const expiredFoodGroupBackfillRef = useRef(false);
-  const { version: refreshVersion, bump } = useAppRefresh();
-
-  const expiredNeedsFoodGroupBackfill = useCallback((items: ExpiringItem[]) => {
-    if (items.length === 0) return false;
-    return items.some((item) => {
-      const g = (item.food_group ?? '').trim().toLowerCase();
-      return g === '' || g === 'other';
-    });
-  }, []);
+  const skipInventoryFocusLoadRef = useRef(true);
+  /** Set when expired bucket fetch succeeds; kept for compatibility (not used to skip loads). */
+  const expiredLoadedRef = useRef(false);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const isFocused = useIsFocused();
+  const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
 
   useEffect(
     () => () => {
@@ -264,7 +261,7 @@ export function InventoryScreen() {
     });
   }, [restorePantryEntries]);
 
-  const optimisticallyExpirePantryItem = useCallback((item: InventoryItem): PendingPantryExpire => {
+  const optimisticallyExpirePantryItem = useCallback((item: PantryItem): PendingPantryExpire => {
     const itemId = item.item_id;
 
     const inv = inventoryRef.current;
@@ -300,7 +297,7 @@ export function InventoryScreen() {
       const pending = pendingPantryExpiresRef.current.get(itemId);
       if (!pending) return;
       pendingPantryExpiresRef.current.delete(itemId);
-      void api.expireInventoryItem(itemId).then(() => bump()).catch(() => {
+      void api.expireInventoryItem(itemId).then(() => bump('inventory')).catch(() => {
         restorePantryExpire(pending);
         showAppError('Could not mark as expired.');
       });
@@ -324,7 +321,7 @@ export function InventoryScreen() {
         try {
           await api.addShoppingItem(pending.name, pending.qty, pending.unit);
           await api.deleteInventoryItem(itemId);
-          bump();
+          bump('inventory');
         } catch {
           restorePantryEntries(pending);
           showAppError('Could not add to shopping list.');
@@ -386,28 +383,23 @@ export function InventoryScreen() {
     }
   }, [scrollListToTop, startWebListScrollPin, pinListScrollToTop]);
 
-  const loadData = useCallback(async () => {
+  const loadInStock = useCallback(async () => {
     const seq = ++loadSeqRef.current;
+    setLoading(true);
     try {
-      const [inv, exp, expd, groups] = await Promise.all([
-        api.fetchInventory(),
-        api.fetchExpiringItems(),
-        api.fetchExpiredItems(),
-        api.fetchInventoryFoodGroups().catch(() => INVENTORY_FOOD_GROUPS),
+      const [data, groups] = await Promise.all([
+        api.fetchInventoryBuckets(['active', 'expiring']),
+        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
       ]);
       if (seq !== loadSeqRef.current) return;
-      setInventory(Array.isArray(inv) ? inv : []);
-      setExpiringItems(Array.isArray(exp) ? exp : []);
-      setExpiredItems(Array.isArray(expd) ? expd : []);
-      setFoodGroups(
-        Array.isArray(groups) && groups.length > 0 ? groups : INVENTORY_FOOD_GROUPS,
-      );
+      setInventory(Array.isArray(data.active) ? data.active : []);
+      setExpiringItems(Array.isArray(data.expiring) ? data.expiring : []);
+      setFoodGroups(Array.isArray(groups) ? groups : []);
     } catch (e) {
       if (seq !== loadSeqRef.current) return;
       console.error('Failed to load inventory:', e);
       setInventory([]);
       setExpiringItems([]);
-      setExpiredItems([]);
     } finally {
       if (seq !== loadSeqRef.current) return;
       setLoading(false);
@@ -418,42 +410,69 @@ export function InventoryScreen() {
     }
   }, [startWebListScrollPin]);
 
+  const loadExpired = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
+    setLoading(true);
+    try {
+      const [data, groups] = await Promise.all([
+        api.fetchInventoryBuckets(['expired']),
+        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
+      ]);
+      if (seq !== loadSeqRef.current) return;
+      setExpiredItems(Array.isArray(data.expired) ? data.expired : []);
+      setFoodGroups(Array.isArray(groups) ? groups : []);
+      expiredLoadedRef.current = true;
+    } catch (e) {
+      if (seq !== loadSeqRef.current) return;
+      console.error('Failed to load expired inventory:', e);
+      setExpiredItems([]);
+    } finally {
+      if (seq !== loadSeqRef.current) return;
+      setLoading(false);
+    }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    if (tabRef.current === 'expired') {
+      await loadExpired();
+      return;
+    }
+    await loadInStock();
+  }, [loadInStock, loadExpired]);
+
+  // Reload the active segment whenever In stock ↔ Expired changes.
+  useEffect(() => {
+    if (tab === 'expired') {
+      void loadExpired();
+    } else {
+      void loadInStock();
+    }
+  }, [tab, loadInStock, loadExpired]);
+
   useFocusEffect(
     useCallback(() => {
-      void loadData();
-      void api.fetchProfile()
-        .then((p) => setDietaryTags(p.dietary_tags ?? []))
-        .catch(() => setDietaryTags([]));
-    }, [loadData]),
+      if (skipInventoryFocusLoadRef.current) {
+        skipInventoryFocusLoadRef.current = false;
+        return;
+      }
+      if (tabRef.current === 'expired') {
+        void loadExpired();
+      } else {
+        void loadInStock();
+      }
+    }, [loadInStock, loadExpired]),
   );
 
-  // useFocusEffect already loads on mount; skip duplicate fetch (avoids double layout + scroll jump on web).
+  // Global inventory refresh (e.g. add item modal) while this tab is focused.
   useEffect(() => {
+    if (!isFocused) return;
     if (skipMountLoadData.current) {
       skipMountLoadData.current = false;
       return;
     }
+    if (!refreshAppliesTo(refreshScope, 'inventory')) return;
     void loadData();
-  }, [loadData, refreshVersion]);
-
-  // Classify food_group for expired items still marked other/empty (once per screen visit).
-  useEffect(() => {
-    if (tab !== 'expired' || loading || expiredFoodGroupBackfillRef.current) return;
-    if (!expiredNeedsFoodGroupBackfill(expiredItems)) return;
-
-    expiredFoodGroupBackfillRef.current = true;
-    void (async () => {
-      try {
-        const { enriched } = await api.backfillInventoryFoodGroups({ scope: 'expired' });
-        if (enriched > 0) {
-          await loadData();
-        }
-      } catch (e) {
-        console.error('Expired food group backfill failed:', e);
-        expiredFoodGroupBackfillRef.current = false;
-      }
-    })();
-  }, [tab, loading, expiredItems, expiredNeedsFoodGroupBackfill, loadData]);
+  }, [isFocused, loadData, refreshVersion, refreshScope]);
 
   // Deep links from Home (expired banner / expiring soon). Use primitive deps only —
   // `route.params` object identity changes every render on web and caused setParams loops.
@@ -485,7 +504,7 @@ export function InventoryScreen() {
   }, []);
 
   const performExpire = useCallback(
-    (item: InventoryItem) => {
+    (item: PantryItem) => {
       const itemId = item.item_id;
       flushPendingPantryActions();
 
@@ -579,7 +598,7 @@ export function InventoryScreen() {
   );
 
   const buildInStockMenu = useCallback(
-    (item: InventoryItem): InventoryMenuAction[] => [
+    (item: PantryItem): InventoryMenuAction[] => [
       {
         key: 'edit',
         label: 'Edit',
@@ -659,12 +678,24 @@ export function InventoryScreen() {
 
   const searchLower = search.toLowerCase();
 
-  const expiringIds = new Set(expiringItems.map((e) => e.item_id));
+  const inStockItems = useMemo((): PantryItem[] => {
+    const combined: PantryItem[] = [...inventory, ...expiringItems];
+    return combined.sort((a, b) => {
+      const aExp = a.estimated_expiry
+        ? new Date(a.estimated_expiry).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const bExp = b.estimated_expiry
+        ? new Date(b.estimated_expiry).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      if (aExp !== bExp) return aExp - bExp;
+      return a.canonical_name.localeCompare(b.canonical_name);
+    });
+  }, [inventory, expiringItems]);
 
-  const groupMeta = useMemo(() => {
-    const base = foodGroups.length > 0 ? foodGroups : INVENTORY_FOOD_GROUPS;
-    return foodGroupsForDiet(base, dietaryTags);
-  }, [foodGroups, dietaryTags]);
+  const groupMeta = useMemo(
+    () => [...foodGroups].sort((a, b) => a.sort - b.sort),
+    [foodGroups],
+  );
 
   const itemGroupId = useCallback((foodGroup?: string) => {
     const raw = foodGroup || 'other';
@@ -673,12 +704,12 @@ export function InventoryScreen() {
 
   const groupCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const item of inventory) {
+    for (const item of inStockItems) {
       const gid = itemGroupId(item.food_group);
       counts[gid] = (counts[gid] ?? 0) + 1;
     }
     return counts;
-  }, [inventory, itemGroupId]);
+  }, [inStockItems, itemGroupId]);
 
   const expiredGroupCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -720,17 +751,13 @@ export function InventoryScreen() {
   }, [expiringItems.length, expiringSoonFilter]);
 
   const filteredInventory = useMemo(
-    () =>
-      inventory
+    () => {
+      const source = expiringSoonFilter ? expiringItems : inStockItems;
+      return source
         .filter((item) => item.canonical_name.toLowerCase().includes(searchLower))
-        .filter((item) => {
-          if (!item.estimated_expiry) return true;
-          const days = daysUntilExpiryLocal(item.estimated_expiry);
-          return days === null || days >= 0;
-        })
-        .filter((item) => !expiringSoonFilter || expiringIds.has(item.item_id))
-        .filter((item) => !groupFilter || itemGroupId(item.food_group) === groupFilter),
-    [inventory, searchLower, expiringSoonFilter, expiringIds, groupFilter, itemGroupId],
+        .filter((item) => !groupFilter || itemGroupId(item.food_group) === groupFilter);
+    },
+    [inStockItems, expiringItems, expiringSoonFilter, searchLower, groupFilter, itemGroupId],
   );
 
   const filteredExpired = useMemo(
@@ -869,7 +896,7 @@ export function InventoryScreen() {
           <FilterPillRow style={styles.filterPillRow}>
             <FilterPill
               key="all"
-              label={`All (${inventory.length})`}
+              label={`All (${inStockItems.length})`}
               selected={groupFilter === null && !expiringSoonFilter}
               onPress={() => {
                 setGroupFilter(null);
@@ -1006,7 +1033,6 @@ export function InventoryScreen() {
       <AddInventoryModal
         visible={addModalVisible}
         onDismiss={() => setAddModalVisible(false)}
-        onAdded={() => void loadData()}
       />
 
       <EditInventoryItemSheet
@@ -1020,7 +1046,6 @@ export function InventoryScreen() {
       <ScanBillBottomSheet
         visible={scanSheetVisible}
         onDismiss={() => setScanSheetVisible(false)}
-        onAdded={() => void loadData()}
         groupMeta={groupMeta}
       />
 

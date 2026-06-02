@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,12 +15,12 @@ import {
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_HEADER } from '../components/TabScreenHeader';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useAuth } from '../context/AuthContext';
-import { useAppRefresh } from '../context/AppRefreshContext';
+import { refreshAppliesTo, useAppRefresh } from '../context/AppRefreshContext';
 import * as api from '../services/api';
-import { InventoryItem, ExpiringItem } from '../types';
+import { ExpiringItem } from '../types';
 import { QuickActionsCarousel } from '../components/QuickActionsCarousel';
 import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { AddInventoryModal } from '../components/modals/AddInventoryModal';
@@ -57,9 +57,9 @@ export function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const { contentPaddingBottom } = useTabBarLayout();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
+  const [pantryTotal, setPantryTotal] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
@@ -68,7 +68,9 @@ export function HomeScreen({ navigation }: any) {
   const [mealOfDayMeals, setMealOfDayMeals] = useState<MealOfDayMeal[]>([]);
   const [mealOfDayLoading, setMealOfDayLoading] = useState(false);
   const [mealOfDayNotReady, setMealOfDayNotReady] = useState(false);
-  const { version: refreshVersion } = useAppRefresh();
+  const skipMountLoadData = useRef(true);
+  const isFocused = useIsFocused();
+  const { version: refreshVersion, scope: refreshScope } = useAppRefresh();
   const loadMealOfDay = useCallback(async () => {
     setMealOfDayLoading(true);
     try {
@@ -86,25 +88,25 @@ export function HomeScreen({ navigation }: any) {
     }
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadInventorySummary = useCallback(async () => {
     try {
-      const [inv, exp, expd] = await Promise.all([
-        api.fetchInventory().catch(() => []),
-        api.fetchExpiringItems().catch(() => []),
-        api.fetchExpiredItems().catch(() => []),
-      ]);
-      setInventory(inv || []);
-      setExpiringItems(exp || []);
-      setExpiredItems(expd || []);
+      const data = await api.fetchInventoryBuckets(['expiring', 'expired']);
+      setExpiringItems(data.expiring ?? []);
+      setExpiredItems(data.expired ?? []);
+      setPantryTotal(data.counts?.total ?? 0);
     } catch {
-      setInventory([]);
       setExpiringItems([]);
       setExpiredItems([]);
+      setPantryTotal(0);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    await loadInventorySummary();
     void loadMealOfDay();
-  }, [loadMealOfDay]);
+  }, [loadInventorySummary, loadMealOfDay]);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,9 +114,16 @@ export function HomeScreen({ navigation }: any) {
     }, [loadData]),
   );
 
+  // Inventory changed elsewhere while Home is focused — refresh banners only (not meal-of-day).
   useEffect(() => {
-    void loadData();
-  }, [loadData, refreshVersion]);
+    if (!isFocused) return;
+    if (skipMountLoadData.current) {
+      skipMountLoadData.current = false;
+      return;
+    }
+    if (!refreshAppliesTo(refreshScope, 'inventory')) return;
+    void loadInventorySummary();
+  }, [isFocused, loadInventorySummary, refreshVersion, refreshScope]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -286,9 +295,7 @@ export function HomeScreen({ navigation }: any) {
             </View>
           )}
 
-          {inventory.length === 0 &&
-          expiringItems.length === 0 &&
-          expiredItems.length === 0 ? (
+          {pantryTotal === 0 ? (
             <Pressable
               onPress={() => navigation.navigate('Inventory')}
               style={styles.emptyPantry}
@@ -310,7 +317,6 @@ export function HomeScreen({ navigation }: any) {
       <AddInventoryModal
         visible={inventoryModalOpen}
         onDismiss={() => setInventoryModalOpen(false)}
-        onAdded={loadData}
       />
       <LogMealModal
         visible={logMealModalOpen}
@@ -319,7 +325,6 @@ export function HomeScreen({ navigation }: any) {
       <AddShoppingModal
         visible={shoppingModalOpen}
         onDismiss={() => setShoppingModalOpen(false)}
-        onAdded={loadData}
       />
     </ScrollView>
   );

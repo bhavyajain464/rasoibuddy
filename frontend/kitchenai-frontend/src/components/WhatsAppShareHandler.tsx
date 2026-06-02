@@ -131,7 +131,7 @@ function WhatsAppShareModal({
     try {
       const res = await api.applyWhatsAppAction(action);
       setDoneMsg(res.message || 'Done');
-      bump();
+      bump('inventory');
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : String(e);
       logImportError('apply', { rawMessage: raw, cause: e });

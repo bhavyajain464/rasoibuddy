@@ -172,8 +172,7 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
     }
 
     setAddingScanned(false);
-    bump();
-    onAdded?.();
+    bump('inventory');
 
     if (errors.length > 0) {
       showAppInfo(`Added ${addedCount} items. Some failed: ${errors.join(', ')}`);

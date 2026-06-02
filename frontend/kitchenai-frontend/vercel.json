@@ -4,6 +4,21 @@
   "installCommand": "npm install",
   "buildCommand": "EXPO_PUBLIC_BUILD_ID=$VERCEL_GIT_COMMIT_SHA npm run build:web:vercel",
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/(.*)", "destination": "/index.html" }

@@ -12,4 +12,14 @@ if (process.env.DOTENV_CONFIG_PATH) {
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
+// Google Identity Services popup/postMessage needs COOP that allows popups (local web dev).
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => (req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    return middleware(req, res, next);
+  },
+};
+
 module.exports = config;

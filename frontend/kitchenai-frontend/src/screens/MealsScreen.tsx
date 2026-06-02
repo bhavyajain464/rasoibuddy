@@ -200,8 +200,8 @@ export function MealsScreen() {
   const [starringDish, setStarringDish] = useState<string | null>(null);
   const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
 
-  useEffect(() => {
-    api.fetchCookProfile()
+  const refreshCookProfileReady = useCallback(() => {
+    void api.fetchCookProfile()
       .then((p) => setCookProfileReady(Boolean(p.configured && p.phone_number?.trim())))
       .catch(() => setCookProfileReady(false));
   }, []);
@@ -273,6 +273,7 @@ export function MealsScreen() {
     setLoading(true);
     setError(null);
     setResult(null);
+    refreshCookProfileReady();
     try {
       const res = await api.getMealOfDay();
       const match = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0] ?? null;
@@ -304,7 +305,7 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [navigation, refreshEntitlements]);
+  }, [navigation, refreshEntitlements, refreshCookProfileReady]);
 
   const generateForCategory = useCallback(async (
     catId: string,
@@ -322,6 +323,7 @@ export function MealsScreen() {
     if (!excludeDish) {
       setResult(null);
     }
+    refreshCookProfileReady();
     try {
       const res = await api.getSmartMeals(
         catId,
@@ -349,7 +351,7 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, loadMealOfDayFromCache]);
+  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, loadMealOfDayFromCache, refreshCookProfileReady]);
 
   const onCategoryPress = useCallback(
     (catId: string) => {

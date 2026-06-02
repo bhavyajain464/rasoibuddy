@@ -26,6 +26,22 @@ export interface ExpiringItem {
   updated_at?: string;
 }
 
+export type InventoryBucket = 'active' | 'expiring' | 'expired';
+
+export interface InventoryBucketCounts {
+  active: number;
+  expiring: number;
+  expired: number;
+  total: number;
+}
+
+export interface InventoryBucketsResponse {
+  active?: InventoryItem[];
+  expiring?: ExpiringItem[];
+  expired?: ExpiringItem[];
+  counts: InventoryBucketCounts;
+}
+
 export interface RescueMealSuggestion {
   meal_id: string;
   meal_name: string;

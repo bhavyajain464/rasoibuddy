@@ -119,6 +119,9 @@ func mergeInventoryPatch(current models.Inventory, patch models.InventoryPatchRe
 // before they get auto-purged. Anything older is deleted opportunistically on read.
 const expiredRetentionDays = 7
 
+// expiringSoonDays is the inclusive window (from today) for the expiring bucket.
+const expiringSoonDays = 7
+
 // purgeMinPeriod throttles per-kitchen purges to once per day. With a 7-day
 // retention window this is more than fine — at most ~1 day of stale rows can
 // accumulate between purges, and the SELECT queries already filter them out
@@ -378,7 +381,8 @@ func scanInventoryItem(
 	return item, nil
 }
 
-// GetInventory returns non-expired inventory items for the authenticated user
+// GetInventory returns disjoint inventory buckets. Query ?include=active,expiring,expired
+// (defaults to all three). Counts always reflect the full kitchen snapshot.
 func GetInventory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
@@ -388,36 +392,218 @@ func GetInventory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if kitchen == nil {
-			http.Error(w, "kitchen not found", http.StatusNotFound)
-			return
-		}
-		schedulePurgeStaleExpired(db, kitchen.KitchenID)
-		rows, err := db.Query(`
-			SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
-			FROM inventory
-			WHERE kitchen_id = $1
-				AND (estimated_expiry IS NULL OR estimated_expiry >= CURRENT_DATE)
-			ORDER BY estimated_expiry ASC NULLS LAST, created_at DESC
-		`, kitchen.KitchenID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		items := make([]models.Inventory, 0)
-		for rows.Next() {
-			item, err := scanInventoryItem(rows)
+			userName := ""
+			if session := middleware.GetAuthSession(r); session != nil && session.User != nil {
+				userName = session.User.Name
+			}
+			kitchen, err = EnsureKitchenForUser(db, userID, userName)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			items = append(items, item)
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
+
+		wantActive, wantExpiring, wantExpired, ok := parseInventoryInclude(r.URL.Query().Get("include"))
+		if !ok {
+			http.Error(w, "invalid include: use active, expiring, expired", http.StatusBadRequest)
+			return
+		}
+		if !wantActive && !wantExpiring && !wantExpired {
+			http.Error(w, "include must list at least one bucket", http.StatusBadRequest)
+			return
+		}
+
+		if wantActive || wantExpired {
+			schedulePurgeStaleExpired(db, kitchen.KitchenID)
+		}
+
+		resp, err := loadInventoryBuckets(db, kitchen.KitchenID, wantActive, wantExpiring, wantExpired)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(items)
+		json.NewEncoder(w).Encode(resp)
 	}
+}
+
+func parseInventoryInclude(raw string) (active, expiring, expired, ok bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return true, true, true, true
+	}
+	ok = true
+	for _, part := range strings.Split(raw, ",") {
+		switch strings.ToLower(strings.TrimSpace(part)) {
+		case "active":
+			active = true
+		case "expiring":
+			expiring = true
+		case "expired":
+			expired = true
+		case "":
+			continue
+		default:
+			return false, false, false, false
+		}
+	}
+	return active, expiring, expired, true
+}
+
+func loadInventoryBuckets(db *sql.DB, kitchenID string, wantActive, wantExpiring, wantExpired bool) (models.InventoryBucketsResponse, error) {
+	var resp models.InventoryBucketsResponse
+
+	if err := queryInventoryBucketCounts(db, kitchenID, &resp.Counts); err != nil {
+		return resp, err
+	}
+
+	if wantActive {
+		items, err := queryActiveInventory(db, kitchenID)
+		if err != nil {
+			return resp, err
+		}
+		resp.Active = items
+	}
+	if wantExpiring {
+		items, err := queryExpiringInventory(db, kitchenID)
+		if err != nil {
+			return resp, err
+		}
+		resp.Expiring = items
+	}
+	if wantExpired {
+		items, err := queryExpiredInventory(db, kitchenID)
+		if err != nil {
+			return resp, err
+		}
+		resp.Expired = items
+	}
+
+	return resp, nil
+}
+
+func queryInventoryBucketCounts(db *sql.DB, kitchenID string, counts *models.InventoryBucketCounts) error {
+	err := db.QueryRow(`
+		SELECT
+			COUNT(*) FILTER (
+				WHERE estimated_expiry IS NULL
+					OR estimated_expiry > CURRENT_DATE + $2::int
+			) AS active,
+			COUNT(*) FILTER (
+				WHERE estimated_expiry IS NOT NULL
+					AND estimated_expiry >= CURRENT_DATE
+					AND estimated_expiry <= CURRENT_DATE + $2::int
+			) AS expiring,
+			COUNT(*) FILTER (
+				WHERE estimated_expiry IS NOT NULL
+					AND estimated_expiry < CURRENT_DATE
+					AND estimated_expiry >= CURRENT_DATE - $1::int
+			) AS expired
+		FROM inventory
+		WHERE kitchen_id = $3
+	`, expiredRetentionDays, expiringSoonDays, kitchenID).Scan(&counts.Active, &counts.Expiring, &counts.Expired)
+	if err != nil {
+		return err
+	}
+	counts.Total = counts.Active + counts.Expiring + counts.Expired
+	return nil
+}
+
+func queryActiveInventory(db *sql.DB, kitchenID string) ([]models.Inventory, error) {
+	rows, err := db.Query(`
+		SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
+		FROM inventory
+		WHERE kitchen_id = $1
+			AND (
+				estimated_expiry IS NULL
+				OR estimated_expiry > CURRENT_DATE + $2::int
+			)
+		ORDER BY estimated_expiry ASC NULLS LAST, created_at DESC
+	`, kitchenID, expiringSoonDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]models.Inventory, 0)
+	for rows.Next() {
+		item, err := scanInventoryItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func queryExpiringInventory(db *sql.DB, kitchenID string) ([]models.ExpiringItem, error) {
+	rows, err := db.Query(`
+		SELECT
+			item_id, canonical_name, qty, unit, food_group, estimated_expiry,
+			(estimated_expiry - CURRENT_DATE)::int as days_until_expiry,
+			updated_at
+		FROM inventory
+		WHERE estimated_expiry IS NOT NULL
+			AND estimated_expiry >= CURRENT_DATE
+			AND estimated_expiry <= CURRENT_DATE + $2::int
+			AND kitchen_id = $1
+		ORDER BY estimated_expiry ASC
+	`, kitchenID, expiringSoonDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanExpiringRows(rows)
+}
+
+func queryExpiredInventory(db *sql.DB, kitchenID string) ([]models.ExpiringItem, error) {
+	rows, err := db.Query(`
+		SELECT
+			item_id, canonical_name, qty, unit, food_group, estimated_expiry,
+			(estimated_expiry - CURRENT_DATE)::int as days_until_expiry,
+			updated_at
+		FROM inventory
+		WHERE estimated_expiry IS NOT NULL
+			AND estimated_expiry < CURRENT_DATE
+			AND estimated_expiry >= CURRENT_DATE - $1::int
+			AND kitchen_id = $2
+		ORDER BY estimated_expiry DESC
+	`, expiredRetentionDays, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanExpiringRows(rows)
+}
+
+func scanExpiringRows(rows *sql.Rows) ([]models.ExpiringItem, error) {
+	items := make([]models.ExpiringItem, 0)
+	for rows.Next() {
+		var item models.ExpiringItem
+		var foodGroup sql.NullString
+		var updatedAt sql.NullTime
+		err := rows.Scan(
+			&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
+			&item.EstimatedExpiry, &item.DaysUntilExpiry, &updatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		item.Unit = units.Normalize(item.Unit)
+		if foodGroup.Valid && foodGroup.String != "" {
+			item.FoodGroup = foodGroup.String
+		}
+		if updatedAt.Valid {
+			item.UpdatedAt = updatedAt.Time
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 // GetInventoryItem returns a single inventory item by ID
@@ -744,7 +930,7 @@ func ExpireInventoryItem(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if _, err := tx.Exec(
-			`UPDATE inventory SET estimated_expiry = CURRENT_DATE - INTERVAL '1 day', updated_at = NOW()
+			`UPDATE inventory SET estimated_expiry = CURRENT_DATE - 1, updated_at = NOW()
 			 WHERE item_id = $1 AND kitchen_id = $2`, id, kitchen.KitchenID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -759,7 +945,7 @@ func ExpireInventoryItem(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// GetExpiringItems returns non-expired items expiring within 2 days
+// GetExpiringItems returns items in the expiring bucket (legacy flat-array endpoint).
 func GetExpiringItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
@@ -772,50 +958,17 @@ func GetExpiringItems(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "kitchen not found", http.StatusNotFound)
 			return
 		}
-		rows, err := db.Query(`
-			SELECT
-				item_id, canonical_name, qty, unit, food_group, estimated_expiry,
-				(estimated_expiry - CURRENT_DATE) as days_until_expiry,
-				updated_at
-			FROM inventory
-			WHERE estimated_expiry IS NOT NULL
-				AND estimated_expiry >= CURRENT_DATE
-				AND estimated_expiry <= CURRENT_DATE + INTERVAL '7 days'
-				AND kitchen_id = $1
-			ORDER BY estimated_expiry ASC
-		`, kitchen.KitchenID)
+		items, err := queryExpiringInventory(db, kitchen.KitchenID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer rows.Close()
-
-		items := make([]models.ExpiringItem, 0)
-		for rows.Next() {
-			var item models.ExpiringItem
-			var foodGroup sql.NullString
-			err := rows.Scan(
-				&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
-				&item.EstimatedExpiry, &item.DaysUntilExpiry, &item.UpdatedAt,
-			)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			item.Unit = units.Normalize(item.Unit)
-			if foodGroup.Valid && foodGroup.String != "" {
-				item.FoodGroup = foodGroup.String
-			}
-			items = append(items, item)
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
 	}
 }
 
-// GetExpiredItems returns items that have already expired, limited to a rolling
-// `expiredRetentionDays`-day window. Anything older than that is purged on read.
+// GetExpiredItems returns items in the expired bucket (legacy flat-array endpoint).
 func GetExpiredItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
@@ -829,42 +982,11 @@ func GetExpiredItems(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		schedulePurgeStaleExpired(db, kitchen.KitchenID)
-		rows, err := db.Query(`
-			SELECT
-				item_id, canonical_name, qty, unit, food_group, estimated_expiry,
-				(CURRENT_DATE - estimated_expiry) as days_since_expiry
-			FROM inventory
-			WHERE estimated_expiry IS NOT NULL
-				AND estimated_expiry < CURRENT_DATE
-				AND estimated_expiry >= CURRENT_DATE - ($1 || ' days')::interval
-				AND kitchen_id = $2
-			ORDER BY estimated_expiry DESC
-		`, expiredRetentionDays, kitchen.KitchenID)
+		items, err := queryExpiredInventory(db, kitchen.KitchenID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer rows.Close()
-
-		items := make([]models.ExpiringItem, 0)
-		for rows.Next() {
-			var item models.ExpiringItem
-			var foodGroup sql.NullString
-			err := rows.Scan(
-				&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
-				&item.EstimatedExpiry, &item.DaysUntilExpiry,
-			)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			item.Unit = units.Normalize(item.Unit)
-			if foodGroup.Valid && foodGroup.String != "" {
-				item.FoodGroup = foodGroup.String
-			}
-			items = append(items, item)
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
 	}

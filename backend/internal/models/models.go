@@ -131,6 +131,23 @@ type CookProfileRequest struct {
 	PhoneNumber   string   `json:"phone_number,omitempty"`
 }
 
+// InventoryBucketCounts summarizes disjoint pantry buckets for a kitchen.
+type InventoryBucketCounts struct {
+	Active   int `json:"active"`
+	Expiring int `json:"expiring"`
+	Expired  int `json:"expired"`
+	Total    int `json:"total"`
+}
+
+// InventoryBucketsResponse is returned by GET /inventory?include=active,expiring,expired.
+// Only requested bucket arrays are populated; counts always cover all buckets.
+type InventoryBucketsResponse struct {
+	Active   []Inventory    `json:"active,omitempty"`
+	Expiring []ExpiringItem `json:"expiring,omitempty"`
+	Expired  []ExpiringItem `json:"expired,omitempty"`
+	Counts   InventoryBucketCounts `json:"counts"`
+}
+
 // ExpiringItem represents an inventory item that is near expiry
 type ExpiringItem struct {
 	ItemID          string    `json:"item_id"`

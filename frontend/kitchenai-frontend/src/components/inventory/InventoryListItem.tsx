@@ -84,12 +84,9 @@ export function InventoryListItem({
         ? daysUntilExpiryLocal(item.estimated_expiry)
         : null;
 
-  const isExpired = daysLeft !== null && daysLeft < 0;
+  const isExpired = kind === 'expired' || (daysLeft !== null && daysLeft < 0);
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 2;
-  const expiryLabel =
-    kind === 'expired' && 'days_until_expiry' in item
-      ? `Expired ${Math.abs(item.days_until_expiry)} day${Math.abs(item.days_until_expiry) !== 1 ? 's' : ''} ago`
-      : formatExpiryCountdown(daysLeft);
+  const expiryLabel = formatExpiryCountdown(daysLeft);
 
   const closeSwipe = () => swipeRef.current?.close();
 

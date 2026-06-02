@@ -15,7 +15,7 @@ import {
   Checkbox,
   Icon,
 } from 'react-native-paper';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as api from '../services/api';
 import { OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
@@ -24,7 +24,7 @@ import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { formatShoppingQty } from '../utils/shoppingFormat';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { DEFAULT_UNIT } from '../components/UnitPillSelector';
-import { useAppRefresh } from '../context/AppRefreshContext';
+import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
 import {
   readOrderSuggestionsCache,
   writeOrderSuggestionsCache,
@@ -62,7 +62,9 @@ export function ShoppingScreen() {
   const [hiddenSuggest, setHiddenSuggest] = useState<Record<string, boolean>>({});
   const lastSuggestNamesRef = useRef<string[]>([]);
   const [suggestExpanded, setSuggestExpanded] = useState(false);
-  const { version: refreshVersion, bump } = useAppRefresh();
+  const skipMountLoadItems = useRef(true);
+  const isFocused = useIsFocused();
+  const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
 
   const selectedList = useMemo(
     () => items.filter((i) => selectedIds[i.id]),
@@ -132,9 +134,16 @@ export function ShoppingScreen() {
     }, [loadItems, loadOrderSuggestions]),
   );
 
+  // Shopping list changed elsewhere while this tab is focused.
   useEffect(() => {
+    if (!isFocused) return;
+    if (skipMountLoadItems.current) {
+      skipMountLoadItems.current = false;
+      return;
+    }
+    if (!refreshAppliesTo(refreshScope, 'shopping')) return;
     void loadItems();
-  }, [loadItems, refreshVersion]);
+  }, [isFocused, loadItems, refreshVersion, refreshScope]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -239,7 +248,7 @@ export function ShoppingScreen() {
       if (!pending) return;
       pendingShoppingPurchasesRef.current.delete(batchId);
       void api.purchaseShoppingItems(pending.ids).then(() => {
-        bump();
+        bump('shopping');
       }).catch(() => {
         restoreShoppingEntries(pending.entries);
         showAppError('Could not add to inventory.');
@@ -664,7 +673,6 @@ export function ShoppingScreen() {
       <AddShoppingModal
         visible={addModalVisible}
         onDismiss={() => setAddModalVisible(false)}
-        onAdded={() => void loadItems()}
       />
 
       {undoSnackbar}

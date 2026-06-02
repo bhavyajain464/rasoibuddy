@@ -150,6 +150,32 @@ func createKitchenWithRetries(tx *sql.Tx, userID, name string) (*kitchenView, er
 	return out, nil
 }
 
+func EnsureKitchenForUser(db *sql.DB, userID, userName string) (*kitchenView, error) {
+	k, err := resolveKitchenForUser(db, userID)
+	if err != nil || k != nil {
+		return k, err
+	}
+	kitchenName := strings.TrimSpace(userName)
+	if kitchenName == "" {
+		kitchenName = "My Kitchen"
+	} else {
+		kitchenName += "'s Kitchen"
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	created, err := createKitchenWithRetries(tx, userID, kitchenName)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return kitchenViewWithMemberCount(db, created)
+}
+
 func CreateKitchen(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)

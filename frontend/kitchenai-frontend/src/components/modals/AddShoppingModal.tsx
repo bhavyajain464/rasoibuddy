@@ -102,8 +102,7 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
       const count = filledRows.length;
       onDismiss();
       showAppSuccess(count === 1 ? 'Added to shopping list' : `Added ${count} items to your list`);
-      bump();
-      onAdded?.();
+      bump('shopping');
     } catch {
       showAppError('Could not add items.');
     } finally {

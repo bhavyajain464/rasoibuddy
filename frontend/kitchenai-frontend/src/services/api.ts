@@ -11,6 +11,8 @@ import {
 import {
   InventoryItem,
   InventoryFoodGroup,
+  InventoryBucket,
+  InventoryBucketsResponse,
   ExpiringItem,
   RescueMealResponse,
   LowStockItem,
@@ -42,6 +44,7 @@ import {
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { fileUriToBase64 } from '../utils/imageToBase64';
 import { normalizeUnit } from '../utils/units';
+import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
 
 function resolveApiBaseUrl(): string {
   const url = process.env.EXPO_PUBLIC_API_BASE_URL!;
@@ -258,43 +261,38 @@ export async function leaveKitchen(): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
-export async function fetchInventory(): Promise<InventoryItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory`);
+export async function fetchInventoryBuckets(
+  include: InventoryBucket[],
+): Promise<InventoryBucketsResponse> {
+  const params = new URLSearchParams({ include: include.join(',') });
+  const res = await authFetch(`${API_BASE_URL}/inventory?${params}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const raw = await res.json();
+  let normalized = normalizeInventoryBucketsResponse(raw, include);
+
+  // Legacy backends return a flat array without an expired bucket — fetch it separately.
+  if (Array.isArray(raw) && include.includes('expired') && !(normalized.expired?.length)) {
+    try {
+      const expiredRes = await authFetch(`${API_BASE_URL}/inventory/expired`);
+      if (expiredRes.ok) {
+        const expiredRaw = await expiredRes.json();
+        if (Array.isArray(expiredRaw) && expiredRaw.length > 0) {
+          normalized = normalizeInventoryBucketsResponse(
+            { ...normalized, expired: expiredRaw, counts: normalized.counts },
+            include,
+          );
+        }
+      }
+    } catch {
+      // keep normalized result without expired
+    }
+  }
+
+  return normalized;
 }
 
 export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory/food-groups`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export type FoodGroupBackfillScope = 'all' | 'expired';
-
-export async function backfillInventoryFoodGroups(options?: {
-  scope?: FoodGroupBackfillScope;
-}): Promise<{ enriched: number; item_ids: string[] }> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/backfill-food-groups`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options ?? {}),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-export async function fetchExpiringItems(): Promise<ExpiringItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/expiring`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function fetchExpiredItems(): Promise<ExpiringItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/expired`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
