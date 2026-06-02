@@ -1,6 +1,6 @@
 # Google Cloud Vision API (bill photo OCR)
 
-Bill **photos** use **Cloud Vision `TEXT_DETECTION`** only (1 API unit per scan). Text is then parsed by Groq — not sent as an image to Groq unless OCR fails.
+Bill **photos** use **Cloud Vision `TEXT_DETECTION`** only (1 API unit per scan). Text is then parsed by the Groq text model — images are never sent to Groq.
 
 ## Free tier (stay under this)
 
@@ -87,6 +87,6 @@ Photo upload → ExtractBillImageText (Vision TEXT_DETECTION)
             → Groq text model → JSON items
 ```
 
-If OCR fails or returns too little text → optional Groq **vision** fallback (`GROQ_VISION_MODEL`, costs more).
+If OCR fails or returns too little text, the scan fails (no image-to-LLM fallback). Ask the user for a clearer photo.
 
 PDF uploads skip Vision and use embedded PDF text extraction instead.

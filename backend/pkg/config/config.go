@@ -10,9 +10,6 @@ import (
 // DefaultGroqModel is used for meals, bill scan, shelf-life, WhatsApp NLU, and diet analysis.
 const DefaultGroqModel = "llama-3.3-70b-versatile"
 
-// DefaultGroqVisionModel is used only when OCR fails and a vision fallback is required.
-const DefaultGroqVisionModel = "meta-llama/llama-4-scout-17b-16e-instruct"
-
 type Config struct {
 	Port            string
 	DatabaseURL     string
@@ -22,8 +19,7 @@ type Config struct {
 	GroqAPIKey      string   // first key; prefer PickGroqAPIKey() for API calls
 	GroqAPIKeys     []string // from comma-separated GROQ_API_KEY
 	GroqModel       string
-	GroqNLUModel    string // legacy env GROQ_NLU_MODEL (EffectiveGroqModel uses GROQ_MODEL)
-	GroqVisionModel string // GROQ_VISION_MODEL — multimodal fallback for bill photos when OCR fails
+	GroqNLUModel string // legacy env GROQ_NLU_MODEL (EffectiveGroqModel uses GROQ_MODEL)
 	// LLMProvider is "gemini" or "groq" (default groq). One provider per request — no cross-provider fallback.
 	LLMProvider           string
 	GoogleVisionAPIKey    string // GOOGLE_VISION_API_KEY — GCP Cloud Vision API (not AI Studio GEMINI_API_KEY)
@@ -116,17 +112,6 @@ func (c *Config) EffectiveGroqModel() string {
 	return DefaultGroqModel
 }
 
-// EffectiveGroqVisionModel returns a Groq multimodal model for image fallback (not text-only).
-func (c *Config) EffectiveGroqVisionModel() string {
-	if c == nil {
-		return DefaultGroqVisionModel
-	}
-	if m := strings.TrimSpace(c.GroqVisionModel); m != "" {
-		return m
-	}
-	return DefaultGroqVisionModel
-}
-
 func Load() (*Config, error) {
 	port := getEnv("PORT", "8080")
 	databaseURL := getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/kitchenai?sslmode=disable")
@@ -140,7 +125,6 @@ func Load() (*Config, error) {
 	}
 	groqModel := getEnv("GROQ_MODEL", DefaultGroqModel)
 	groqNLUModel := getEnv("GROQ_NLU_MODEL", DefaultGroqModel)
-	groqVisionModel := getEnv("GROQ_VISION_MODEL", DefaultGroqVisionModel)
 	googleVisionAPIKey := strings.TrimSpace(getEnv("GOOGLE_VISION_API_KEY", ""))
 	llmProvider := strings.ToLower(strings.TrimSpace(getEnv("LLM_PROVIDER", "groq")))
 	if llmProvider != "gemini" && llmProvider != "groq" {
@@ -270,7 +254,6 @@ func Load() (*Config, error) {
 		GroqAPIKeys:                        groqAPIKeys,
 		GroqModel:                          groqModel,
 		GroqNLUModel:                       groqNLUModel,
-		GroqVisionModel:                    groqVisionModel,
 		LLMProvider:                        llmProvider,
 		GoogleVisionAPIKey:                 googleVisionAPIKey,
 		GoogleTranslateKey:                 googleTranslateKey,

@@ -27,12 +27,8 @@ export function ScanScreen() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
 
-  const applyBillPick = (pick: BillScanPick | string) => {
-    if (typeof pick === 'string') {
-      setBillPick({ uri: pick, mimeType: 'image/jpeg' });
-    } else {
-      setBillPick(pick);
-    }
+  const applyBillPick = (pick: BillScanPick) => {
+    setBillPick(pick);
     setResult(null);
   };
 
@@ -91,7 +87,7 @@ export function ScanScreen() {
     <BillCameraModal
       visible={cameraModalVisible}
       onClose={() => setCameraModalVisible(false)}
-      onCaptured={(uri) => applyBillPick(uri)}
+      onCaptured={applyBillPick}
     />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Card style={styles.card} mode="elevated">

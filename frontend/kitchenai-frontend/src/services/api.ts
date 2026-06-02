@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
+import { prepareBillImageForScan } from '../utils/billImagePrepare';
 import {
   clampWhatsAppMessageText,
   logImportError,
@@ -326,7 +327,8 @@ export async function scanBillTest(): Promise<ScanResult> {
 }
 
 export async function scanBillUpload(fileUri: string, mimeHint?: string): Promise<ScanResult> {
-  const { base64: base64Data, mimeType } = await fileUriToBase64(fileUri, mimeHint);
+  const prepared = await prepareBillImageForScan(fileUri, mimeHint);
+  const { base64: base64Data, mimeType } = await fileUriToBase64(prepared.uri, prepared.mimeType);
 
   const res = await authFetch(`${API_BASE_URL}/bill/scan`, {
     method: 'POST',

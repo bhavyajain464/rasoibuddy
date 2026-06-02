@@ -124,7 +124,6 @@ export function isPdfBillPick(pick: BillScanPick): boolean {
   return pick.mimeType === 'application/pdf';
 }
 
-/** @deprecated use BillScanPick.uri — kept for camera modal callback compatibility */
 export async function pickBillImageUriFromGallery(): Promise<string | null> {
   const pick = await pickBillImageFromGallery();
   return pick?.uri ?? null;

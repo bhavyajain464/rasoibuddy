@@ -3,11 +3,12 @@ import { Modal, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { IconButton, Text, Button, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BillScanPick } from '../utils/billImagePicker';
 
 type BillCameraModalProps = {
   visible: boolean;
   onClose: () => void;
-  onCaptured: (uri: string) => void;
+  onCaptured: (pick: BillScanPick) => void;
 };
 
 export function BillCameraModal({ visible, onClose, onCaptured }: BillCameraModalProps) {
@@ -20,9 +21,10 @@ export function BillCameraModal({ visible, onClose, onCaptured }: BillCameraModa
     if (!cameraRef.current || capturing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.75, exif: false });
       if (photo?.uri) {
-        onCaptured(photo.uri);
+        const mimeType = photo.format === 'png' ? 'image/png' : 'image/jpeg';
+        onCaptured({ uri: photo.uri, mimeType });
         onClose();
       }
     } catch (e) {
