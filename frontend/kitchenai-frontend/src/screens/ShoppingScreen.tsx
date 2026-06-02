@@ -10,8 +10,6 @@ import {
   Text,
   IconButton,
   Surface,
-  Portal,
-  Dialog,
   Button,
   ActivityIndicator,
   Checkbox,
@@ -31,17 +29,30 @@ import {
   readOrderSuggestionsCache,
   writeOrderSuggestionsCache,
 } from '../utils/orderSuggestionsCache';
+import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
+import { restoreListEntries } from '../utils/restoreListEntries';
+
+type ShoppingListEntry = { item: UserShoppingItem; index: number };
+
+type PendingShoppingBatch = {
+  entries: ShoppingListEntry[];
+  ids: string[];
+};
 
 export function ShoppingScreen() {
   const { contentPaddingBottom } = useTabBarLayout();
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  const { showUndo, cancelCommit, undoSnackbar } = useUndoSnackbar({
+    undoFailedMessage: 'Could not undo.',
+  });
+  const pendingShoppingDeletesRef = useRef<Map<string, PendingShoppingBatch>>(new Map());
+  const pendingShoppingPurchasesRef = useRef<Map<string, PendingShoppingBatch>>(new Map());
 
   const [orderSuggestions, setOrderSuggestions] = useState<OrderSuggestItem[]>([]);
   const [orderSummary, setOrderSummary] = useState('');
@@ -51,7 +62,7 @@ export function ShoppingScreen() {
   const [hiddenSuggest, setHiddenSuggest] = useState<Record<string, boolean>>({});
   const lastSuggestNamesRef = useRef<string[]>([]);
   const [suggestExpanded, setSuggestExpanded] = useState(false);
-  const { version: refreshVersion } = useAppRefresh();
+  const { version: refreshVersion, bump } = useAppRefresh();
 
   const selectedList = useMemo(
     () => items.filter((i) => selectedIds[i.id]),
@@ -189,8 +200,160 @@ export function ShoppingScreen() {
   const exitSelection = () => {
     setSelectionMode(false);
     setSelectedIds({});
-    setConfirmBulkDelete(false);
   };
+
+  const restoreShoppingEntries = useCallback((entries: ShoppingListEntry[]) => {
+    setItems((prev) => restoreListEntries(prev, entries, (i) => i.id));
+  }, []);
+
+  const captureShoppingEntries = useCallback((ids: string[]) => {
+    let entries: ShoppingListEntry[] = [];
+    setItems((prev) => {
+      entries = ids
+        .map((id) => {
+          const index = prev.findIndex((i) => i.id === id);
+          const item = prev[index];
+          return index >= 0 && item ? { item, index } : null;
+        })
+        .filter((x): x is ShoppingListEntry => x != null);
+      if (entries.length === 0) return prev;
+      const idSet = new Set(ids);
+      return prev.filter((i) => !idSet.has(i.id));
+    });
+    return entries;
+  }, []);
+
+  const commitShoppingDelete = useCallback((batchId: string) => {
+    const pending = pendingShoppingDeletesRef.current.get(batchId);
+    if (!pending) return;
+    pendingShoppingDeletesRef.current.delete(batchId);
+    void api.bulkDeleteShoppingItems(pending.ids).catch(() => {
+      restoreShoppingEntries(pending.entries);
+      showAppError('Could not remove items.');
+    });
+  }, [restoreShoppingEntries]);
+
+  const commitShoppingPurchase = useCallback(
+    (batchId: string) => {
+      const pending = pendingShoppingPurchasesRef.current.get(batchId);
+      if (!pending) return;
+      pendingShoppingPurchasesRef.current.delete(batchId);
+      void api.purchaseShoppingItems(pending.ids).then(() => {
+        bump();
+      }).catch(() => {
+        restoreShoppingEntries(pending.entries);
+        showAppError('Could not add to inventory.');
+      });
+    },
+    [restoreShoppingEntries, bump],
+  );
+
+  const flushPendingShoppingDeletes = useCallback(() => {
+    const batchIds = [...pendingShoppingDeletesRef.current.keys()];
+    if (batchIds.length === 0) return;
+    batchIds.forEach((batchId) => commitShoppingDelete(batchId));
+    cancelCommit();
+  }, [commitShoppingDelete, cancelCommit]);
+
+  const flushPendingShoppingPurchases = useCallback(() => {
+    const batchIds = [...pendingShoppingPurchasesRef.current.keys()];
+    if (batchIds.length === 0) return;
+    batchIds.forEach((batchId) => commitShoppingPurchase(batchId));
+    cancelCommit();
+  }, [commitShoppingPurchase, cancelCommit]);
+
+  const flushPendingShoppingActions = useCallback(() => {
+    flushPendingShoppingDeletes();
+    flushPendingShoppingPurchases();
+  }, [flushPendingShoppingDeletes, flushPendingShoppingPurchases]);
+
+  const scheduleRemoveFromList = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+
+      flushPendingShoppingActions();
+
+      const batchId = `${Date.now()}-del-${ids.join(',')}`;
+      const entries = captureShoppingEntries(ids);
+
+      if (entries.length === 0) return;
+
+      exitSelection();
+
+      const idsToDelete = entries.map((e) => e.item.id);
+      pendingShoppingDeletesRef.current.set(batchId, {
+        entries,
+        ids: idsToDelete,
+      });
+
+      const msg =
+        entries.length === 1
+          ? `"${entries[0].item.name}" removed.`
+          : `${entries.length} items removed.`;
+
+      showUndo(
+        msg,
+        async () => {
+          const pending = pendingShoppingDeletesRef.current.get(batchId);
+          if (!pending) return;
+          pendingShoppingDeletesRef.current.delete(batchId);
+          restoreShoppingEntries(pending.entries);
+        },
+        () => commitShoppingDelete(batchId),
+      );
+    },
+    [
+      flushPendingShoppingActions,
+      captureShoppingEntries,
+      commitShoppingDelete,
+      showUndo,
+      restoreShoppingEntries,
+    ],
+  );
+
+  const scheduleAddToInventory = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+
+      flushPendingShoppingActions();
+
+      const batchId = `${Date.now()}-buy-${ids.join(',')}`;
+      const entries = captureShoppingEntries(ids);
+
+      if (entries.length === 0) return;
+
+      exitSelection();
+
+      const idsToPurchase = entries.map((e) => e.item.id);
+      pendingShoppingPurchasesRef.current.set(batchId, {
+        entries,
+        ids: idsToPurchase,
+      });
+
+      const msg =
+        entries.length === 1
+          ? `"${entries[0].item.name}" added to inventory`
+          : `${entries.length} items added to inventory`;
+
+      showUndo(
+        msg,
+        async () => {
+          const pending = pendingShoppingPurchasesRef.current.get(batchId);
+          if (!pending) return;
+          pendingShoppingPurchasesRef.current.delete(batchId);
+          restoreShoppingEntries(pending.entries);
+        },
+        () => commitShoppingPurchase(batchId),
+      );
+    },
+    [
+      flushPendingShoppingActions,
+      captureShoppingEntries,
+      commitShoppingPurchase,
+      showUndo,
+      restoreShoppingEntries,
+    ],
+  );
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -211,41 +374,6 @@ export function ShoppingScreen() {
 
   const openAddModal = () => {
     setAddModalVisible(true);
-  };
-
-  const removeFromList = async (ids: string[]) => {
-    if (!ids.length) return;
-    setActionLoading(true);
-    try {
-      await api.bulkDeleteShoppingItems(ids);
-      setItems((prev) => prev.filter((i) => !ids.includes(i.id)));
-      exitSelection();
-    } catch {
-      showAppError('Could not remove items.');
-      await loadItems();
-    } finally {
-      setActionLoading(false);
-      setConfirmBulkDelete(false);
-    }
-  };
-
-  const addToInventory = async (ids: string[]) => {
-    if (!ids.length) return;
-    setActionLoading(true);
-    try {
-      const res = await api.purchaseShoppingItems(ids);
-      setItems((prev) => prev.filter((i) => !ids.includes(i.id)));
-      exitSelection();
-      const n = res.purchased ?? ids.length;
-      showAppSuccess(
-        n === 1 ? 'Added to inventory' : `Added ${n} items to inventory`,
-      );
-    } catch {
-      showAppError('Could not add to inventory.');
-      await loadItems();
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   const renderItem = (item: UserShoppingItem, idx: number) => {
@@ -284,8 +412,7 @@ export function ShoppingScreen() {
                   icon="fridge-outline"
                   iconColor="#2E7D32"
                   size={22}
-                  onPress={() => void addToInventory([item.id])}
-                  disabled={actionLoading}
+                  onPress={() => scheduleAddToInventory([item.id])}
                   accessibilityLabel="Add to inventory"
                   style={{ margin: 0 }}
                 />
@@ -293,8 +420,7 @@ export function ShoppingScreen() {
                   icon="delete-outline"
                   iconColor="#E57373"
                   size={22}
-                  onPress={() => void removeFromList([item.id])}
-                  disabled={actionLoading}
+                  onPress={() => scheduleRemoveFromList([item.id])}
                   accessibilityLabel="Remove from list"
                   style={{ margin: 0 }}
                 />
@@ -516,8 +642,7 @@ export function ShoppingScreen() {
             <Button
               mode="contained"
               icon="fridge-outline"
-              onPress={() => void addToInventory(selectedList.map((i) => i.id))}
-              loading={actionLoading}
+              onPress={() => scheduleAddToInventory(selectedList.map((i) => i.id))}
               buttonColor="#2E7D32"
               compact
             >
@@ -527,8 +652,7 @@ export function ShoppingScreen() {
               mode="outlined"
               icon="delete-outline"
               textColor="#F44336"
-              onPress={() => setConfirmBulkDelete(true)}
-              disabled={actionLoading}
+              onPress={() => scheduleRemoveFromList(selectedList.map((i) => i.id))}
               compact
             >
               Remove
@@ -543,24 +667,7 @@ export function ShoppingScreen() {
         onAdded={() => void loadItems()}
       />
 
-      <Portal>
-        <Dialog visible={confirmBulkDelete} onDismiss={() => setConfirmBulkDelete(false)} style={styles.dialog}>
-          <Dialog.Title>Remove {selectedList.length} item{selectedList.length !== 1 ? 's' : ''}?</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium">Remove from your shopping list only — not from inventory.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setConfirmBulkDelete(false)}>Cancel</Button>
-            <Button
-              textColor="#F44336"
-              onPress={() => void removeFromList(selectedList.map((i) => i.id))}
-              loading={actionLoading}
-            >
-              Remove
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      {undoSnackbar}
     </View>
   );
 }
@@ -722,6 +829,4 @@ const styles = StyleSheet.create({
   emptyTitle: { fontWeight: '700', color: '#555', marginTop: 12 },
   emptySub: { color: '#999', marginTop: 6, textAlign: 'center', lineHeight: 20 },
   emptyAddHint: { fontWeight: '700', color: '#2E7D32' },
-
-  dialog: { borderRadius: 16 },
 });

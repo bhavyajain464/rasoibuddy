@@ -11,6 +11,7 @@ import {
 } from './InventoryItemRowEditor';
 import { InventoryItem, ExpiringItem } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
+import { buildInventoryItemPatch } from '../../utils/inventoryPatch';
 import { palette } from '../../theme';
 
 type PantryItem = InventoryItem | ExpiringItem;
@@ -21,13 +22,7 @@ type Props = {
   visible: boolean;
   item: PantryItem | null;
   onDismiss: () => void;
-  onSave: (patch: {
-    canonical_name: string;
-    qty: number;
-    unit: string;
-    estimated_expiry: string;
-    is_manual: boolean;
-  }) => Promise<void>;
+  onSave: (patch: ReturnType<typeof buildInventoryItemPatch>) => Promise<void>;
   saving?: boolean;
 };
 
@@ -62,10 +57,19 @@ export function EditInventoryItemSheet({
     unit: DEFAULT_UNIT,
     expiry: '',
   });
+  const [initialRow, setInitialRow] = useState<InventoryDraftRow>({
+    key: EDIT_ROW_KEY,
+    name: '',
+    qty: '',
+    unit: DEFAULT_UNIT,
+    expiry: '',
+  });
 
   useEffect(() => {
     if (!item || !visible) return;
-    setDraftRow(itemToDraftRow(item));
+    const row = itemToDraftRow(item);
+    setDraftRow(row);
+    setInitialRow(row);
   }, [item, visible]);
 
   const canSave = useMemo(() => {
@@ -76,15 +80,12 @@ export function EditInventoryItemSheet({
 
   const handleSave = async () => {
     if (!item || !canSave) return;
-    const trimmedName = draftRow.name.trim();
-    const parsedQty = parseShoppingQtyInput(draftRow.qty);
-    await onSave({
-      canonical_name: trimmedName,
-      qty: parsedQty,
-      unit: draftRow.unit || DEFAULT_UNIT,
-      estimated_expiry: draftRow.expiry.trim(),
-      is_manual: 'is_manual' in item ? item.is_manual : true,
-    });
+    const patch = buildInventoryItemPatch(initialRow, draftRow);
+    if (Object.keys(patch).length === 0) {
+      onDismiss();
+      return;
+    }
+    await onSave(patch);
   };
 
   return (

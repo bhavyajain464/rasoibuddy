@@ -18,7 +18,7 @@ type Inventory struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
-// InventoryRequest represents the payload for creating/updating inventory
+// InventoryRequest represents the payload for creating inventory
 type InventoryRequest struct {
 	CanonicalName   string  `json:"canonical_name" validate:"required"`
 	Qty             float64 `json:"qty" validate:"required,gt=0"`
@@ -26,6 +26,20 @@ type InventoryRequest struct {
 	EstimatedExpiry string  `json:"estimated_expiry,omitempty"`
 	FoodGroup       string  `json:"food_group,omitempty"`
 	IsManual        bool    `json:"is_manual"`
+}
+
+// InventoryPatchRequest updates only fields present in the JSON body (omitted = unchanged).
+// estimated_expiry: omit = no change; "" = clear; "YYYY-MM-DD" = set.
+type InventoryPatchRequest struct {
+	CanonicalName   *string  `json:"canonical_name,omitempty"`
+	Qty             *float64 `json:"qty,omitempty"`
+	Unit            *string  `json:"unit,omitempty"`
+	EstimatedExpiry *string  `json:"estimated_expiry,omitempty"`
+	IsManual        *bool    `json:"is_manual,omitempty"`
+}
+
+func (p InventoryPatchRequest) IsEmpty() bool {
+	return p.CanonicalName == nil && p.Qty == nil && p.Unit == nil && p.EstimatedExpiry == nil && p.IsManual == nil
 }
 
 // User represents a user account for authentication
@@ -126,6 +140,7 @@ type ExpiringItem struct {
 	FoodGroup       string    `json:"food_group,omitempty"`
 	EstimatedExpiry time.Time `json:"estimated_expiry"`
 	DaysUntilExpiry int       `json:"days_until_expiry"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // NullString handles nullable strings from database

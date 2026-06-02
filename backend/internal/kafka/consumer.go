@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kitchenai-backend/internal/dblock"
 	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
@@ -201,7 +202,15 @@ func bulkSetEstimatedExpiry(dbConn *sql.DB, ids []string, exps []time.Time) erro
 	if len(ids) != len(exps) {
 		return errors.New("bulkSetEstimatedExpiry: length mismatch")
 	}
-	_, err := dbConn.Exec(`
+	tx, err := dbConn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := dblock.LockInventoryItems(tx, ids); err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
 		UPDATE inventory AS inv
 		SET estimated_expiry = u.exp, updated_at = NOW()
 		FROM (
@@ -209,7 +218,10 @@ func bulkSetEstimatedExpiry(dbConn *sql.DB, ids []string, exps []time.Time) erro
 		) AS u
 		WHERE inv.item_id = u.item_id::uuid
 	`, pq.Array(ids), pq.Array(exps))
-	return err
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func fetchItemsForEnrichment(db *sql.DB, itemIDs []string) []itemRow {
@@ -328,7 +340,15 @@ func bulkSetFoodGroups(dbConn *sql.DB, ids []string, groups []string) error {
 	if len(ids) != len(groups) {
 		return errors.New("bulkSetFoodGroups: length mismatch")
 	}
-	_, err := dbConn.Exec(`
+	tx, err := dbConn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := dblock.LockInventoryItems(tx, ids); err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
 		UPDATE inventory AS inv
 		SET food_group = u.grp, updated_at = NOW()
 		FROM (
@@ -336,7 +356,10 @@ func bulkSetFoodGroups(dbConn *sql.DB, ids []string, groups []string) error {
 		) AS u
 		WHERE inv.item_id = u.item_id::uuid
 	`, pq.Array(ids), pq.Array(groups))
-	return err
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func DefaultShelfLife(name string) int {

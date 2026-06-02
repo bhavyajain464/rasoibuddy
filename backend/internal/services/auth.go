@@ -272,6 +272,10 @@ func (s *AuthService) upsertGoogleUser(profile googleTokenInfoResponse) (*models
 		fmt.Printf("Failed to create user preferences: %v\n", err)
 	}
 
+	if err := s.ensureUserKitchen(userID, profile.Name); err != nil {
+		fmt.Printf("Failed to create user kitchen: %v\n", err)
+	}
+
 	return &models.User{
 		UserID:     userID,
 		GoogleID:   profile.Sub,
@@ -281,6 +285,53 @@ func (s *AuthService) upsertGoogleUser(profile googleTokenInfoResponse) (*models
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}, nil
+}
+
+func (s *AuthService) ensureUserKitchen(userID, userName string) error {
+	var exists bool
+	if err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM kitchen_members WHERE user_id = $1)`, userID).Scan(&exists); err == nil && exists {
+		return nil
+	}
+	kitchenName := strings.TrimSpace(userName)
+	if kitchenName == "" {
+		kitchenName = "My Kitchen"
+	} else {
+		kitchenName += "'s Kitchen"
+	}
+	for i := 0; i < 8; i++ {
+		code, err := randomInviteCode(8)
+		if err != nil {
+			return err
+		}
+		tx, err := s.db.Begin()
+		if err != nil {
+			return err
+		}
+
+		var kitchenID string
+		err = tx.QueryRow(`
+			INSERT INTO kitchens (name, invite_code, created_by)
+			VALUES ($1, $2, $3)
+			RETURNING kitchen_id::text
+		`, kitchenName, code, userID).Scan(&kitchenID)
+		if err != nil {
+			_ = tx.Rollback()
+			if strings.Contains(err.Error(), "duplicate key") {
+				continue
+			}
+			return err
+		}
+		if _, err := tx.Exec(`INSERT INTO kitchen_members (kitchen_id, user_id) VALUES ($1, $2)`, kitchenID, userID); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("could not generate unique kitchen invite code")
 }
 
 func (s *AuthService) createSession(user *models.User, provider string, metadata AuthAccessMetadata) (*AuthSession, error) {
@@ -400,6 +451,21 @@ func (s *AuthService) updateSessionLastUsed(sessionID string, metadata AuthAcces
 		WHERE session_id = $3
 	`, metadata.ClientIP, metadata.UserAgent, sessionID)
 	return err
+}
+
+func randomInviteCode(length int) (string, error) {
+	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	if length <= 0 {
+		length = 8
+	}
+	buf := make([]byte, length)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	for i := range buf {
+		buf[i] = chars[int(buf[i])%len(chars)]
+	}
+	return string(buf), nil
 }
 
 // GenerateRandomSecret generates a random secret for session tokens

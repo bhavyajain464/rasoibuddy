@@ -39,6 +39,8 @@ If you already ran the old `database/schema.sql` and partial migrations, only ru
 | `008_order_proration.sql` | Upgrade credit + list price on `razorpay_orders` |
 | `009_normalize_plan_column.sql` | Sync `users.plan` with `plan_tier` (drop legacy `premium`) |
 | `012_inventory_food_group.sql` | `food_group` on inventory for category filters (vegetables, spices, …) |
+| `013_food_group_non_veg.sql` | Add `non_veg` inventory group and normalize existing values |
+| `014_shared_kitchens.sql` | Shared kitchens (`kitchens`, `kitchen_members`) + `inventory.kitchen_id` backfill |
 | `010_diet_analysis_email.sql` | Nightly diet digest email opt-in on users |
 | `011_bill_scan_daily.sql` | Daily bill scan reset date (`bill_scan_count_date`) |
 

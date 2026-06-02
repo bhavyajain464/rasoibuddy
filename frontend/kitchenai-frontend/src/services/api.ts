@@ -37,6 +37,7 @@ import {
   PlanProduct,
   CheckoutOrderResponse,
   VerifyCheckoutRequest,
+  KitchenInfo,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { fileUriToBase64 } from '../utils/imageToBase64';
@@ -223,6 +224,40 @@ export async function syncSubscribeOrder(orderId: string): Promise<{ is_pro: boo
 
 // ─── Inventory ───────────────────────────────────────────────
 
+export async function getKitchen(): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function createKitchen(name?: string): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: (name || '').trim() || undefined }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function joinKitchen(inviteCode: string): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invite_code: inviteCode.trim().toUpperCase() }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function leaveKitchen(): Promise<void> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
 export async function fetchInventory(): Promise<InventoryItem[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -290,23 +325,24 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 export async function updateInventoryItem(
   itemId: string,
   patch: {
-    canonical_name: string;
-    qty: number;
-    unit: string;
+    canonical_name?: string;
+    qty?: number;
+    unit?: string;
     estimated_expiry?: string;
     is_manual?: boolean;
   },
 ): Promise<void> {
+  const body: Record<string, string | number | boolean> = {};
+  if (patch.canonical_name !== undefined) body.canonical_name = patch.canonical_name;
+  if (patch.qty !== undefined) body.qty = patch.qty;
+  if (patch.unit !== undefined) body.unit = normalizeUnit(patch.unit);
+  if (patch.estimated_expiry !== undefined) body.estimated_expiry = patch.estimated_expiry;
+  if (patch.is_manual !== undefined) body.is_manual = patch.is_manual;
+
   const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      canonical_name: patch.canonical_name,
-      qty: patch.qty,
-      unit: normalizeUnit(patch.unit),
-      estimated_expiry: patch.estimated_expiry ?? '',
-      is_manual: patch.is_manual ?? false,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }

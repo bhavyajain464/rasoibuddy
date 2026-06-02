@@ -101,6 +101,10 @@ func main() {
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 
 	// Inventory (specific paths before {id} wildcard)
+	api.Handle("/kitchen", middleware.RequireAuth(http.HandlerFunc(handlers.GetKitchen(sqlDB)))).Methods("GET", "OPTIONS")
+	api.Handle("/kitchen/create", middleware.RequireAuth(http.HandlerFunc(handlers.CreateKitchen(sqlDB)))).Methods("POST", "OPTIONS")
+	api.Handle("/kitchen/join", middleware.RequireAuth(http.HandlerFunc(handlers.JoinKitchenByInviteCode(sqlDB)))).Methods("POST", "OPTIONS")
+	api.Handle("/kitchen/leave", middleware.RequireAuth(http.HandlerFunc(handlers.LeaveKitchen(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")

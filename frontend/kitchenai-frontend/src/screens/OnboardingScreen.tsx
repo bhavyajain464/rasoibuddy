@@ -90,6 +90,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [joiningKitchen, setJoiningKitchen] = useState(false);
+  const [onboardingInviteCode, setOnboardingInviteCode] = useState('');
 
   // Preferences
   const [householdSize, setHouseholdSize] = useState(2);
@@ -156,6 +158,25 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     }
   };
 
+  const handleJoinSharedKitchen = async () => {
+    const code = onboardingInviteCode.trim().toUpperCase();
+    if (!code) {
+      showAppError('Enter an invite code to join a kitchen.');
+      return;
+    }
+    setJoiningKitchen(true);
+    try {
+      await api.joinKitchen(code);
+      Alert.alert('Joined kitchen', 'You are now connected to the shared kitchen inventory.');
+      setOnboardingInviteCode('');
+    } catch (e) {
+      console.error('Onboarding join kitchen failed:', e);
+      showAppError('Could not join kitchen. Invite code may be invalid, or your current kitchen cannot be switched yet.');
+    } finally {
+      setJoiningKitchen(false);
+    }
+  };
+
   const categories = [...new Set(staples.map(s => s.category))];
   const selectedCount = staples.filter(s => s.selected).length;
 
@@ -211,6 +232,33 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 </View>
               ))}
             </View>
+
+            <Surface style={styles.section} elevation={1}>
+              <Text variant="titleSmall" style={styles.secLabel}>Joining a shared kitchen?</Text>
+              <Text variant="bodySmall" style={styles.sharedHint}>
+                If a family member already has a kitchen, enter their invite code now.
+              </Text>
+              <TextInput
+                dense
+                mode="outlined"
+                placeholder="Invite code"
+                value={onboardingInviteCode}
+                onChangeText={setOnboardingInviteCode}
+                autoCapitalize="characters"
+                style={styles.addInput}
+                outlineStyle={{ borderRadius: 12 }}
+                outlineColor="#E0E0E0"
+              />
+              <Button
+                mode="outlined"
+                onPress={() => void handleJoinSharedKitchen()}
+                loading={joiningKitchen}
+                disabled={joiningKitchen}
+                style={styles.joinKitchenBtn}
+              >
+                Join Kitchen
+              </Button>
+            </Surface>
           </View>
         )}
 
@@ -516,4 +564,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { borderRadius: 12 },
   nextBtn: { borderRadius: 12, backgroundColor: '#2E7D32', minWidth: 140 },
+  sharedHint: { color: '#666', marginBottom: 8, lineHeight: 18 },
+  joinKitchenBtn: { borderRadius: 12, marginTop: 8 },
 });

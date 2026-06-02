@@ -114,16 +114,25 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 
 		added := 0
 		var insertedIDs []string
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, "Failed to resolve kitchen", http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "Kitchen not found", http.StatusNotFound)
+			return
+		}
 		for _, item := range req.Items {
 			if item.Name == "" || item.Qty <= 0 {
 				continue
 			}
 			var itemID string
 			err := tx.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id)
-				VALUES ($1, $2, $3, TRUE, $4)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
+				VALUES ($1, $2, $3, TRUE, $4, $5)
 				RETURNING item_id
-			`, item.Name, item.Qty, item.Unit, userID).Scan(&itemID)
+			`, item.Name, item.Qty, item.Unit, userID, kitchen.KitchenID).Scan(&itemID)
 			if err != nil {
 				log.Printf("Onboarding item add error (%s): %v", item.Name, err)
 				continue
@@ -233,12 +242,18 @@ func GetProfile(db *sql.DB) http.HandlerFunc {
 			profile.Memories = []models.UserMemory{}
 		}
 
+		var kitchenID string
+		_ = db.QueryRow(`SELECT kitchen_id::text FROM kitchen_members WHERE user_id = $1 LIMIT 1`, userID).Scan(&kitchenID)
 		var invCount int
-		db.QueryRow(`SELECT COUNT(*) FROM inventory WHERE (user_id = $1 OR user_id IS NULL) AND qty > 0`, userID).Scan(&invCount)
+		if kitchenID != "" {
+			db.QueryRow(`SELECT COUNT(*) FROM inventory WHERE kitchen_id = $1 AND qty > 0`, kitchenID).Scan(&invCount)
+		}
 		profile.InventoryCount = invCount
 
 		var expCount int
-		db.QueryRow(`SELECT COUNT(*) FROM inventory WHERE (user_id = $1 OR user_id IS NULL) AND qty > 0 AND estimated_expiry IS NOT NULL AND (estimated_expiry - CURRENT_DATE) <= 3`, userID).Scan(&expCount)
+		if kitchenID != "" {
+			db.QueryRow(`SELECT COUNT(*) FROM inventory WHERE kitchen_id = $1 AND qty > 0 AND estimated_expiry IS NOT NULL AND (estimated_expiry - CURRENT_DATE) <= 3`, kitchenID).Scan(&expCount)
+		}
 		profile.ExpiringCount = expCount
 
 		w.Header().Set("Content-Type", "application/json")

@@ -336,13 +336,21 @@ type inventoryRow struct {
 }
 
 func fetchUserInventory(db *sql.DB, userID string) []inventoryRow {
+	kitchen, err := resolveKitchenForUser(db, userID)
+	if err != nil {
+		log.Printf("fetchUserInventory kitchen lookup error: %v", err)
+		return nil
+	}
+	if kitchen == nil {
+		return nil
+	}
 	rows, err := db.Query(`
 		SELECT canonical_name, SUM(qty) as qty, unit, MIN(estimated_expiry) as estimated_expiry
 		FROM inventory
-		WHERE (user_id = $1 OR user_id IS NULL) AND qty > 0
+		WHERE kitchen_id = $1 AND qty > 0
 		GROUP BY canonical_name, unit
 		ORDER BY MIN(estimated_expiry) ASC NULLS LAST
-	`, userID)
+	`, kitchen.KitchenID)
 	if err != nil {
 		log.Printf("fetchUserInventory error: %v", err)
 		return nil
