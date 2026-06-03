@@ -10,6 +10,7 @@ import (
 
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/models"
+	"kitchenai-backend/pkg/units"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -79,6 +80,30 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 			return
 		}
 
+		var kitchen *kitchenView
+		var err error
+		if len(req.Items) > 0 {
+			kitchen, err = resolveKitchenForUser(db, userID)
+			if err != nil {
+				http.Error(w, "Failed to resolve kitchen", http.StatusInternalServerError)
+				return
+			}
+			if kitchen == nil {
+				userName := ""
+				_ = db.QueryRow(`SELECT COALESCE(name, '') FROM users WHERE user_id = $1`, userID).Scan(&userName)
+				kitchen, err = EnsureKitchenForUser(db, userID, userName)
+				if err != nil {
+					log.Printf("Onboarding ensure kitchen error: %v", err)
+					http.Error(w, "Failed to resolve kitchen", http.StatusInternalServerError)
+					return
+				}
+			}
+			if kitchen == nil {
+				http.Error(w, "Kitchen not found", http.StatusNotFound)
+				return
+			}
+		}
+
 		tx, err := db.Begin()
 		if err != nil {
 			http.Error(w, "Server error", http.StatusInternalServerError)
@@ -86,26 +111,22 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 		}
 		defer tx.Rollback()
 
-		var exists bool
-		tx.QueryRow("SELECT EXISTS(SELECT 1 FROM user_prefs WHERE user_id = $1)", userID).Scan(&exists)
-
-		if exists {
-			_, err = tx.Exec(`
-				UPDATE user_prefs
-				SET household_size = $1, dietary_tags = $2, fav_cuisines = $3,
-					spice_level = $4, cooking_skill = $5, allergies = $6, dislikes = $7,
-					onboarding_done = TRUE, updated_at = NOW()
-				WHERE user_id = $8
-			`, req.HouseholdSize, pq.Array(req.DietaryTags), pq.Array(req.FavCuisines),
-				req.SpiceLevel, req.CookingSkill, pq.Array(req.Allergies), pq.Array(req.Dislikes), userID)
-		} else {
-			_, err = tx.Exec(`
-				INSERT INTO user_prefs (user_id, household_size, dietary_tags, fav_cuisines,
-					spice_level, cooking_skill, allergies, dislikes, onboarding_done)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
-			`, userID, req.HouseholdSize, pq.Array(req.DietaryTags), pq.Array(req.FavCuisines),
-				req.SpiceLevel, req.CookingSkill, pq.Array(req.Allergies), pq.Array(req.Dislikes))
-		}
+		_, err = tx.Exec(`
+			INSERT INTO user_prefs (user_id, household_size, dietary_tags, fav_cuisines,
+				spice_level, cooking_skill, allergies, dislikes, onboarding_done)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
+			ON CONFLICT (user_id) DO UPDATE SET
+				household_size = EXCLUDED.household_size,
+				dietary_tags = EXCLUDED.dietary_tags,
+				fav_cuisines = EXCLUDED.fav_cuisines,
+				spice_level = EXCLUDED.spice_level,
+				cooking_skill = EXCLUDED.cooking_skill,
+				allergies = EXCLUDED.allergies,
+				dislikes = EXCLUDED.dislikes,
+				onboarding_done = TRUE,
+				updated_at = NOW()
+		`, userID, req.HouseholdSize, pq.Array(req.DietaryTags), pq.Array(req.FavCuisines),
+			req.SpiceLevel, req.CookingSkill, pq.Array(req.Allergies), pq.Array(req.Dislikes))
 		if err != nil {
 			log.Printf("Onboarding prefs error: %v", err)
 			http.Error(w, "Failed to save preferences", http.StatusInternalServerError)
@@ -114,28 +135,21 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 
 		added := 0
 		var insertedIDs []string
-		kitchen, err := resolveKitchenForUser(db, userID)
-		if err != nil {
-			http.Error(w, "Failed to resolve kitchen", http.StatusInternalServerError)
-			return
-		}
-		if kitchen == nil {
-			http.Error(w, "Kitchen not found", http.StatusNotFound)
-			return
-		}
 		for _, item := range req.Items {
 			if item.Name == "" || item.Qty <= 0 {
 				continue
 			}
+			unit := units.Normalize(item.Unit)
 			var itemID string
 			err := tx.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
-				VALUES ($1, $2, $3, TRUE, $4, $5)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group)
+				VALUES ($1, $2, $3, TRUE, $4, $5, 'other')
 				RETURNING item_id
-			`, item.Name, item.Qty, item.Unit, userID, kitchen.KitchenID).Scan(&itemID)
+			`, item.Name, item.Qty, unit, userID, kitchen.KitchenID).Scan(&itemID)
 			if err != nil {
 				log.Printf("Onboarding item add error (%s): %v", item.Name, err)
-				continue
+				http.Error(w, "Failed to add inventory items", http.StatusInternalServerError)
+				return
 			}
 			insertedIDs = append(insertedIDs, itemID)
 			added++
