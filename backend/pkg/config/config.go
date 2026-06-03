@@ -78,6 +78,25 @@ type Config struct {
 	SMTPUser string
 	SMTPPass string
 	SMTPFrom string
+
+	// Force-update gates (0 build = disabled). Bump on each required store release.
+	MinAndroidVersion string
+	MinIOSVersion     string
+	MinAndroidBuild   int
+	MinIOSBuild       int
+	AppUpdateMessage  string
+	PlayStoreURL      string
+	AppStoreURL       string
+}
+
+// AppVersionEnforcementEnabled is true when any native minimum is configured.
+func (c *Config) AppVersionEnforcementEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.MinAndroidBuild > 0 || c.MinIOSBuild > 0 ||
+		strings.TrimSpace(c.MinAndroidVersion) != "" ||
+		strings.TrimSpace(c.MinIOSVersion) != ""
 }
 
 // SMTPConfigured reports whether outbound email can be sent.
@@ -299,6 +318,13 @@ func Load() (*Config, error) {
 		SMTPUser:                           getEnv("SMTP_USER", ""),
 		SMTPPass:                           getEnv("SMTP_PASS", ""),
 		SMTPFrom:                           strings.TrimSpace(getEnv("SMTP_FROM", "")),
+		MinAndroidVersion:                  strings.TrimSpace(getEnv("MIN_ANDROID_VERSION", "")),
+		MinIOSVersion:                      strings.TrimSpace(getEnv("MIN_IOS_VERSION", "")),
+		MinAndroidBuild:                    getEnvInt("MIN_ANDROID_BUILD", 0),
+		MinIOSBuild:                        getEnvInt("MIN_IOS_BUILD", 0),
+		AppUpdateMessage:                   strings.TrimSpace(getEnv("APP_UPDATE_MESSAGE", "A new version of Kitchmate is required. Please update from the store to continue.")),
+		PlayStoreURL:                       strings.TrimSpace(getEnv("PLAY_STORE_URL", "")),
+		AppStoreURL:                        strings.TrimSpace(getEnv("APP_STORE_URL", "")),
 	}, nil
 }
 

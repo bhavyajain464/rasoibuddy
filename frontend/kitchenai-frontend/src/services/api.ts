@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
-import { prepareBillImageForScan } from '../utils/billImagePrepare';
 import {
   clampWhatsAppMessageText,
   logImportError,
@@ -42,9 +41,9 @@ import {
   KitchenInfo,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
-import { fileUriToBase64 } from '../utils/imageToBase64';
-import { normalizeUnit } from '../utils/units';
 import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
+import { normalizeUnit } from '../utils/units';
+import { getAppVersionHeaders } from '../utils/appUpdate';
 
 function resolveApiBaseUrl(): string {
   const url = process.env.EXPO_PUBLIC_API_BASE_URL!;
@@ -61,7 +60,9 @@ const API_BASE_URL = resolveApiBaseUrl();
 
 let _authToken: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
+let _onUpdateRequired: ((message: string) => void) | null = null;
 let _unauthorizedFired = false;
+let _updateRequiredFired = false;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
@@ -79,19 +80,46 @@ export function setOnUnauthorized(handler: (() => void) | null) {
   _onUnauthorized = handler;
 }
 
+/** Fires once when the API returns 426 update_required (server-side force update). */
+export function setOnUpdateRequired(handler: ((message: string) => void) | null) {
+  _onUpdateRequired = handler;
+}
+
+function notifyUpdateRequiredIfNeeded(res: Response) {
+  if (res.status !== 426 || !_onUpdateRequired || _updateRequiredFired) {
+    return;
+  }
+  _updateRequiredFired = true;
+  let message = 'A new version of Kitchmate is required. Please update from the store to continue.';
+  res.clone().json().then(body => {
+    if (typeof body.message === 'string' && body.message.trim()) {
+      message = body.message.trim();
+    }
+    try {
+      _onUpdateRequired?.(message);
+    } catch (e) {
+      console.warn('onUpdateRequired handler failed:', e);
+    }
+  }).catch(() => {
+    try {
+      _onUpdateRequired?.(message);
+    } catch (e) {
+      console.warn('onUpdateRequired handler failed:', e);
+    }
+  });
+}
+
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  // Snapshot the token at the moment the request is dispatched. If the call
-  // returns 401 we only treat it as a session-expired event when the request
-  // actually carried a token; an unauthenticated call (token not yet set, or
-  // a public endpoint) returning 401 is not a sign of an expired session.
   const tokenAtRequest = _authToken;
   const headers: Record<string, string> = {
+    ...getAppVersionHeaders(),
     ...(options.headers as Record<string, string>),
   };
   if (tokenAtRequest) {
     headers['Authorization'] = `Bearer ${tokenAtRequest}`;
   }
   const res = await fetch(url, { ...options, headers });
+  notifyUpdateRequiredIfNeeded(res);
   if (res.status === 401 && tokenAtRequest) {
     _authToken = null;
     if (_onUnauthorized && !_unauthorizedFired) {
@@ -361,6 +389,10 @@ export async function scanBillTest(): Promise<ScanResult> {
 }
 
 export async function scanBillUpload(fileUri: string, mimeHint?: string): Promise<ScanResult> {
+  const [{ prepareBillImageForScan }, { fileUriToBase64 }] = await Promise.all([
+    import('../utils/billImagePrepare'),
+    import('../utils/imageToBase64'),
+  ]);
   const prepared = await prepareBillImageForScan(fileUri, mimeHint);
   const { base64: base64Data, mimeType } = await fileUriToBase64(prepared.uri, prepared.mimeType);
 
@@ -834,6 +866,26 @@ export async function starDish(
   return res.json();
 }
 
+// ─── App config (public) ──────────────────────────────────────
+
+export interface AppConfigResponse {
+  min_android_version: string;
+  min_ios_version: string;
+  min_android_build: number;
+  min_ios_build: number;
+  update_message: string;
+  play_store_url: string;
+  app_store_url: string;
+}
+
+export async function fetchAppConfig(): Promise<AppConfigResponse> {
+  const res = await fetch(`${API_BASE_URL}/app/config`, {
+    headers: getAppVersionHeaders(),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 // ─── Onboarding ───────────────────────────────────────────────
 
 export async function getOnboardingStatus(): Promise<{ onboarding_done: boolean }> {
@@ -900,9 +952,13 @@ export async function deleteMemory(memoryId: string): Promise<void> {
 export async function googleLogin(credential: string) {
   const res = await fetch(`${API_BASE_URL}/auth/google-login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      ...getAppVersionHeaders(),
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ credential }),
   });
+  notifyUpdateRequiredIfNeeded(res);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status}: ${text}`);

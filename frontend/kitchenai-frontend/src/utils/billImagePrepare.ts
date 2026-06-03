@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as ImageManipulator from 'expo-image-manipulator';
 
 const MAX_BILL_IMAGE_WIDTH = 1600;
 const BILL_JPEG_QUALITY = 0.72;
@@ -28,6 +27,7 @@ export async function prepareBillImageForScan(
   }
 
   try {
+    const ImageManipulator = await import('expo-image-manipulator');
     const result = await ImageManipulator.manipulateAsync(
       trimmed,
       [{ resize: { width: MAX_BILL_IMAGE_WIDTH } }],

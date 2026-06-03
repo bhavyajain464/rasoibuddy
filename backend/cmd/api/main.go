@@ -24,7 +24,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key, X-App-Platform, X-App-Version, X-App-Build")
 		w.Header().Set("Access-Control-Max-Age", "300")
 
 		if r.Method == "OPTIONS" {
@@ -94,11 +94,13 @@ func main() {
 
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.Use(middleware.AuthMiddleware(authService))
+	api.Use(middleware.MinAppVersion(cfg))
 
 	// Public routes
 	api.HandleFunc("/auth/google-login", authHandler.GoogleLogin).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/me", authHandler.Me).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
+	api.HandleFunc("/app/config", handlers.GetAppConfig(cfg)).Methods("GET", "OPTIONS")
 
 	// Inventory (specific paths before {id} wildcard)
 	api.Handle("/kitchen", middleware.RequireAuth(http.HandlerFunc(handlers.GetKitchen(sqlDB)))).Methods("GET", "OPTIONS")

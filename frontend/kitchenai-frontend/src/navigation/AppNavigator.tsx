@@ -7,6 +7,7 @@ import { Icon } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { ForceUpdateScreen } from '../screens/ForceUpdateScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { InventoryScreen } from '../screens/InventoryScreen';
 import { MealsScreen } from '../screens/MealsScreen';
@@ -14,6 +15,7 @@ import { CookScreen } from '../screens/CookScreen';
 import { ShoppingScreen } from '../screens/ShoppingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
+import { checkForceUpdate } from '../utils/appUpdate';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
 import { AppRefreshProvider } from '../context/AppRefreshContext';
@@ -104,6 +106,21 @@ export function AppNavigator() {
   const { token, loading } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [checkingOnboarding, setCheckingOnboarding] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState<{ required: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkForceUpdate().then(result => {
+      if (!cancelled) setForceUpdate(result);
+    });
+    api.setOnUpdateRequired(message => {
+      setForceUpdate({ required: true, message });
+    });
+    return () => {
+      cancelled = true;
+      api.setOnUpdateRequired(null);
+    };
+  }, []);
 
   const checkOnboarding = useCallback(async () => {
     if (!token) return;
@@ -125,6 +142,14 @@ export function AppNavigator() {
       setOnboardingDone(null);
     }
   }, [token, checkOnboarding]);
+
+  if (forceUpdate === null) {
+    return <LoadingScreen />;
+  }
+
+  if (forceUpdate.required) {
+    return <ForceUpdateScreen message={forceUpdate.message} />;
+  }
 
   if (loading || (token && (checkingOnboarding || onboardingDone === null))) {
     return <LoadingScreen />;
