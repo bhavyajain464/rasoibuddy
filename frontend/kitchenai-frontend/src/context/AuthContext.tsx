@@ -6,6 +6,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { AuthUser } from '../types';
 import { googleLogin, logoutApi, setAuthToken, setOnUnauthorized } from '../services/api';
 import { clearOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
+import { resetWebAppHomePath } from '../navigation/webHomePath';
 
 function getRequiredEnv(value: string | undefined, name: 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID') {
   const trimmedValue = value?.trim();
@@ -80,6 +81,8 @@ function useGoogleIdentityServices(onCredential: (credential: string) => void) {
       callback: (response: { credential: string }) => {
         callbackRef.current(response.credential);
       },
+      // FedCM avoids popup/postMessage paths blocked by strict COOP on some hosts.
+      use_fedcm_for_prompt: true,
     });
     initializedRef.current = true;
     setGisReady(true);
@@ -173,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await googleLogin(credential);
 
       if (result.token && result.user) {
+        resetWebAppHomePath();
         await AsyncStorage.setItem('authToken', result.token);
         await AsyncStorage.setItem('authUser', JSON.stringify(result.user));
         // Push the token into the api module synchronously so child screens
@@ -265,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       await AsyncStorage.multiRemove(['authToken', 'authUser']);
       await clearOrderSuggestionsCache();
+      resetWebAppHomePath();
       setToken(null);
       setUser(null);
       setAuthToken(null);

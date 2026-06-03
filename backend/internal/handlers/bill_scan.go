@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"kitchenai-backend/internal/dblock"
 	"kitchenai-backend/internal/services"
 	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/pkg/config"
+	"kitchenai-backend/pkg/units"
 )
 
 const billScanUserMessage = "We couldn't read this bill. Try a clearer photo with good lighting."
@@ -144,7 +146,7 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		// Scan the bill (LLM_PROVIDER selects gemini vs groq; PDF/images → OCR + text, vision fallback)
+		// Scan the bill (LLM_PROVIDER selects gemini vs groq; photos → Vision OCR + text, PDF → text extraction)
 		items, err := services.ScanBillBytesForConfig(r.Context(), cfg, fileData, imageType)
 		if err != nil {
 			response := ScanBillResponse{
@@ -188,6 +190,13 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 	var addedItems []map[string]interface{}
 	var errors []string
 	dietary := dietaryTagsForUser(db, userID)
+	kitchen, err := resolveKitchenForUser(db, userID)
+	if err != nil {
+		return nil, []string{fmt.Sprintf("failed to resolve kitchen: %v", err)}
+	}
+	if kitchen == nil {
+		return nil, []string{"kitchen not found"}
+	}
 
 	for _, item := range items {
 		shelfDays := item.ShelfLifeDays
@@ -197,21 +206,32 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 		expiry := time.Now().AddDate(0, 0, shelfDays)
 		foodGroup := invgroup.NormalizeFoodGroupForDietary(item.FoodGroup, dietary)
 
-		var existingID string
-		err := db.QueryRow(`
-			SELECT item_id FROM inventory 
-			WHERE LOWER(canonical_name) = LOWER($1) AND unit = $2 AND (user_id = $3 OR user_id IS NULL)
-			LIMIT 1
-		`, item.Name, item.Unit, userID).Scan(&existingID)
+		unit := units.Normalize(item.Unit)
+		tx, txErr := db.Begin()
+		if txErr != nil {
+			errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, txErr))
+			continue
+		}
 
-		if err == nil {
-			_, err = db.Exec(`
+		if err := dblock.LockKitchenProductLine(tx, kitchen.KitchenID, item.Name, unit); err != nil {
+			tx.Rollback()
+			errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, err))
+			continue
+		}
+
+		existingID, findErr := dblock.FindInventoryItemIDForProduct(tx, kitchen.KitchenID, item.Name, unit)
+		if findErr == nil {
+			_, err = tx.Exec(`
 				UPDATE inventory 
 				SET qty = qty + $1, estimated_expiry = LEAST(estimated_expiry, $2), food_group = $3, user_id = COALESCE(user_id, $4), updated_at = NOW()
-				WHERE item_id = $5
-			`, item.Quantity, expiry, foodGroup, userID, existingID)
-
+				WHERE item_id = $5 AND kitchen_id = $6
+			`, item.Quantity, expiry, foodGroup, userID, existingID, kitchen.KitchenID)
 			if err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, err))
+				continue
+			}
+			if err = tx.Commit(); err != nil {
 				errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, err))
 				continue
 			}
@@ -225,33 +245,41 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 				"shelf_life_days":  shelfDays,
 				"estimated_expiry": expiry.Format("2006-01-02"),
 			})
-			RemoveFromShoppingList(db, userID, item.Name)
-		} else if err == sql.ErrNoRows {
-			var itemID string
-			err = db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, is_manual, food_group, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, false, $6, NOW(), NOW())
-				RETURNING item_id
-			`, item.Name, item.Quantity, item.Unit, expiry, userID, foodGroup).Scan(&itemID)
-
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("Failed to insert %s: %v", item.Name, err))
-				continue
-			}
-
-			addedItems = append(addedItems, map[string]interface{}{
-				"item_id":          itemID,
-				"name":             item.Name,
-				"quantity":         item.Quantity,
-				"unit":             item.Unit,
-				"action":           "added",
-				"shelf_life_days":  shelfDays,
-				"estimated_expiry": expiry.Format("2006-01-02"),
-			})
-			RemoveFromShoppingList(db, userID, item.Name)
-		} else {
-			errors = append(errors, fmt.Sprintf("Database error for %s: %v", item.Name, err))
+			RemoveFromShoppingList(db, kitchen.KitchenID, item.Name)
+			continue
 		}
+		if findErr != sql.ErrNoRows {
+			tx.Rollback()
+			errors = append(errors, fmt.Sprintf("Database error for %s: %v", item.Name, findErr))
+			continue
+		}
+
+		var itemID string
+		err = tx.QueryRow(`
+			INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, kitchen_id, is_manual, food_group, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, false, $7, NOW(), NOW())
+			RETURNING item_id
+		`, item.Name, item.Quantity, unit, expiry, userID, kitchen.KitchenID, foodGroup).Scan(&itemID)
+		if err != nil {
+			tx.Rollback()
+			errors = append(errors, fmt.Sprintf("Failed to insert %s: %v", item.Name, err))
+			continue
+		}
+		if err = tx.Commit(); err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to insert %s: %v", item.Name, err))
+			continue
+		}
+
+		addedItems = append(addedItems, map[string]interface{}{
+			"item_id":          itemID,
+			"name":             item.Name,
+			"quantity":         item.Quantity,
+			"unit":             item.Unit,
+			"action":           "added",
+			"shelf_life_days":  shelfDays,
+			"estimated_expiry": expiry.Format("2006-01-02"),
+		})
+		RemoveFromShoppingList(db, kitchen.KitchenID, item.Name)
 	}
 
 	return addedItems, errors

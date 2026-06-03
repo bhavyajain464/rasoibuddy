@@ -104,8 +104,7 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
       showAppSuccess(
         count === 1 ? 'Item added to inventory.' : `Added ${count} items to inventory.`,
       );
-      bump();
-      onAdded?.();
+      bump('inventory');
     } catch {
       showAppError('Could not add items. Check your connection.');
     } finally {

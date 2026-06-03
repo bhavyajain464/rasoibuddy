@@ -82,12 +82,8 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
     setSelectedItems(next);
   };
 
-  const applyBillPick = (pick: BillScanPick | string) => {
-    if (typeof pick === 'string') {
-      setBillPick({ uri: pick, mimeType: 'image/jpeg' });
-    } else {
-      setBillPick(pick);
-    }
+  const applyBillPick = (pick: BillScanPick) => {
+    setBillPick(pick);
     setScanResult(null);
   };
 
@@ -176,8 +172,7 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
     }
 
     setAddingScanned(false);
-    bump();
-    onAdded?.();
+    bump('inventory');
 
     if (errors.length > 0) {
       showAppInfo(`Added ${addedCount} items. Some failed: ${errors.join(', ')}`);
@@ -245,7 +240,7 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
       <BillCameraModal
         visible={cameraModalVisible}
         onClose={() => setCameraModalVisible(false)}
-        onCaptured={(uri) => applyBillPick(uri)}
+        onCaptured={applyBillPick}
       />
 
       <BottomSheet

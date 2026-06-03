@@ -4,7 +4,6 @@ import {
   View,
   ScrollView,
   Pressable,
-  Alert,
   Platform,
   Image,
 } from 'react-native';
@@ -90,6 +89,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [joiningKitchen, setJoiningKitchen] = useState(false);
+  const [onboardingInviteCode, setOnboardingInviteCode] = useState('');
 
   // Preferences
   const [householdSize, setHouseholdSize] = useState(2);
@@ -114,6 +115,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const selectAllCategory = (cat: string, select: boolean) =>
     setStaples(prev => prev.map(s => s.category === cat ? { ...s, selected: select } : s));
 
+  const selectAllStaples = (select: boolean) =>
+    setStaples(prev => prev.map(s => ({ ...s, selected: select })));
+
   const adjustStapleQty = (idx: number, direction: 1 | -1) => {
     setStaples(prev =>
       prev.map((s, i) => {
@@ -132,22 +136,24 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     setNewAllergy('');
   };
 
+  const buildOnboardingPayload = (items: { name: string; qty: number; unit: string }[]) => ({
+    household_size: householdSize,
+    dietary_tags: dietaryTags,
+    fav_cuisines: favCuisines,
+    spice_level: spiceLevel,
+    cooking_skill: 'intermediate',
+    allergies,
+    dislikes: [] as string[],
+    items,
+  });
+
   const handleComplete = async () => {
     setSaving(true);
     try {
       const selectedItems = staples.filter(s => s.selected).map(s => ({
         name: s.name, qty: s.qty, unit: s.unit,
       }));
-      await api.completeOnboarding({
-        household_size: householdSize,
-        dietary_tags: dietaryTags,
-        fav_cuisines: favCuisines,
-        spice_level: spiceLevel,
-        cooking_skill: 'intermediate',
-        allergies,
-        dislikes: [],
-        items: selectedItems,
-      });
+      await api.completeOnboarding(buildOnboardingPayload(selectedItems));
       onComplete();
     } catch (e: any) {
       showAppError('Failed to complete setup. Please try again.');
@@ -156,8 +162,29 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     }
   };
 
+  const handleJoinSharedKitchen = async () => {
+    const code = onboardingInviteCode.trim().toUpperCase();
+    if (!code) {
+      showAppError('Enter an invite code to join a kitchen.');
+      return;
+    }
+    setJoiningKitchen(true);
+    try {
+      await api.joinKitchen(code);
+      await api.completeOnboarding(buildOnboardingPayload([]));
+      onComplete();
+    } catch (e) {
+      console.error('Onboarding join kitchen failed:', e);
+      showAppError('Could not join kitchen. Invite code may be invalid, or your current kitchen cannot be switched yet.');
+    } finally {
+      setJoiningKitchen(false);
+    }
+  };
+
   const categories = [...new Set(staples.map(s => s.category))];
   const selectedCount = staples.filter(s => s.selected).length;
+  const allStaplesSelected = staples.length > 0 && staples.every(s => s.selected);
+  const anyStaplesSelected = staples.some(s => s.selected);
 
   return (
     <View style={styles.container}>
@@ -309,9 +336,74 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {step === 2 && (
           <View style={styles.stepWrap}>
             <Text variant="headlineSmall" style={styles.stepTitle}>Kitchen Staples</Text>
-            <Text variant="bodyMedium" style={styles.stepSub}>
+
+            <Surface style={styles.joinSection} elevation={1}>
+              <Text variant="titleSmall" style={styles.secLabel}>Join a shared kitchen</Text>
+              <Text variant="bodySmall" style={styles.sharedHint}>
+                Have an invite code? Join an existing kitchen instead.
+              </Text>
+              <TextInput
+                dense
+                mode="outlined"
+                placeholder="Invite code"
+                value={onboardingInviteCode}
+                onChangeText={setOnboardingInviteCode}
+                autoCapitalize="characters"
+                style={styles.addInput}
+                outlineStyle={{ borderRadius: 12 }}
+                outlineColor="#E0E0E0"
+              />
+              <Button
+                mode="outlined"
+                onPress={() => void handleJoinSharedKitchen()}
+                loading={joiningKitchen}
+                disabled={joiningKitchen}
+                style={styles.joinKitchenBtn}
+              >
+                Join Kitchen
+              </Button>
+            </Surface>
+
+            <View style={styles.joinDividerRow}>
+              <View style={styles.joinDividerLine} />
+              <Text variant="labelSmall" style={styles.joinDividerLabel}>
+                or stock your staples
+              </Text>
+              <View style={styles.joinDividerLine} />
+            </View>
+
+            <Text variant="bodyMedium" style={styles.staplesSelectSub}>
               Select items already in your kitchen
             </Text>
+
+            <View style={styles.staplesBulkRow}>
+              <Text variant="bodySmall" style={styles.staplesBulkCount}>
+                {selectedCount} of {staples.length} selected
+              </Text>
+              <View style={styles.staplesBulkActions}>
+                <Pressable
+                  onPress={() => selectAllStaples(true)}
+                  disabled={allStaplesSelected}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: allStaplesSelected }}
+                >
+                  <Text style={[styles.selectAllText, allStaplesSelected && styles.selectAllTextMuted]}>
+                    Select all
+                  </Text>
+                </Pressable>
+                <Text style={styles.staplesBulkSep}>·</Text>
+                <Pressable
+                  onPress={() => selectAllStaples(false)}
+                  disabled={!anyStaplesSelected}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !anyStaplesSelected }}
+                >
+                  <Text style={[styles.selectAllText, !anyStaplesSelected && styles.selectAllTextMuted]}>
+                    Deselect all
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
 
             {categories.map(cat => {
               const catItems = staples.filter(s => s.category === cat);
@@ -382,6 +474,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 </Surface>
               );
             })}
+
           </View>
         )}
       </ScrollView>
@@ -455,6 +548,7 @@ const styles = StyleSheet.create({
   // Steps
   stepTitle: { fontWeight: '800', color: '#333', marginTop: 12 },
   stepSub: { color: '#888', marginTop: 4, marginBottom: 16 },
+  staplesSelectSub: { color: '#444', marginBottom: 8, fontWeight: '700' },
 
   section: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12 },
   secLabel: { fontWeight: '700', color: '#333', marginBottom: 12 },
@@ -481,6 +575,17 @@ const styles = StyleSheet.create({
   catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   catLabel: { fontWeight: '700', color: '#333' },
   selectAllText: { color: '#2E7D32', fontWeight: '600', fontSize: 13 },
+  selectAllTextMuted: { color: '#A5D6A7' },
+  staplesBulkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  staplesBulkCount: { color: '#666' },
+  staplesBulkActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  staplesBulkSep: { color: '#CCC', fontSize: 13 },
   stapleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 },
   stapleMain: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
   stapleThumb: {
@@ -516,4 +621,32 @@ const styles = StyleSheet.create({
   },
   backBtn: { borderRadius: 12 },
   nextBtn: { borderRadius: 12, backgroundColor: '#2E7D32', minWidth: 140 },
+  sharedHint: { color: '#666', marginBottom: 8, lineHeight: 18 },
+  joinKitchenBtn: { borderRadius: 12, marginTop: 8 },
+  joinDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  joinDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#C5C5C5',
+  },
+  joinDividerLabel: {
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontWeight: '600',
+  },
+  joinSection: {
+    backgroundColor: '#F8FAF8',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D8E8D8',
+  },
 });

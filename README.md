@@ -61,7 +61,7 @@ The app uses a **Go REST API** as the primary backend; an optional **MCP server*
 | Layer | Notes |
 |--------|--------|
 | **Backend** | Go (`kitchenai-backend`), `cmd/api/main.go`. Loads **`backend/.env`** at startup via `godotenv` (optional file). |
-| **LLM** | **`LLM_PROVIDER`**: `groq` (default) or `gemini`. Bill scan, smart meals, and shelf-life use **one** provider per request (no automatic fallback). Keys: `GROQ_API_KEY`, optional `GROQ_MODEL` / `GROQ_VISION_MODEL`; or `GEMINI_API_KEY` / `GEMINI_MODEL` when `LLM_PROVIDER=gemini`. |
+| **LLM** | **`LLM_PROVIDER`**: `groq` (default) or `gemini`. Bill scan, smart meals, and shelf-life use **one** provider per request (no automatic fallback). Keys: `GROQ_API_KEY`, optional `GROQ_MODEL`; or `GEMINI_API_KEY` / `GEMINI_MODEL` when `LLM_PROVIDER=gemini`. Photo bills with Groq use `GOOGLE_VISION_API_KEY` for OCR, then the text model. |
 | **WhatsApp** | API returns **`whatsapp_url`** + **`body`**; the **client** opens WhatsApp. Cook destination uses **`cook_profile.phone_number`** (E.164, digits only in `wa.me` link) and optional **`cook_name`** for greetings. |
 | **Kafka** | Optional async shelf-life (`KAFKA_ENABLED`, `KAFKA_BROKERS`, …). When disabled, producer/consumer stay off. |
 | **Auth** | Google OAuth + JWT; `GOOGLE_CLIENT_ID`, `SESSION_TOKEN_SECRET` on backend. Frontend uses `EXPO_PUBLIC_*` (see `GOOGLE_OAUTH_SETUP.md`). |

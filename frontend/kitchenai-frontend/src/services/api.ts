@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
+import { prepareBillImageForScan } from '../utils/billImagePrepare';
 import {
   clampWhatsAppMessageText,
   logImportError,
@@ -10,6 +11,8 @@ import {
 import {
   InventoryItem,
   InventoryFoodGroup,
+  InventoryBucket,
+  InventoryBucketsResponse,
   ExpiringItem,
   RescueMealResponse,
   LowStockItem,
@@ -36,10 +39,12 @@ import {
   PlanProduct,
   CheckoutOrderResponse,
   VerifyCheckoutRequest,
+  KitchenInfo,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { fileUriToBase64 } from '../utils/imageToBase64';
 import { normalizeUnit } from '../utils/units';
+import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
 
 function resolveApiBaseUrl(): string {
   const url = process.env.EXPO_PUBLIC_API_BASE_URL!;
@@ -222,43 +227,72 @@ export async function syncSubscribeOrder(orderId: string): Promise<{ is_pro: boo
 
 // ─── Inventory ───────────────────────────────────────────────
 
-export async function fetchInventory(): Promise<InventoryItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory`);
+export async function getKitchen(): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+export async function createKitchen(name?: string): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: (name || '').trim() || undefined }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function joinKitchen(inviteCode: string): Promise<KitchenInfo> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invite_code: inviteCode.trim().toUpperCase() }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function leaveKitchen(): Promise<void> {
+  const res = await authFetch(`${API_BASE_URL}/kitchen/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function fetchInventoryBuckets(
+  include: InventoryBucket[],
+): Promise<InventoryBucketsResponse> {
+  const params = new URLSearchParams({ include: include.join(',') });
+  const res = await authFetch(`${API_BASE_URL}/inventory?${params}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.json();
+  let normalized = normalizeInventoryBucketsResponse(raw, include);
+
+  // Legacy backends return a flat array without an expired bucket — fetch it separately.
+  if (Array.isArray(raw) && include.includes('expired') && !(normalized.expired?.length)) {
+    try {
+      const expiredRes = await authFetch(`${API_BASE_URL}/inventory/expired`);
+      if (expiredRes.ok) {
+        const expiredRaw = await expiredRes.json();
+        if (Array.isArray(expiredRaw) && expiredRaw.length > 0) {
+          normalized = normalizeInventoryBucketsResponse(
+            { ...normalized, expired: expiredRaw, counts: normalized.counts },
+            include,
+          );
+        }
+      }
+    } catch {
+      // keep normalized result without expired
+    }
+  }
+
+  return normalized;
 }
 
 export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory/food-groups`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export type FoodGroupBackfillScope = 'all' | 'expired';
-
-export async function backfillInventoryFoodGroups(options?: {
-  scope?: FoodGroupBackfillScope;
-}): Promise<{ enriched: number; item_ids: string[] }> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/backfill-food-groups`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options ?? {}),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-export async function fetchExpiringItems(): Promise<ExpiringItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/expiring`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function fetchExpiredItems(): Promise<ExpiringItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/inventory/expired`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -289,23 +323,24 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 export async function updateInventoryItem(
   itemId: string,
   patch: {
-    canonical_name: string;
-    qty: number;
-    unit: string;
+    canonical_name?: string;
+    qty?: number;
+    unit?: string;
     estimated_expiry?: string;
     is_manual?: boolean;
   },
 ): Promise<void> {
+  const body: Record<string, string | number | boolean> = {};
+  if (patch.canonical_name !== undefined) body.canonical_name = patch.canonical_name;
+  if (patch.qty !== undefined) body.qty = patch.qty;
+  if (patch.unit !== undefined) body.unit = normalizeUnit(patch.unit);
+  if (patch.estimated_expiry !== undefined) body.estimated_expiry = patch.estimated_expiry;
+  if (patch.is_manual !== undefined) body.is_manual = patch.is_manual;
+
   const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      canonical_name: patch.canonical_name,
-      qty: patch.qty,
-      unit: normalizeUnit(patch.unit),
-      estimated_expiry: patch.estimated_expiry ?? '',
-      is_manual: patch.is_manual ?? false,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
@@ -326,7 +361,8 @@ export async function scanBillTest(): Promise<ScanResult> {
 }
 
 export async function scanBillUpload(fileUri: string, mimeHint?: string): Promise<ScanResult> {
-  const { base64: base64Data, mimeType } = await fileUriToBase64(fileUri, mimeHint);
+  const prepared = await prepareBillImageForScan(fileUri, mimeHint);
+  const { base64: base64Data, mimeType } = await fileUriToBase64(prepared.uri, prepared.mimeType);
 
   const res = await authFetch(`${API_BASE_URL}/bill/scan`, {
     method: 'POST',

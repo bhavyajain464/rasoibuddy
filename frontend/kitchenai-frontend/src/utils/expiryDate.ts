@@ -26,6 +26,16 @@ export function daysUntilExpiryLocal(expiryIso: string): number | null {
   return Math.round((expiryDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/** Normalize API expiry (RFC3339 or date-only) to YYYY-MM-DD for create/update requests. */
+export function expiryToApiDate(expiry?: string): string | undefined {
+  const parsed = parseExpiryDateLocal(expiry ?? '');
+  if (!parsed) return undefined;
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function formatExpiryCountdown(daysLeft: number | null): string | null {
   if (daysLeft === null) return null;
   if (daysLeft < 0) {

@@ -11,13 +11,13 @@ import {
   Searchbar,
   SegmentedButtons,
   IconButton,
-  Snackbar,
   Menu,
 } from 'react-native-paper';
 import {
   useRoute,
   useNavigation,
   useFocusEffect,
+  useIsFocused,
   RouteProp,
 } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -31,9 +31,7 @@ import { ScanBillBottomSheet } from '../components/modals/ScanBillBottomSheet';
 import * as api from '../services/api';
 import { InventoryItem, ExpiringItem, InventoryFoodGroup } from '../types';
 import {
-  INVENTORY_FOOD_GROUPS,
   foodGroupLabel,
-  foodGroupsForDiet,
 } from '../constants/inventoryFoodGroups';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useEntitlements } from '../context/EntitlementsContext';
@@ -41,8 +39,9 @@ import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { showUpgradeMessage } from '../utils/upgrade';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 import { TabScreenHeader, TabScreenToolbarRow } from '../components/TabScreenHeader';
-import { useAppRefresh } from '../context/AppRefreshContext';
+import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
 import type { MainTabParamList } from '../navigation/types';
+import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 
 /** Web reload restores scroll on the list node after paint; pin repeatedly without user input. */
 function startWebInventoryScrollPin(pin: () => void): () => void {
@@ -72,36 +71,48 @@ type TabValue = 'all' | 'expired';
 
 type PantryItem = InventoryItem | ExpiringItem;
 
-type ItemSnapshot = {
-  item_id: string;
-  canonical_name: string;
-  qty: number;
-  unit: string;
-  estimated_expiry?: string;
-  food_group?: string;
-  is_manual: boolean;
+type PantryListEntry<T> = { item: T; index: number };
+
+type PendingPantryRemove = {
+  inventory?: PantryListEntry<InventoryItem>;
+  expiring?: PantryListEntry<ExpiringItem>;
+  expired?: PantryListEntry<ExpiringItem>;
 };
 
-function snapshotItem(item: PantryItem): ItemSnapshot {
+type PendingPantryExpire = {
+  inventory?: PantryListEntry<InventoryItem>;
+  expiring?: PantryListEntry<ExpiringItem>;
+  addedExpired: PantryListEntry<ExpiringItem>;
+};
+
+type PendingPantryAddToShopping = PendingPantryRemove & {
+  name: string;
+  qty: number;
+  unit: string;
+};
+
+function yesterdayExpiryIso(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toExpiredPreview(item: InventoryItem | ExpiringItem): ExpiringItem {
+  const estimated_expiry = yesterdayExpiryIso();
+  const days_until_expiry = daysUntilExpiryLocal(estimated_expiry) ?? -1;
   return {
     item_id: item.item_id,
     canonical_name: item.canonical_name,
     qty: item.qty,
     unit: item.unit,
-    estimated_expiry: item.estimated_expiry,
-    food_group: 'food_group' in item ? item.food_group : undefined,
-    is_manual: 'is_manual' in item ? item.is_manual : true,
+    food_group: item.food_group,
+    estimated_expiry,
+    days_until_expiry,
+    updated_at: 'updated_at' in item ? item.updated_at : undefined,
   };
-}
-
-async function restoreSnapshot(snap: ItemSnapshot) {
-  await api.addInventoryItem({
-    canonical_name: snap.canonical_name,
-    qty: snap.qty,
-    unit: snap.unit,
-    estimated_expiry: snap.estimated_expiry,
-    food_group: snap.food_group,
-  });
 }
 
 export function InventoryScreen() {
@@ -114,7 +125,9 @@ export function InventoryScreen() {
   const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<TabValue>('all');
+  const [tab, setTab] = useState<TabValue>(() =>
+    route.params?.tab === 'expired' ? 'expired' : 'all',
+  );
   const [expiringSoonFilter, setExpiringSoonFilter] = useState(false);
   const [foodGroups, setFoodGroups] = useState<InventoryFoodGroup[]>([]);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
@@ -122,9 +135,17 @@ export function InventoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [snackMsg, setSnackMsg] = useState('');
-  const [snackVisible, setSnackVisible] = useState(false);
-  const snackUndoRef = useRef<(() => Promise<void>) | null>(null);
+  const { show: showSnack, showUndo, cancelCommit, undoSnackbar } = useUndoSnackbar();
+  const pendingPantryRemovesRef = useRef<Map<string, PendingPantryRemove>>(new Map());
+  const pendingPantryExpiresRef = useRef<Map<string, PendingPantryExpire>>(new Map());
+  const pendingPantryAddToShoppingRef = useRef<Map<string, PendingPantryAddToShopping>>(new Map());
+
+  const inventoryRef = useRef(inventory);
+  const expiringItemsRef = useRef(expiringItems);
+  const expiredItemsRef = useRef(expiredItems);
+  inventoryRef.current = inventory;
+  expiringItemsRef.current = expiringItems;
+  expiredItemsRef.current = expiredItems;
 
   const [addMenuVisible, setAddMenuVisible] = useState(false);
 
@@ -136,7 +157,6 @@ export function InventoryScreen() {
 
   const [scanSheetVisible, setScanSheetVisible] = useState(false);
 
-  const [dietaryTags, setDietaryTags] = useState<string[]>([]);
   const inventoryScrollRef = useRef<ScrollView>(null);
   const skipMountLoadData = useRef(true);
   const skipFilterScrollReset = useRef(true);
@@ -144,16 +164,13 @@ export function InventoryScreen() {
   const pendingScrollPinRef = useRef(false);
   const loadSeqRef = useRef(0);
   const webScrollPinCleanupRef = useRef<(() => void) | null>(null);
-  const expiredFoodGroupBackfillRef = useRef(false);
-  const { version: refreshVersion, bump } = useAppRefresh();
-
-  const expiredNeedsFoodGroupBackfill = useCallback((items: ExpiringItem[]) => {
-    if (items.length === 0) return false;
-    return items.some((item) => {
-      const g = (item.food_group ?? '').trim().toLowerCase();
-      return g === '' || g === 'other';
-    });
-  }, []);
+  const skipInventoryFocusLoadRef = useRef(true);
+  /** Set when expired bucket fetch succeeds; kept for compatibility (not used to skip loads). */
+  const expiredLoadedRef = useRef(false);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const isFocused = useIsFocused();
+  const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
 
   useEffect(
     () => () => {
@@ -162,6 +179,170 @@ export function InventoryScreen() {
     },
     [],
   );
+
+  const restorePantryEntries = useCallback((pending: PendingPantryRemove) => {
+    if (pending.inventory) {
+      const { item, index } = pending.inventory;
+      setInventory((prev) => {
+        if (prev.some((i) => i.item_id === item.item_id)) return prev;
+        const list = [...prev];
+        list.splice(Math.min(index, list.length), 0, item);
+        return list;
+      });
+    }
+    if (pending.expiring) {
+      const { item, index } = pending.expiring;
+      setExpiringItems((prev) => {
+        if (prev.some((i) => i.item_id === item.item_id)) return prev;
+        const list = [...prev];
+        list.splice(Math.min(index, list.length), 0, item);
+        return list;
+      });
+    }
+    if (pending.expired) {
+      const { item, index } = pending.expired;
+      setExpiredItems((prev) => {
+        if (prev.some((i) => i.item_id === item.item_id)) return prev;
+        const list = [...prev];
+        list.splice(Math.min(index, list.length), 0, item);
+        return list;
+      });
+    }
+  }, []);
+
+  const optimisticallyRemovePantryItem = useCallback((itemId: string): PendingPantryRemove => {
+    const captured: PendingPantryRemove = {};
+
+    const inv = inventoryRef.current;
+    const invIndex = inv.findIndex((i) => i.item_id === itemId);
+    if (invIndex >= 0) captured.inventory = { item: inv[invIndex], index: invIndex };
+
+    const expiring = expiringItemsRef.current;
+    const expiringIndex = expiring.findIndex((i) => i.item_id === itemId);
+    if (expiringIndex >= 0) captured.expiring = { item: expiring[expiringIndex], index: expiringIndex };
+
+    const expired = expiredItemsRef.current;
+    const expiredIndex = expired.findIndex((i) => i.item_id === itemId);
+    if (expiredIndex >= 0) captured.expired = { item: expired[expiredIndex], index: expiredIndex };
+
+    setInventory((prev) => prev.filter((i) => i.item_id !== itemId));
+    setExpiringItems((prev) => prev.filter((i) => i.item_id !== itemId));
+    setExpiredItems((prev) => prev.filter((i) => i.item_id !== itemId));
+
+    return captured;
+  }, []);
+
+  const commitPantryRemove = useCallback(
+    (itemId: string) => {
+      const pending = pendingPantryRemovesRef.current.get(itemId);
+      if (!pending) return;
+      pendingPantryRemovesRef.current.delete(itemId);
+      void api.deleteInventoryItem(itemId).catch(() => {
+        restorePantryEntries(pending);
+        showAppError('Could not remove item.');
+      });
+    },
+    [restorePantryEntries],
+  );
+
+  const flushPendingPantryRemoves = useCallback(() => {
+    const itemIds = [...pendingPantryRemovesRef.current.keys()];
+    if (itemIds.length === 0) return;
+    itemIds.forEach((itemId) => commitPantryRemove(itemId));
+    cancelCommit();
+  }, [commitPantryRemove, cancelCommit]);
+
+  const restorePantryExpire = useCallback((pending: PendingPantryExpire) => {
+    const expiredId = pending.addedExpired.item.item_id;
+    setExpiredItems((prev) => prev.filter((i) => i.item_id !== expiredId));
+    restorePantryEntries({
+      inventory: pending.inventory,
+      expiring: pending.expiring,
+    });
+  }, [restorePantryEntries]);
+
+  const optimisticallyExpirePantryItem = useCallback((item: PantryItem): PendingPantryExpire => {
+    const itemId = item.item_id;
+
+    const inv = inventoryRef.current;
+    const invIndex = inv.findIndex((i) => i.item_id === itemId);
+
+    const expiring = expiringItemsRef.current;
+    const expiringIndex = expiring.findIndex((i) => i.item_id === itemId);
+
+    const source =
+      (invIndex >= 0 ? inv[invIndex] : undefined) ??
+      (expiringIndex >= 0 ? expiring[expiringIndex] : undefined) ??
+      item;
+    const preview = toExpiredPreview(source);
+
+    const captured: PendingPantryExpire = {
+      addedExpired: { item: preview, index: 0 },
+    };
+    if (invIndex >= 0) captured.inventory = { item: inv[invIndex], index: invIndex };
+    if (expiringIndex >= 0) captured.expiring = { item: expiring[expiringIndex], index: expiringIndex };
+
+    setInventory((prev) => prev.filter((i) => i.item_id !== itemId));
+    setExpiringItems((prev) => prev.filter((i) => i.item_id !== itemId));
+    setExpiredItems((prev) => {
+      const without = prev.filter((i) => i.item_id !== itemId);
+      return [preview, ...without];
+    });
+
+    return captured;
+  }, []);
+
+  const commitPantryExpire = useCallback(
+    (itemId: string) => {
+      const pending = pendingPantryExpiresRef.current.get(itemId);
+      if (!pending) return;
+      pendingPantryExpiresRef.current.delete(itemId);
+      void api.expireInventoryItem(itemId).then(() => bump('inventory')).catch(() => {
+        restorePantryExpire(pending);
+        showAppError('Could not mark as expired.');
+      });
+    },
+    [restorePantryExpire, bump],
+  );
+
+  const flushPendingPantryExpires = useCallback(() => {
+    const itemIds = [...pendingPantryExpiresRef.current.keys()];
+    if (itemIds.length === 0) return;
+    itemIds.forEach((itemId) => commitPantryExpire(itemId));
+    cancelCommit();
+  }, [commitPantryExpire, cancelCommit]);
+
+  const commitPantryAddToShopping = useCallback(
+    (itemId: string) => {
+      const pending = pendingPantryAddToShoppingRef.current.get(itemId);
+      if (!pending) return;
+      pendingPantryAddToShoppingRef.current.delete(itemId);
+      void (async () => {
+        try {
+          await api.addShoppingItem(pending.name, pending.qty, pending.unit);
+          await api.deleteInventoryItem(itemId);
+          bump('inventory');
+        } catch {
+          restorePantryEntries(pending);
+          showAppError('Could not add to shopping list.');
+        }
+      })();
+    },
+    [restorePantryEntries, bump],
+  );
+
+  const flushPendingPantryAddToShopping = useCallback(() => {
+    const itemIds = [...pendingPantryAddToShoppingRef.current.keys()];
+    if (itemIds.length === 0) return;
+    itemIds.forEach((itemId) => commitPantryAddToShopping(itemId));
+    cancelCommit();
+  }, [commitPantryAddToShopping, cancelCommit]);
+
+  const flushPendingPantryActions = useCallback(() => {
+    flushPendingPantryRemoves();
+    flushPendingPantryExpires();
+    flushPendingPantryAddToShopping();
+  }, [flushPendingPantryRemoves, flushPendingPantryExpires, flushPendingPantryAddToShopping]);
 
   const scrollListToTop = useCallback(() => {
     inventoryScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -202,28 +383,23 @@ export function InventoryScreen() {
     }
   }, [scrollListToTop, startWebListScrollPin, pinListScrollToTop]);
 
-  const loadData = useCallback(async () => {
+  const loadInStock = useCallback(async () => {
     const seq = ++loadSeqRef.current;
+    setLoading(true);
     try {
-      const [inv, exp, expd, groups] = await Promise.all([
-        api.fetchInventory(),
-        api.fetchExpiringItems(),
-        api.fetchExpiredItems(),
-        api.fetchInventoryFoodGroups().catch(() => INVENTORY_FOOD_GROUPS),
+      const [data, groups] = await Promise.all([
+        api.fetchInventoryBuckets(['active', 'expiring']),
+        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
       ]);
       if (seq !== loadSeqRef.current) return;
-      setInventory(Array.isArray(inv) ? inv : []);
-      setExpiringItems(Array.isArray(exp) ? exp : []);
-      setExpiredItems(Array.isArray(expd) ? expd : []);
-      setFoodGroups(
-        Array.isArray(groups) && groups.length > 0 ? groups : INVENTORY_FOOD_GROUPS,
-      );
+      setInventory(Array.isArray(data.active) ? data.active : []);
+      setExpiringItems(Array.isArray(data.expiring) ? data.expiring : []);
+      setFoodGroups(Array.isArray(groups) ? groups : []);
     } catch (e) {
       if (seq !== loadSeqRef.current) return;
       console.error('Failed to load inventory:', e);
       setInventory([]);
       setExpiringItems([]);
-      setExpiredItems([]);
     } finally {
       if (seq !== loadSeqRef.current) return;
       setLoading(false);
@@ -234,42 +410,69 @@ export function InventoryScreen() {
     }
   }, [startWebListScrollPin]);
 
+  const loadExpired = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
+    setLoading(true);
+    try {
+      const [data, groups] = await Promise.all([
+        api.fetchInventoryBuckets(['expired']),
+        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
+      ]);
+      if (seq !== loadSeqRef.current) return;
+      setExpiredItems(Array.isArray(data.expired) ? data.expired : []);
+      setFoodGroups(Array.isArray(groups) ? groups : []);
+      expiredLoadedRef.current = true;
+    } catch (e) {
+      if (seq !== loadSeqRef.current) return;
+      console.error('Failed to load expired inventory:', e);
+      setExpiredItems([]);
+    } finally {
+      if (seq !== loadSeqRef.current) return;
+      setLoading(false);
+    }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    if (tabRef.current === 'expired') {
+      await loadExpired();
+      return;
+    }
+    await loadInStock();
+  }, [loadInStock, loadExpired]);
+
+  // Reload the active segment whenever In stock ↔ Expired changes.
+  useEffect(() => {
+    if (tab === 'expired') {
+      void loadExpired();
+    } else {
+      void loadInStock();
+    }
+  }, [tab, loadInStock, loadExpired]);
+
   useFocusEffect(
     useCallback(() => {
-      void loadData();
-      void api.fetchProfile()
-        .then((p) => setDietaryTags(p.dietary_tags ?? []))
-        .catch(() => setDietaryTags([]));
-    }, [loadData]),
+      if (skipInventoryFocusLoadRef.current) {
+        skipInventoryFocusLoadRef.current = false;
+        return;
+      }
+      if (tabRef.current === 'expired') {
+        void loadExpired();
+      } else {
+        void loadInStock();
+      }
+    }, [loadInStock, loadExpired]),
   );
 
-  // useFocusEffect already loads on mount; skip duplicate fetch (avoids double layout + scroll jump on web).
+  // Global inventory refresh (e.g. add item modal) while this tab is focused.
   useEffect(() => {
+    if (!isFocused) return;
     if (skipMountLoadData.current) {
       skipMountLoadData.current = false;
       return;
     }
+    if (!refreshAppliesTo(refreshScope, 'inventory')) return;
     void loadData();
-  }, [loadData, refreshVersion]);
-
-  // Classify food_group for expired items still marked other/empty (once per screen visit).
-  useEffect(() => {
-    if (tab !== 'expired' || loading || expiredFoodGroupBackfillRef.current) return;
-    if (!expiredNeedsFoodGroupBackfill(expiredItems)) return;
-
-    expiredFoodGroupBackfillRef.current = true;
-    void (async () => {
-      try {
-        const { enriched } = await api.backfillInventoryFoodGroups({ scope: 'expired' });
-        if (enriched > 0) {
-          await loadData();
-        }
-      } catch (e) {
-        console.error('Expired food group backfill failed:', e);
-        expiredFoodGroupBackfillRef.current = false;
-      }
-    })();
-  }, [tab, loading, expiredItems, expiredNeedsFoodGroupBackfill, loadData]);
+  }, [isFocused, loadData, refreshVersion, refreshScope]);
 
   // Deep links from Home (expired banner / expiring soon). Use primitive deps only —
   // `route.params` object identity changes every render on web and caused setParams loops.
@@ -296,84 +499,106 @@ export function InventoryScreen() {
     setRefreshing(false);
   }, [loadData]);
 
-  const showSnack = (msg: string) => {
-    snackUndoRef.current = null;
-    setSnackMsg(msg);
-    setSnackVisible(true);
-  };
-
-  const showSnackUndo = useCallback((msg: string, undo: () => Promise<void>) => {
-    snackUndoRef.current = undo;
-    setSnackMsg(msg);
-    setSnackVisible(true);
-  }, []);
-
   const openEditItem = useCallback((item: PantryItem) => {
     setEditItem(item);
   }, []);
 
   const performExpire = useCallback(
-    async (item: InventoryItem) => {
-      const snap = snapshotItem(item);
-      try {
-        await api.expireInventoryItem(item.item_id);
-        await loadData();
-        showSnackUndo(`"${item.canonical_name}" marked as expired.`, async () => {
-          await api.updateInventoryItem(snap.item_id, {
-            canonical_name: snap.canonical_name,
-            qty: snap.qty,
-            unit: snap.unit,
-            estimated_expiry: snap.estimated_expiry ?? '',
-            is_manual: snap.is_manual,
-          });
-          await loadData();
-        });
-      } catch {
-        showAppError('Could not mark as expired.');
-      }
+    (item: PantryItem) => {
+      const itemId = item.item_id;
+      flushPendingPantryActions();
+
+      const captured = optimisticallyExpirePantryItem(item);
+      pendingPantryExpiresRef.current.set(itemId, captured);
+
+      showUndo(
+        `"${item.canonical_name}" marked as expired.`,
+        async () => {
+          const pending = pendingPantryExpiresRef.current.get(itemId);
+          if (!pending) return;
+          pendingPantryExpiresRef.current.delete(itemId);
+          restorePantryExpire(pending);
+        },
+        () => commitPantryExpire(itemId),
+      );
     },
-    [loadData, showSnackUndo],
+    [
+      flushPendingPantryActions,
+      optimisticallyExpirePantryItem,
+      showUndo,
+      restorePantryExpire,
+      commitPantryExpire,
+    ],
   );
 
   /** Item used up or cleared from pantry (not expired, not shopping). */
   const performRemoveFromPantry = useCallback(
-    async (item: PantryItem) => {
-      const snap = snapshotItem(item);
-      try {
-        await api.deleteInventoryItem(item.item_id);
-        await loadData();
-        showSnackUndo(`"${item.canonical_name}" removed from pantry.`, async () => {
-          await restoreSnapshot(snap);
-          await loadData();
-        });
-      } catch {
-        showAppError('Could not remove item.');
-      }
+    (item: PantryItem) => {
+      const itemId = item.item_id;
+      flushPendingPantryActions();
+
+      const captured = optimisticallyRemovePantryItem(itemId);
+      if (!captured.inventory && !captured.expiring && !captured.expired) return;
+
+      pendingPantryRemovesRef.current.set(itemId, captured);
+
+      showUndo(
+        `"${item.canonical_name}" removed from pantry.`,
+        async () => {
+          const pending = pendingPantryRemovesRef.current.get(itemId);
+          if (!pending) return;
+          pendingPantryRemovesRef.current.delete(itemId);
+          restorePantryEntries(pending);
+        },
+        () => commitPantryRemove(itemId),
+      );
     },
-    [loadData, showSnackUndo],
+    [
+      flushPendingPantryActions,
+      optimisticallyRemovePantryItem,
+      showUndo,
+      restorePantryEntries,
+      commitPantryRemove,
+    ],
   );
 
   const performAddToShopping = useCallback(
-    async (item: ExpiringItem) => {
-      const snap = snapshotItem(item);
-      try {
-        await api.addShoppingItem(item.canonical_name, item.qty, item.unit);
-        await api.deleteInventoryItem(item.item_id);
-        await loadData();
-        bump();
-        showSnackUndo(`"${item.canonical_name}" added to shopping list.`, async () => {
-          await restoreSnapshot(snap);
-          await loadData();
-        });
-      } catch {
-        showAppError('Could not add to shopping list.');
-      }
+    (item: ExpiringItem) => {
+      const itemId = item.item_id;
+      flushPendingPantryActions();
+
+      const captured = optimisticallyRemovePantryItem(itemId);
+      if (!captured.inventory && !captured.expiring && !captured.expired) return;
+
+      pendingPantryAddToShoppingRef.current.set(itemId, {
+        ...captured,
+        name: item.canonical_name,
+        qty: item.qty,
+        unit: item.unit,
+      });
+
+      showUndo(
+        `"${item.canonical_name}" added to shopping list.`,
+        async () => {
+          const pending = pendingPantryAddToShoppingRef.current.get(itemId);
+          if (!pending) return;
+          pendingPantryAddToShoppingRef.current.delete(itemId);
+          restorePantryEntries(pending);
+        },
+        () => commitPantryAddToShopping(itemId),
+      );
     },
-    [loadData, showSnackUndo, bump],
+    [
+      flushPendingPantryActions,
+      optimisticallyRemovePantryItem,
+      showUndo,
+      restorePantryEntries,
+      commitPantryAddToShopping,
+    ],
   );
 
   const buildInStockMenu = useCallback(
-    (item: InventoryItem): InventoryMenuAction[] => [
+    (item: PantryItem): InventoryMenuAction[] => [
       {
         key: 'edit',
         label: 'Edit',
@@ -420,19 +645,14 @@ export function InventoryScreen() {
     [openEditItem, performAddToShopping, performRemoveFromPantry],
   );
 
-  const handleSaveEdit = async (patch: {
-    canonical_name: string;
-    qty: number;
-    unit: string;
-    estimated_expiry: string;
-    is_manual: boolean;
-  }) => {
+  const handleSaveEdit = async (patch: Parameters<typeof api.updateInventoryItem>[1]) => {
     if (!editItem) return;
     setEditSaving(true);
     try {
       await api.updateInventoryItem(editItem.item_id, patch);
       await loadData();
-      showSnack(`"${patch.canonical_name}" updated`);
+      const label = patch.canonical_name ?? editItem.canonical_name;
+      showSnack(`"${label}" updated`);
       setEditItem(null);
     } catch {
       showAppError('Could not save changes.');
@@ -458,12 +678,24 @@ export function InventoryScreen() {
 
   const searchLower = search.toLowerCase();
 
-  const expiringIds = new Set(expiringItems.map((e) => e.item_id));
+  const inStockItems = useMemo((): PantryItem[] => {
+    const combined: PantryItem[] = [...inventory, ...expiringItems];
+    return combined.sort((a, b) => {
+      const aExp = a.estimated_expiry
+        ? new Date(a.estimated_expiry).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const bExp = b.estimated_expiry
+        ? new Date(b.estimated_expiry).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      if (aExp !== bExp) return aExp - bExp;
+      return a.canonical_name.localeCompare(b.canonical_name);
+    });
+  }, [inventory, expiringItems]);
 
-  const groupMeta = useMemo(() => {
-    const base = foodGroups.length > 0 ? foodGroups : INVENTORY_FOOD_GROUPS;
-    return foodGroupsForDiet(base, dietaryTags);
-  }, [foodGroups, dietaryTags]);
+  const groupMeta = useMemo(
+    () => [...foodGroups].sort((a, b) => a.sort - b.sort),
+    [foodGroups],
+  );
 
   const itemGroupId = useCallback((foodGroup?: string) => {
     const raw = foodGroup || 'other';
@@ -472,12 +704,12 @@ export function InventoryScreen() {
 
   const groupCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const item of inventory) {
+    for (const item of inStockItems) {
       const gid = itemGroupId(item.food_group);
       counts[gid] = (counts[gid] ?? 0) + 1;
     }
     return counts;
-  }, [inventory, itemGroupId]);
+  }, [inStockItems, itemGroupId]);
 
   const expiredGroupCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -519,17 +751,13 @@ export function InventoryScreen() {
   }, [expiringItems.length, expiringSoonFilter]);
 
   const filteredInventory = useMemo(
-    () =>
-      inventory
+    () => {
+      const source = expiringSoonFilter ? expiringItems : inStockItems;
+      return source
         .filter((item) => item.canonical_name.toLowerCase().includes(searchLower))
-        .filter((item) => {
-          if (!item.estimated_expiry) return true;
-          const days = daysUntilExpiryLocal(item.estimated_expiry);
-          return days === null || days >= 0;
-        })
-        .filter((item) => !expiringSoonFilter || expiringIds.has(item.item_id))
-        .filter((item) => !groupFilter || itemGroupId(item.food_group) === groupFilter),
-    [inventory, searchLower, expiringSoonFilter, expiringIds, groupFilter, itemGroupId],
+        .filter((item) => !groupFilter || itemGroupId(item.food_group) === groupFilter);
+    },
+    [inStockItems, expiringItems, expiringSoonFilter, searchLower, groupFilter, itemGroupId],
   );
 
   const filteredExpired = useMemo(
@@ -668,7 +896,7 @@ export function InventoryScreen() {
           <FilterPillRow style={styles.filterPillRow}>
             <FilterPill
               key="all"
-              label={`All (${inventory.length})`}
+              label={`All (${inStockItems.length})`}
               selected={groupFilter === null && !expiringSoonFilter}
               onPress={() => {
                 setGroupFilter(null);
@@ -805,7 +1033,6 @@ export function InventoryScreen() {
       <AddInventoryModal
         visible={addModalVisible}
         onDismiss={() => setAddModalVisible(false)}
-        onAdded={() => void loadData()}
       />
 
       <EditInventoryItemSheet
@@ -819,33 +1046,10 @@ export function InventoryScreen() {
       <ScanBillBottomSheet
         visible={scanSheetVisible}
         onDismiss={() => setScanSheetVisible(false)}
-        onAdded={() => void loadData()}
         groupMeta={groupMeta}
       />
 
-      <Snackbar
-        visible={snackVisible}
-        onDismiss={() => {
-          setSnackVisible(false);
-          snackUndoRef.current = null;
-        }}
-        duration={5000}
-        action={
-          snackUndoRef.current
-            ? {
-                label: 'Undo',
-                onPress: () => {
-                  const undo = snackUndoRef.current;
-                  snackUndoRef.current = null;
-                  setSnackVisible(false);
-                  if (undo) void undo().catch(() => showAppError('Undo failed.'));
-                },
-              }
-            : { label: 'OK', onPress: () => setSnackVisible(false) }
-        }
-      >
-        {snackMsg}
-      </Snackbar>
+      {undoSnackbar}
     </View>
   );
 }

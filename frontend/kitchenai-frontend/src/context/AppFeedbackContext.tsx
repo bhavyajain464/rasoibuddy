@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { Snackbar } from 'react-native-paper';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { feedbackBackground, snackbarLayoutStyles } from '../constants/snackbarLayout';
 
 export type FeedbackKind = 'info' | 'success' | 'error';
 
@@ -48,9 +49,6 @@ export function AppFeedbackProvider({ children }: { children: React.ReactNode })
 
   appFeedbackRef.current = api;
 
-  const bg =
-    kind === 'error' ? '#C62828' : kind === 'success' ? '#2E7D32' : '#1B5E20';
-
   return (
     <AppFeedbackContext.Provider value={api}>
       {children}
@@ -58,8 +56,9 @@ export function AppFeedbackProvider({ children }: { children: React.ReactNode })
         visible={visible}
         onDismiss={() => setVisible(false)}
         duration={kind === 'error' ? 5000 : 3500}
-        action={{ label: 'OK', onPress: () => setVisible(false) }}
-        style={{ marginBottom: totalHeight + 8, backgroundColor: bg }}
+        wrapperStyle={[snackbarLayoutStyles.host, { marginBottom: totalHeight + 12 }]}
+        style={[snackbarLayoutStyles.surface, { backgroundColor: feedbackBackground(kind) }]}
+        contentStyle={snackbarLayoutStyles.paperContent}
       >
         {message}
       </Snackbar>

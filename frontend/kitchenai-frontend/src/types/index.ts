@@ -12,6 +12,7 @@ export interface InventoryItem {
   food_group?: string;
   estimated_expiry?: string;
   is_manual: boolean;
+  updated_at?: string;
 }
 
 export interface ExpiringItem {
@@ -22,6 +23,23 @@ export interface ExpiringItem {
   food_group?: string;
   estimated_expiry: string;
   days_until_expiry: number;
+  updated_at?: string;
+}
+
+export type InventoryBucket = 'active' | 'expiring' | 'expired';
+
+export interface InventoryBucketCounts {
+  active: number;
+  expiring: number;
+  expired: number;
+  total: number;
+}
+
+export interface InventoryBucketsResponse {
+  active?: InventoryItem[];
+  expiring?: ExpiringItem[];
+  expired?: ExpiringItem[];
+  counts: InventoryBucketCounts;
 }
 
 export interface RescueMealSuggestion {
@@ -253,6 +271,13 @@ export interface UserProfile {
   memories: UserMemory[];
   inventory_count: number;
   expiring_count: number;
+}
+
+export interface KitchenInfo {
+  kitchen_id: string;
+  name: string;
+  invite_code: string;
+  member_count: number;
 }
 
 export interface UpdateProfileRequest {

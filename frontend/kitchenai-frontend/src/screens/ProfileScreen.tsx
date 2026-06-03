@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -20,6 +20,7 @@ import {
   SegmentedButtons,
   Surface,
   Switch,
+  Snackbar,
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,8 +29,9 @@ import type { RootStackParamList } from '../navigation/types';
 import { useUpgradePaywall } from '../context/UpgradePaywallContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfirmDialog } from '../components/AppConfirmDialog';
+import { BottomSheet, bottomSheetPrimaryBtn } from '../components/BottomSheet';
 import { useAuth } from '../context/AuthContext';
-import { UserProfile, UserMemory } from '../types';
+import { UserProfile, UserMemory, KitchenInfo } from '../types';
 import * as api from '../services/api';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
@@ -37,6 +39,8 @@ import { ProfileHeaderUpgrade } from '../components/profile/ProfileHeaderUpgrade
 import { ProfilePlanSettingsSection } from '../components/profile/ProfilePlanSettingsSection';
 import { AppUpdateSection } from '../components/profile/AppUpdateSection';
 import { showAppError, showAppSuccess, showAppInfo } from '../utils/alertMessage';
+import { snackbarLayoutStyles } from '../constants/snackbarLayout';
+import { copyToClipboard } from '../utils/copyToClipboard';
 import {
   getMealLogRemindersEnabled,
   setMealLogRemindersEnabled,
@@ -62,6 +66,13 @@ const MEMORY_CATEGORIES = [
 ];
 
 const SPICE_EMOJI: Record<string, string> = { mild: '🌶', medium: '🌶🌶', spicy: '🌶🌶🌶', extra_spicy: '🔥' };
+const MEMORY_DELETE_UNDO_MS = 5000;
+
+type PendingMemoryDelete = {
+  memory: UserMemory;
+  index: number;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 type ProfileRouteParams = RootStackParamList['Profile'];
 
@@ -108,6 +119,15 @@ export function ProfileScreen() {
   const [addingMemory, setAddingMemory] = useState(false);
   const [mealLogReminders, setMealLogReminders] = useState(false);
   const [mealLogRemindersLoading, setMealLogRemindersLoading] = useState(false);
+  const [kitchen, setKitchen] = useState<KitchenInfo | null>(null);
+  const [kitchenLoading, setKitchenLoading] = useState(false);
+  const [creatingKitchen, setCreatingKitchen] = useState(false);
+  const [joiningKitchen, setJoiningKitchen] = useState(false);
+  const [leavingKitchen, setLeavingKitchen] = useState(false);
+  const [joinKitchenSheetVisible, setJoinKitchenSheetVisible] = useState(false);
+  const [joinKitchenSheetStep, setJoinKitchenSheetStep] = useState<'enter' | 'confirm'>('enter');
+  const [kitchenName, setKitchenName] = useState('');
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
 
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
@@ -118,6 +138,18 @@ export function ProfileScreen() {
     onConfirm: () => void | Promise<void>;
   } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const [snackVisible, setSnackVisible] = useState(false);
+  const [snackMsg, setSnackMsg] = useState('');
+  const snackUndoRef = useRef<(() => Promise<void>) | null>(null);
+  const pendingMemoryDeletesRef = useRef<Map<string, PendingMemoryDelete>>(new Map());
+
+  useEffect(() => {
+    return () => {
+      pendingMemoryDeletesRef.current.forEach((p) => clearTimeout(p.timer));
+      pendingMemoryDeletesRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isMealLogNotificationSupported()) return;
@@ -192,7 +224,23 @@ export function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  const loadKitchen = useCallback(async () => {
+    setKitchenLoading(true);
+    try {
+      const data = await api.getKitchen();
+      setKitchen(data);
+      setKitchenName(data.name || '');
+    } catch {
+      setKitchen(null);
+    } finally {
+      setKitchenLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProfile();
+    void loadKitchen();
+  }, [loadProfile, loadKitchen]);
 
   useEffect(() => {
     void refreshEntitlements();
@@ -231,20 +279,66 @@ export function ProfileScreen() {
     }
   };
 
-  const handleDeleteMemory = (memoryId: string) => {
-    setConfirmDialog({
-      title: 'Delete memory?',
-      message: 'This note will be removed from your profile permanently.',
-      confirmLabel: 'Delete',
-      destructive: true,
-      onConfirm: async () => {
-        await api.deleteMemory(memoryId);
-        setProfile((prev) =>
-          prev ? { ...prev, memories: prev.memories.filter((m) => m.id !== memoryId) } : prev,
-        );
-      },
+  const commitMemoryDelete = useCallback((memoryId: string) => {
+    const pending = pendingMemoryDeletesRef.current.get(memoryId);
+    if (!pending) return;
+    pendingMemoryDeletesRef.current.delete(memoryId);
+    void api.deleteMemory(memoryId).catch(() => {
+      setProfile((prev) => {
+        if (!prev || prev.memories.some((m) => m.id === memoryId)) return prev;
+        const list = [...prev.memories];
+        list.splice(Math.min(pending.index, list.length), 0, pending.memory);
+        return { ...prev, memories: list };
+      });
+      showAppError('Failed to delete memory');
     });
-  };
+  }, []);
+
+  const showMemoryDeleteSnack = useCallback((memory: UserMemory, undo: () => void) => {
+    const preview =
+      memory.content.length > 48 ? `${memory.content.slice(0, 48).trim()}…` : memory.content;
+    snackUndoRef.current = async () => {
+      undo();
+      return Promise.resolve();
+    };
+    setSnackMsg(`"${preview}" removed.`);
+    setSnackVisible(true);
+  }, []);
+
+  const handleDeleteMemory = useCallback(
+    (memory: UserMemory) => {
+      const existing = pendingMemoryDeletesRef.current.get(memory.id);
+      if (existing) {
+        clearTimeout(existing.timer);
+        pendingMemoryDeletesRef.current.delete(memory.id);
+      }
+
+      let removedIndex = 0;
+      setProfile((prev) => {
+        if (!prev) return prev;
+        removedIndex = prev.memories.findIndex((m) => m.id === memory.id);
+        if (removedIndex < 0) return prev;
+        return { ...prev, memories: prev.memories.filter((m) => m.id !== memory.id) };
+      });
+
+      const timer = setTimeout(() => commitMemoryDelete(memory.id), MEMORY_DELETE_UNDO_MS);
+      pendingMemoryDeletesRef.current.set(memory.id, { memory, index: removedIndex, timer });
+
+      showMemoryDeleteSnack(memory, () => {
+        const pending = pendingMemoryDeletesRef.current.get(memory.id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        pendingMemoryDeletesRef.current.delete(memory.id);
+        setProfile((prev) => {
+          if (!prev || prev.memories.some((m) => m.id === memory.id)) return prev;
+          const list = [...prev.memories];
+          list.splice(Math.min(pending.index, list.length), 0, pending.memory);
+          return { ...prev, memories: list };
+        });
+      });
+    },
+    [commitMemoryDelete, showMemoryDeleteSnack],
+  );
 
   const handleConfirmDialog = async () => {
     if (!confirmDialog) return;
@@ -278,6 +372,107 @@ export function ProfileScreen() {
       icon: 'logout',
       onConfirm: () => {
         signOut();
+      },
+    });
+  };
+
+  const handleCreateKitchen = async () => {
+    try {
+      setCreatingKitchen(true);
+      const data = await api.createKitchen(kitchenName);
+      setKitchen(data);
+      setKitchenName(data.name || '');
+      showAppSuccess('Kitchen created. Share your invite code with family members.');
+    } catch (e) {
+      console.error('Create kitchen failed:', e);
+      showAppError('Could not create kitchen.');
+    } finally {
+      setCreatingKitchen(false);
+    }
+  };
+
+  const closeJoinKitchenSheet = () => {
+    setJoinKitchenSheetVisible(false);
+    setJoinKitchenSheetStep('enter');
+  };
+
+  const openJoinKitchenSheet = () => {
+    setJoinKitchenSheetStep('enter');
+    setJoinKitchenSheetVisible(true);
+  };
+
+  const performJoinKitchen = async (code: string) => {
+    setJoiningKitchen(true);
+    try {
+      const data = await api.joinKitchen(code);
+      setKitchen(data);
+      setKitchenName(data.name || '');
+      setInviteCodeInput('');
+      closeJoinKitchenSheet();
+      showAppSuccess(`Joined ${data.name}. Shared inventory is now enabled.`);
+    } catch (e) {
+      console.error('Join kitchen failed:', e);
+      showAppError('Could not join kitchen. Check the invite code and try again.');
+    } finally {
+      setJoiningKitchen(false);
+    }
+  };
+
+  const handleJoinKitchenContinue = () => {
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) {
+      showAppInfo('Enter an invite code to join a kitchen.');
+      return;
+    }
+    if (kitchen?.invite_code === code) {
+      showAppInfo('You are already in this kitchen.');
+      return;
+    }
+    if (kitchen) {
+      setJoinKitchenSheetStep('confirm');
+      return;
+    }
+    void performJoinKitchen(code);
+  };
+
+  const handleJoinKitchenConfirm = () => {
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) return;
+    void performJoinKitchen(code);
+  };
+
+  const joinKitchenSwitchMessage = kitchen && (kitchen.member_count ?? 1) <= 1
+    ? 'Your current kitchen and all its inventory will be permanently removed. You will join the new kitchen and share its inventory.'
+    : 'You will leave your current kitchen. Other members keep the shared inventory there.';
+
+  const handleCopyInviteCode = async () => {
+    if (!kitchen?.invite_code) return;
+    try {
+      await copyToClipboard(kitchen.invite_code);
+      showAppSuccess('Invite code copied');
+    } catch {
+      showAppError('Could not copy invite code');
+    }
+  };
+
+  const handleLeaveAndCreateKitchen = async () => {
+    setConfirmDialog({
+      title: 'Leave current kitchen?',
+      message: 'You will leave this shared kitchen and move to a new personal kitchen.',
+      confirmLabel: 'Leave & Create',
+      destructive: true,
+      icon: 'home-plus',
+      onConfirm: async () => {
+        setLeavingKitchen(true);
+        try {
+          await api.leaveKitchen();
+          await loadKitchen();
+          setInviteCodeInput('');
+          closeJoinKitchenSheet();
+          showAppSuccess('Created a new personal kitchen.');
+        } finally {
+          setLeavingKitchen(false);
+        }
       },
     });
   };
@@ -537,7 +732,7 @@ export function ProfileScreen() {
               <Surface key={memory.id} style={styles.memCard} elevation={1}>
                 <View style={styles.memHeader}>
                   <Chip compact style={styles.memCatChip} textStyle={{ fontSize: 11 }}>{memory.category}</Chip>
-                  <IconButton icon="close" size={16} iconColor="#ccc" onPress={() => handleDeleteMemory(memory.id)} style={{ margin: 0 }} />
+                  <IconButton icon="close" size={16} iconColor="#ccc" onPress={() => handleDeleteMemory(memory)} style={{ margin: 0 }} />
                 </View>
                 <Text variant="bodyMedium" style={styles.memText}>{memory.content}</Text>
                 <Text variant="bodySmall" style={styles.memDate}>{new Date(memory.created_at).toLocaleDateString()}</Text>
@@ -586,6 +781,101 @@ export function ProfileScreen() {
           ) : null}
 
           <Surface style={styles.section} elevation={1}>
+            <Text variant="titleSmall" style={styles.secTitle}>Shared Kitchen</Text>
+            {kitchenLoading ? (
+              <ActivityIndicator size="small" />
+            ) : kitchen ? (
+              <>
+                <View style={styles.settRow}>
+                  <Text variant="bodyMedium" style={styles.settLabel}>Kitchen name</Text>
+                  <Text variant="bodyMedium" style={styles.settVal}>{kitchen.name}</Text>
+                </View>
+                <Divider style={styles.settDivider} />
+                <View style={styles.settRow}>
+                  <Text variant="bodyMedium" style={styles.settLabel}>Invite code</Text>
+                  <Chip
+                    compact
+                    icon="content-copy"
+                    style={styles.inviteChip}
+                    onPress={() => void handleCopyInviteCode()}
+                    accessibilityLabel="Copy invite code"
+                  >
+                    {kitchen.invite_code}
+                  </Chip>
+                </View>
+                <View style={styles.kitchenActionRow}>
+                  <Button
+                    mode="outlined"
+                    onPress={openJoinKitchenSheet}
+                    style={[
+                      styles.kitchenBtn,
+                      (kitchen.member_count ?? 1) > 1 ? styles.kitchenActionBtn : styles.kitchenActionBtnFull,
+                    ]}
+                    disabled={leavingKitchen || joiningKitchen}
+                  >
+                    Join another kitchen
+                  </Button>
+                  {(kitchen.member_count ?? 1) > 1 ? (
+                    <Button
+                      mode="outlined"
+                      onPress={() => void handleLeaveAndCreateKitchen()}
+                      loading={leavingKitchen}
+                      disabled={leavingKitchen || joiningKitchen}
+                      style={[styles.kitchenBtn, styles.kitchenActionBtn]}
+                    >
+                      Leave + create new
+                    </Button>
+                  ) : null}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text variant="bodySmall" style={styles.reminderHint}>
+                  Create a kitchen or join one using an invite code. All members can add, edit, and delete inventory items.
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  label="Kitchen name"
+                  value={kitchenName}
+                  onChangeText={setKitchenName}
+                  style={styles.kitchenInput}
+                  outlineColor="#E0E0E0"
+                  activeOutlineColor="#2E7D32"
+                />
+                <Button
+                  mode="contained"
+                  onPress={() => void handleCreateKitchen()}
+                  loading={creatingKitchen}
+                  disabled={creatingKitchen}
+                  style={styles.kitchenBtn}
+                >
+                  Create Kitchen
+                </Button>
+                <Divider style={{ marginVertical: 10 }} />
+                <TextInput
+                  mode="outlined"
+                  label="Invite code"
+                  value={inviteCodeInput}
+                  onChangeText={setInviteCodeInput}
+                  autoCapitalize="characters"
+                  style={styles.kitchenInput}
+                  outlineColor="#E0E0E0"
+                  activeOutlineColor="#2E7D32"
+                />
+                <Button
+                  mode="outlined"
+                  onPress={() => void handleJoinKitchenContinue()}
+                  loading={joiningKitchen}
+                  disabled={joiningKitchen}
+                  style={styles.kitchenBtn}
+                >
+                  Join with Code
+                </Button>
+              </>
+            )}
+          </Surface>
+
+          <Surface style={styles.section} elevation={1}>
             <Text variant="titleSmall" style={styles.secTitle}>Account</Text>
             <View style={styles.settRow}>
               <Text variant="bodyMedium" style={styles.settLabel}>Name</Text>
@@ -625,6 +915,98 @@ export function ProfileScreen() {
       onDismiss={() => !confirmLoading && setConfirmDialog(null)}
       onConfirm={() => void handleConfirmDialog()}
     />
+    <BottomSheet
+      visible={joinKitchenSheetVisible}
+      onDismiss={closeJoinKitchenSheet}
+      title={joinKitchenSheetStep === 'confirm' ? 'Switch kitchen?' : 'Join Another Kitchen'}
+      subtitle={
+        joinKitchenSheetStep === 'confirm'
+          ? undefined
+          : 'Enter invite code to switch to another kitchen.'
+      }
+      dismissDisabled={joiningKitchen}
+    >
+      {joinKitchenSheetStep === 'enter' ? (
+        <>
+          <TextInput
+            mode="outlined"
+            label="Invite code"
+            value={inviteCodeInput}
+            onChangeText={setInviteCodeInput}
+            autoCapitalize="characters"
+            style={styles.kitchenInput}
+            outlineColor="#E0E0E0"
+            activeOutlineColor="#2E7D32"
+          />
+          <Button
+            mode="contained"
+            onPress={handleJoinKitchenContinue}
+            disabled={joiningKitchen}
+            style={bottomSheetPrimaryBtn.button}
+            contentStyle={bottomSheetPrimaryBtn.content}
+            labelStyle={bottomSheetPrimaryBtn.label}
+          >
+            Continue
+          </Button>
+        </>
+      ) : (
+        <>
+          <Text variant="bodyMedium" style={styles.joinKitchenConfirmText}>
+            {joinKitchenSwitchMessage}
+          </Text>
+          <Text variant="bodySmall" style={styles.joinKitchenConfirmCode}>
+            Joining with code: {inviteCodeInput.trim().toUpperCase()}
+          </Text>
+          <Button
+            mode="contained"
+            onPress={() => void handleJoinKitchenConfirm()}
+            loading={joiningKitchen}
+            disabled={joiningKitchen}
+            buttonColor="#C62828"
+            style={bottomSheetPrimaryBtn.button}
+            contentStyle={bottomSheetPrimaryBtn.content}
+            labelStyle={bottomSheetPrimaryBtn.label}
+          >
+            Switch kitchen
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => setJoinKitchenSheetStep('enter')}
+            disabled={joiningKitchen}
+            style={styles.kitchenBtn}
+          >
+            Back
+          </Button>
+        </>
+      )}
+    </BottomSheet>
+
+    <Snackbar
+      visible={snackVisible}
+      onDismiss={() => {
+        setSnackVisible(false);
+        snackUndoRef.current = null;
+      }}
+      duration={MEMORY_DELETE_UNDO_MS}
+      wrapperStyle={[snackbarLayoutStyles.host, { marginBottom: insets.bottom + 16 }]}
+      style={snackbarLayoutStyles.surface}
+      contentStyle={snackbarLayoutStyles.paperContent}
+      action={
+        snackUndoRef.current
+          ? {
+              label: 'Undo',
+              onPress: () => {
+                const undo = snackUndoRef.current;
+                snackUndoRef.current = null;
+                setSnackVisible(false);
+                if (undo) void undo().catch(() => showAppError('Could not undo.'));
+              },
+            }
+          : { label: 'OK', onPress: () => setSnackVisible(false) }
+      }
+    >
+      {snackMsg}
+    </Snackbar>
     </>
   );
 }
@@ -745,5 +1127,13 @@ const styles = StyleSheet.create({
   settDivider: { marginVertical: 2 },
   reminderHint: { color: '#666', marginBottom: 12, lineHeight: 18 },
   reminderSub: { color: '#888', marginTop: 2 },
+  inviteChip: { backgroundColor: '#E8F5E9' },
+  kitchenInput: { marginBottom: 10, backgroundColor: '#fff' },
+  joinKitchenConfirmText: { color: '#424242', lineHeight: 22, marginBottom: 8 },
+  joinKitchenConfirmCode: { color: '#757575', marginBottom: 16 },
+  kitchenBtn: { borderRadius: 12, marginBottom: 4 },
+  kitchenActionRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  kitchenActionBtn: { flex: 1 },
+  kitchenActionBtnFull: { flex: 1, width: '100%' },
   signOutBtn: { borderRadius: 14, marginTop: 8 },
 });

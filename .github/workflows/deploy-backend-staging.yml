@@ -78,7 +78,6 @@ jobs:
             LLM_PROVIDER=groq,
             GROQ_MODEL=llama-3.3-70b-versatile,
             GROQ_NLU_MODEL=llama-3.3-70b-versatile,
-            GROQ_VISION_MODEL=llama-3.3-70b-versatile,
             RAZORPAY_ENV=staging,
             SMTP_HOST=smtp.gmail.com,
             SMTP_PORT=587,

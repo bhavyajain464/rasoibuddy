@@ -173,15 +173,22 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 		if unit == "" {
 			unit = "pcs"
 		}
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			return "", nil, err
+		}
+		if kitchen == nil {
+			return "", nil, fmt.Errorf("kitchen not found")
+		}
 		var id, itemName, itemUnit string
 		var itemQty float64
 		var bought bool
 		var createdAt time.Time
-		err := db.QueryRow(`
-			INSERT INTO shopping_items (user_id, name, qty, unit)
-			VALUES ($1, $2, $3, $4)
+		err = db.QueryRow(`
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id, name, qty, unit, bought, created_at
-		`, userID, name, qty, unit).Scan(&id, &itemName, &itemQty, &itemUnit, &bought, &createdAt)
+		`, userID, kitchen.KitchenID, name, qty, unit).Scan(&id, &itemName, &itemQty, &itemUnit, &bought, &createdAt)
 		if err != nil {
 			return "", nil, err
 		}
@@ -215,15 +222,22 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 			unit = "pcs"
 		}
 		var itemID string
-		err := db.QueryRow(`
-			INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id)
-			VALUES ($1, $2, $3, true, $4)
-			RETURNING item_id
-		`, name, qty, unit, userID).Scan(&itemID)
+		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
 			return "", nil, err
 		}
-		RemoveFromShoppingList(db, userID, name)
+		if kitchen == nil {
+			return "", nil, fmt.Errorf("kitchen not found")
+		}
+		err = db.QueryRow(`
+			INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
+			VALUES ($1, $2, $3, true, $4, $5)
+			RETURNING item_id
+		`, name, qty, unit, userID, kitchen.KitchenID).Scan(&itemID)
+		if err != nil {
+			return "", nil, err
+		}
+		RemoveFromShoppingList(db, kitchen.KitchenID, name)
 		return fmt.Sprintf("Added \"%s\" to inventory.", name), map[string]any{
 			"inventory_item_id": itemID,
 			"name":              name,
@@ -254,31 +268,73 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 }
 
 func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, itemID, matchedName string, err error) {
+	kitchen, err := resolveKitchenForUser(db, userID)
+	if err != nil {
+		return 0, "", "", err
+	}
+	if kitchen == nil {
+		return 0, "", "", fmt.Errorf("kitchen not found")
+	}
 	pattern := "%" + strings.ToLower(itemName) + "%"
-	res, err := db.Exec(`
-		UPDATE inventory
-		SET estimated_expiry = CURRENT_DATE - INTERVAL '1 day', updated_at = NOW()
-		WHERE (user_id = $1 OR user_id IS NULL)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, "", "", err
+	}
+	defer tx.Rollback()
+
+	lockRows, err := tx.Query(`
+		SELECT item_id::text, canonical_name
+		FROM inventory
+		WHERE kitchen_id = $1
 			AND LOWER(canonical_name) LIKE $2
 			AND (estimated_expiry IS NULL OR estimated_expiry >= CURRENT_DATE)
-	`, userID, pattern)
+		FOR UPDATE
+	`, kitchen.KitchenID, pattern)
+	if err != nil {
+		return 0, "", "", err
+	}
+	var ids []string
+	for lockRows.Next() {
+		var id, cname string
+		if scanErr := lockRows.Scan(&id, &cname); scanErr != nil {
+			continue
+		}
+		ids = append(ids, id)
+		if itemID == "" {
+			itemID, matchedName = id, cname
+		}
+	}
+	lockRows.Close()
+	if err := lockRows.Err(); err != nil {
+		return 0, "", "", err
+	}
+
+	if len(ids) == 0 {
+		if _, err := tx.Exec(`
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
+			VALUES ($1, $2, $3, 1, 'pcs')
+		`, userID, kitchen.KitchenID, itemName); err != nil {
+			return 0, "", "", err
+		}
+		if err := tx.Commit(); err != nil {
+			return 0, "", "", err
+		}
+		return 0, "", "", nil
+	}
+
+	res, err := tx.Exec(`
+		UPDATE inventory
+		SET estimated_expiry = CURRENT_DATE - INTERVAL '1 day', updated_at = NOW()
+		WHERE item_id = ANY($1::uuid[])
+	`, pq.Array(ids))
 	if err != nil {
 		return 0, "", "", err
 	}
 	n, _ := res.RowsAffected()
-	if n == 0 {
-		// Fallback: add to shopping
-		_, _ = db.Exec(`
-			INSERT INTO shopping_items (user_id, name, qty, unit)
-			VALUES ($1, $2, 1, 'pcs')
-		`, userID, itemName)
-		return 0, "", "", nil
+	if err := tx.Commit(); err != nil {
+		return 0, "", "", err
 	}
-	_ = db.QueryRow(`
-		SELECT item_id, canonical_name FROM inventory
-		WHERE (user_id = $1 OR user_id IS NULL) AND LOWER(canonical_name) LIKE $2
-		ORDER BY updated_at DESC LIMIT 1
-	`, userID, pattern).Scan(&itemID, &matchedName)
 	return n, itemID, matchedName, nil
 }
 

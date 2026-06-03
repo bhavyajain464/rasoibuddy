@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -50,16 +49,6 @@ type groqChatRequest struct {
 type groqMessage struct {
 	Role    string      `json:"role"`
 	Content interface{} `json:"content"`
-}
-
-type groqContentPart struct {
-	Type     string        `json:"type"`
-	Text     string        `json:"text,omitempty"`
-	ImageURL *groqImageURL `json:"image_url,omitempty"`
-}
-
-type groqImageURL struct {
-	URL string `json:"url"`
 }
 
 type groqChatResponse struct {
@@ -210,22 +199,6 @@ func mealMessages(user string) []groqMessage {
 	return messages
 }
 
-func GroqChatVision(ctx context.Context, apiKey, model string, temperature float64, userText, mimeType, base64Image string) (string, error) {
-	mime := strings.TrimSpace(mimeType)
-	if mime == "" {
-		mime = "image/jpeg"
-	}
-	dataURL := fmt.Sprintf("data:%s;base64,%s", mime, strings.TrimSpace(base64Image))
-	parts := []groqContentPart{
-		{Type: "text", Text: userText},
-		{Type: "image_url", ImageURL: &groqImageURL{URL: dataURL}},
-	}
-	// Vision models require multipart content; do not use the text-only Groq model or meal system prompt.
-	return groqChatWithSampling(ctx, apiKey, model, temperature, nil, nil, groqMaxTokensBillScan, []groqMessage{
-		{Role: "user", Content: parts},
-	}, false)
-}
-
 func EstimateShelfLifeGroq(ctx context.Context, cfg *config.Config, itemNames []string) ([]ShelfLifeEstimate, error) {
 	if !cfg.HasGroqAPIKey() {
 		return nil, fmt.Errorf("groq API key not configured")
@@ -309,12 +282,6 @@ func salvageShelfLifeObjects(s string) []ShelfLifeEstimate {
 }
 
 var (
-	billScanGroqUserPrompt = `Read this Indian grocery bill. Edible/kitchen items only (no soap, detergent, etc.).
-Per item: name, quantity, unit, price_per_unit (0 if unknown), total_price (0 if unknown), shelf_life_days.
-` + billScanFoodGroupField() + `
-JSON array only, no markdown:
-[{"name":"Basmati Rice","quantity":5,"unit":"kg","price_per_unit":120,"total_price":600,"shelf_life_days":60,"food_group":"grains_pulses"}]`
-
 	billScanGroqTextPrompt = `You are reading plain text from an Indian grocery invoice (Swiggy Instamart, Blinkit, Zepto, BigBasket, or a store receipt).
 
 Extract ONLY edible/kitchen items. EXCLUDE: handling fees, delivery charges, bags, discounts summary rows, tax annexures, and any non-food product.
@@ -358,26 +325,23 @@ func ScanBillGroqFromBytes(ctx context.Context, cfg *config.Config, imageData []
 	return scanBillGroqFromImage(ctx, cfg, imageData, imageType)
 }
 
-// scanBillGroqFromImage prefers OCR → text LLM (low tokens); vision model is fallback only.
-func scanBillGroqFromImage(ctx context.Context, cfg *config.Config, imageData []byte, imageType string) ([]BillItem, error) {
+// scanBillGroqFromImage runs Google Vision OCR, then parses items with the Groq text model only.
+func scanBillGroqFromImage(ctx context.Context, cfg *config.Config, imageData []byte, _ string) ([]BillItem, error) {
 	ocrText, ocrErr := ExtractBillImageText(ctx, cfg, imageData)
-	if ocrErr == nil && len(strings.TrimSpace(ocrText)) >= minBillOCRChars {
-		items, parseErr := scanBillGroqFromInvoiceText(ctx, cfg, ocrText)
-		if parseErr == nil && len(items) > 0 {
-			log.Printf("[bill-scan] %d item(s) from OCR + text model", len(items))
-			return items, nil
-		}
-		if parseErr != nil {
-			log.Printf("[bill-scan] OCR ok but text parse failed: %v", parseErr)
-		}
-	} else if ocrErr != nil {
-		log.Printf("[bill-scan] OCR skipped: %v", ocrErr)
+	if ocrErr != nil {
+		return nil, fmt.Errorf("bill OCR failed: %w", ocrErr)
 	}
-
-	visionModel := cfg.EffectiveGroqVisionModel()
-	text, err := GroqChatVision(ctx, cfg.PickGroqAPIKey(), visionModel, 0.1, billScanGroqUserPrompt, imageType, base64.StdEncoding.EncodeToString(imageData))
-	if err != nil {
-		return nil, fmt.Errorf("groq bill scan: %w", err)
+	ocrText = strings.TrimSpace(ocrText)
+	if len(ocrText) < minBillOCRChars {
+		return nil, fmt.Errorf("not enough text detected on bill image")
 	}
-	return ParseBillItems(text)
+	items, parseErr := scanBillGroqFromInvoiceText(ctx, cfg, ocrText)
+	if parseErr != nil {
+		return nil, fmt.Errorf("failed to parse bill from OCR text: %w", parseErr)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no edible items found on bill")
+	}
+	log.Printf("[bill-scan] %d item(s) from OCR + text model", len(items))
+	return items, nil
 }

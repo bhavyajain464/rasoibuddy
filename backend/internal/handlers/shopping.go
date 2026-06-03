@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"kitchenai-backend/internal/dblock"
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/models"
 	"kitchenai-backend/internal/services"
@@ -39,12 +40,21 @@ type AddShoppingItemReq struct {
 func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 		rows, err := db.Query(`
 			SELECT id, name, qty, unit, bought, created_at, bought_at
 			FROM shopping_items
-			WHERE user_id = $1 AND bought = FALSE
+			WHERE kitchen_id = $1 AND bought = FALSE
 			ORDER BY created_at DESC
-		`, userID)
+		`, kitchen.KitchenID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -73,6 +83,15 @@ func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 		var req AddShoppingItemReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid body", 400)
@@ -88,11 +107,11 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 		req.Unit = units.Normalize(req.Unit)
 
 		var item ShoppingItem
-		err := db.QueryRow(`
-			INSERT INTO shopping_items (user_id, name, qty, unit)
-			VALUES ($1, $2, $3, $4)
+		err = db.QueryRow(`
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id, name, qty, unit, bought, created_at
-		`, userID, req.Name, req.Qty, req.Unit).Scan(
+		`, userID, kitchen.KitchenID, req.Name, req.Qty, req.Unit).Scan(
 			&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt,
 		)
 		if err != nil {
@@ -109,6 +128,15 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 		var items []AddShoppingItemReq
 		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
 			http.Error(w, "invalid body", 400)
@@ -126,10 +154,10 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 			req.Unit = units.Normalize(req.Unit)
 			var item ShoppingItem
 			err := db.QueryRow(`
-				INSERT INTO shopping_items (user_id, name, qty, unit)
-				VALUES ($1, $2, $3, $4)
+				INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
+				VALUES ($1, $2, $3, $4, $5)
 				RETURNING id, name, qty, unit, bought, created_at
-			`, userID, req.Name, req.Qty, req.Unit).Scan(
+			`, userID, kitchen.KitchenID, req.Name, req.Qty, req.Unit).Scan(
 				&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt,
 			)
 			if err != nil {
@@ -152,11 +180,42 @@ func ToggleShoppingItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 		itemID := mux.Vars(r)["id"]
-
-		var bought bool
-		err := db.QueryRow(`SELECT bought FROM shopping_items WHERE id = $1 AND user_id = $2`, itemID, userID).Scan(&bought)
+		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
-			http.Error(w, "not found", 404)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		if err := dblock.LockShoppingItem(tx, itemID, kitchen.KitchenID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", 404)
+				return
+			}
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		var bought bool
+		err = tx.QueryRow(`
+			SELECT bought FROM shopping_items
+			WHERE id = $1 AND kitchen_id = $2
+		`, itemID, kitchen.KitchenID).Scan(&bought)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", 404)
+				return
+			}
+			http.Error(w, err.Error(), 500)
 			return
 		}
 
@@ -166,9 +225,13 @@ func ToggleShoppingItem(db *sql.DB) http.HandlerFunc {
 			boughtAt = time.Now()
 		}
 
-		_, err = db.Exec(`UPDATE shopping_items SET bought = $1, bought_at = $2 WHERE id = $3 AND user_id = $4`,
-			newBought, boughtAt, itemID, userID)
+		_, err = tx.Exec(`UPDATE shopping_items SET bought = $1, bought_at = $2 WHERE id = $3 AND kitchen_id = $4`,
+			newBought, boughtAt, itemID, kitchen.KitchenID)
 		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if err := tx.Commit(); err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
@@ -182,9 +245,36 @@ func DeleteShoppingItem(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 		itemID := mux.Vars(r)["id"]
-
-		_, err := db.Exec(`DELETE FROM shopping_items WHERE id = $1 AND user_id = $2`, itemID, userID)
+		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		if err := dblock.LockShoppingItem(tx, itemID, kitchen.KitchenID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", 404)
+				return
+			}
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if _, err := tx.Exec(`DELETE FROM shopping_items WHERE id = $1 AND kitchen_id = $2`, itemID, kitchen.KitchenID); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if err := tx.Commit(); err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
@@ -193,15 +283,32 @@ func DeleteShoppingItem(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// RemoveFromShoppingList removes items from the user's shopping list that match the given item name.
+// RemoveFromShoppingList removes kitchen shopping rows that match the given item name.
 // Called automatically when items are added to inventory.
-func RemoveFromShoppingList(db *sql.DB, userID string, itemName string) {
-	_, err := db.Exec(`
-		DELETE FROM shopping_items
-		WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND bought = FALSE
-	`, userID, itemName)
+func RemoveFromShoppingList(db *sql.DB, kitchenID string, itemName string) {
+	if strings.TrimSpace(kitchenID) == "" || strings.TrimSpace(itemName) == "" {
+		return
+	}
+	tx, err := db.Begin()
 	if err != nil {
-		log.Printf("auto-remove shopping item %q for user %s: %v", itemName, userID, err)
+		log.Printf("auto-remove shopping begin %q: %v", itemName, err)
+		return
+	}
+	defer tx.Rollback()
+
+	if err := dblock.LockActiveShoppingByName(tx, kitchenID, itemName); err != nil {
+		log.Printf("auto-remove shopping lock %q for kitchen %s: %v", itemName, kitchenID, err)
+		return
+	}
+	if _, err := tx.Exec(`
+		DELETE FROM shopping_items
+		WHERE kitchen_id = $1 AND LOWER(name) = LOWER($2) AND bought = FALSE
+	`, kitchenID, itemName); err != nil {
+		log.Printf("auto-remove shopping item %q for kitchen %s: %v", itemName, kitchenID, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		log.Printf("auto-remove shopping commit %q: %v", itemName, err)
 	}
 }
 
@@ -222,19 +329,42 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 			http.Error(w, "ids required", 400)
 			return
 		}
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 
 		inventory := make([]models.Inventory, 0, len(req.IDs))
 		var shelfLifeIDs []string
 		purchased := 0
 
 		for _, id := range req.IDs {
+			tx, txErr := db.Begin()
+			if txErr != nil {
+				log.Printf("purchase shopping begin %s: %v", id, txErr)
+				continue
+			}
+
+			if err := dblock.LockShoppingItem(tx, id, kitchen.KitchenID); err != nil {
+				tx.Rollback()
+				if err != sql.ErrNoRows {
+					log.Printf("purchase shopping lock %s: %v", id, err)
+				}
+				continue
+			}
 			var shop ShoppingItem
-			err := db.QueryRow(`
+			err := tx.QueryRow(`
 				SELECT id, name, qty, unit
 				FROM shopping_items
-				WHERE id = $1 AND user_id = $2 AND bought = FALSE
-			`, id, userID).Scan(&shop.ID, &shop.Name, &shop.Qty, &shop.Unit)
+				WHERE id = $1 AND kitchen_id = $2 AND bought = FALSE
+			`, id, kitchen.KitchenID).Scan(&shop.ID, &shop.Name, &shop.Qty, &shop.Unit)
 			if err != nil {
+				tx.Rollback()
 				if err != sql.ErrNoRows {
 					log.Printf("purchase shopping load %s: %v", id, err)
 				}
@@ -250,19 +380,25 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 			var itemID string
 			var createdAt, updatedAt time.Time
 			var dbExpiry sql.NullTime
-			err = db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id)
-				VALUES ($1, $2, $3, TRUE, $4)
+			err = tx.QueryRow(`
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
+				VALUES ($1, $2, $3, TRUE, $4, $5)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, shop.Name, qty, unit, userID).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, shop.Name, qty, unit, userID, kitchen.KitchenID).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
+				tx.Rollback()
 				log.Printf("purchase shopping inventory %s: %v", shop.Name, err)
 				continue
 			}
 
-			_, err = db.Exec(`DELETE FROM shopping_items WHERE id = $1 AND user_id = $2`, shop.ID, userID)
+			_, err = tx.Exec(`DELETE FROM shopping_items WHERE id = $1 AND kitchen_id = $2`, shop.ID, kitchen.KitchenID)
 			if err != nil {
+				tx.Rollback()
 				log.Printf("purchase shopping delete %s: %v", shop.ID, err)
+				continue
+			}
+			if err := tx.Commit(); err != nil {
+				log.Printf("purchase shopping commit %s: %v", shop.ID, err)
 				continue
 			}
 
@@ -302,6 +438,15 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 func BulkDeleteShoppingItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 		var req shoppingIDsReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid body", 400)
@@ -312,15 +457,30 @@ func BulkDeleteShoppingItems(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		result, err := db.Exec(`
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		if err := dblock.LockShoppingItems(tx, kitchen.KitchenID, req.IDs); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		result, err := tx.Exec(`
 			DELETE FROM shopping_items
-			WHERE user_id = $1 AND id = ANY($2::uuid[])
-		`, userID, pq.Array(req.IDs))
+			WHERE kitchen_id = $1 AND id = ANY($2::uuid[])
+		`, kitchen.KitchenID, pq.Array(req.IDs))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		count, _ := result.RowsAffected()
+		if err := tx.Commit(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"deleted": count})
@@ -341,11 +501,14 @@ func parseExcludeQuery(raw string) []string {
 	return out
 }
 
-func fetchActiveShoppingNames(db *sql.DB, userID string) []string {
+func fetchActiveShoppingNames(db *sql.DB, kitchenID string) []string {
+	if strings.TrimSpace(kitchenID) == "" {
+		return nil
+	}
 	rows, err := db.Query(`
 		SELECT name FROM shopping_items
-		WHERE user_id = $1 AND bought = FALSE
-	`, userID)
+		WHERE kitchen_id = $1 AND bought = FALSE
+	`, kitchenID)
 	if err != nil {
 		log.Printf("fetchActiveShoppingNames: %v", err)
 		return nil
@@ -367,6 +530,15 @@ func fetchActiveShoppingNames(db *sql.DB, userID string) []string {
 func GetOrderSuggestions(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 
 		var eaten []services.CookedLogEntry
 		if cookedLog != nil {
@@ -381,7 +553,7 @@ func GetOrderSuggestions(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 		suggestIn := services.OrderSuggestInput{
 			EatenLog:     eaten,
 			Inventory:    invNames,
-			ShoppingList: fetchActiveShoppingNames(db, userID),
+			ShoppingList: fetchActiveShoppingNames(db, kitchen.KitchenID),
 			ExcludeItems: parseExcludeQuery(r.URL.Query().Get("exclude")),
 		}
 		if prefs := fetchUserPreferences(db, userID); prefs != nil {
@@ -417,13 +589,37 @@ func GetOrderSuggestions(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 func ClearBoughtItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
 
-		result, err := db.Exec(`DELETE FROM shopping_items WHERE user_id = $1 AND bought = TRUE`, userID)
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		if err := dblock.LockBoughtShoppingItems(tx, kitchen.KitchenID); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		result, err := tx.Exec(`DELETE FROM shopping_items WHERE kitchen_id = $1 AND bought = TRUE`, kitchen.KitchenID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		count, _ := result.RowsAffected()
+		if err := tx.Commit(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"cleared": count})
