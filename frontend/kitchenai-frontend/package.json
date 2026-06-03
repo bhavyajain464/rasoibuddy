@@ -9,6 +9,7 @@
     "android:dev": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --port 8082 & sleep 3 && bash scripts/launch-android-dev.sh",
     "ios": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli run:ios --port 8082",
     "web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli start --web --port 8082",
+    "web:staging": "DOTENV_CONFIG_PATH=staging.env node -r dotenv/config ./node_modules/expo/bin/cli start --web --port 8082",
     "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ./node_modules/expo/bin/cli export --platform web",
     "build:web:vercel": "expo export --platform web",
     "build:android:production": "npx eas-cli build --platform android --profile production",

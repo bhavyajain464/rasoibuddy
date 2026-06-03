@@ -1,6 +1,4 @@
 import { Alert, Platform } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 
 /** Allowed bill scan uploads — images and PDF only (no video). */
 const BILL_FILE_TYPES: string[] = ['image/*', 'application/pdf'];
@@ -53,6 +51,7 @@ function normalizePick(asset: { uri: string; mimeType?: string | null; name?: st
 
 /** Pick a bill photo from the gallery (images only). */
 export async function pickBillImageFromGallery(): Promise<BillScanPick | null> {
+  const ImagePicker = await import('expo-image-picker');
   const existing = await ImagePicker.getMediaLibraryPermissionsAsync();
   if (!existing.granted) {
     const requested = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -79,6 +78,7 @@ export async function pickBillImageFromGallery(): Promise<BillScanPick | null> {
 
 /** Web-only fallback; mobile uses in-app camera via expo-camera. */
 export async function pickBillImageFromCameraWeb(): Promise<BillScanPick | null> {
+  const ImagePicker = await import('expo-image-picker');
   const existing = await ImagePicker.getCameraPermissionsAsync();
   if (!existing.granted) {
     const requested = await ImagePicker.requestCameraPermissionsAsync();
@@ -106,6 +106,7 @@ export async function pickBillImageFromCameraWeb(): Promise<BillScanPick | null>
 /** Pick an image or PDF from files (no video). */
 export async function pickBillFileFromDevice(): Promise<BillScanPick | null> {
   try {
+    const DocumentPicker = await import('expo-document-picker');
     const result = await DocumentPicker.getDocumentAsync({
       type: BILL_FILE_TYPES,
       copyToCacheDirectory: true,

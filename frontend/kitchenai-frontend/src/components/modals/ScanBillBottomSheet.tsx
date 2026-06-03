@@ -8,7 +8,6 @@ import {
   Surface,
   Text,
 } from 'react-native-paper';
-import { BillCameraModal } from '../BillCameraModal';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../BottomSheet';
 import { foodGroupLabel } from '../../constants/inventoryFoodGroups';
 import type { InventoryFoodGroup } from '../../types';
@@ -36,6 +35,12 @@ type Props = {
   groupMeta: InventoryFoodGroup[];
 };
 
+type BillCameraModalComponent = React.ComponentType<{
+  visible: boolean;
+  onClose: () => void;
+  onCaptured: (pick: BillScanPick) => void;
+}>;
+
 export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: Props) {
   const { entitlements, canBillScan, refresh: refreshEntitlements } = useEntitlements();
   const { startUpgrade } = usePlanUpgrade();
@@ -47,6 +52,14 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
   const [selectedItems, setSelectedItems] = useState<Record<number, boolean>>({});
   const [addingScanned, setAddingScanned] = useState(false);
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [BillCameraModal, setBillCameraModal] = useState<BillCameraModalComponent | null>(null);
+
+  useEffect(() => {
+    if (!cameraModalVisible || BillCameraModal) return;
+    void import('../BillCameraModal').then(mod => {
+      setBillCameraModal(() => mod.BillCameraModal);
+    });
+  }, [cameraModalVisible, BillCameraModal]);
 
   const resetState = useCallback(() => {
     setBillPick(null);
@@ -237,11 +250,13 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
 
   return (
     <>
-      <BillCameraModal
-        visible={cameraModalVisible}
-        onClose={() => setCameraModalVisible(false)}
-        onCaptured={applyBillPick}
-      />
+      {BillCameraModal ? (
+        <BillCameraModal
+          visible={cameraModalVisible}
+          onClose={() => setCameraModalVisible(false)}
+          onCaptured={applyBillPick}
+        />
+      ) : null}
 
       <BottomSheet
         visible={visible}

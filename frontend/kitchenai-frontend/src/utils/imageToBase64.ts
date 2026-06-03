@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
 
 function mimeFromUri(uri: string, hint?: string): string {
   if (hint && hint.trim()) {
@@ -57,6 +56,7 @@ export async function fileUriToBase64(
     return { base64, mimeType };
   }
 
+  const FileSystem = await import('expo-file-system/legacy');
   const base64 = await FileSystem.readAsStringAsync(trimmed, {
     encoding: FileSystem.EncodingType.Base64,
   });
