@@ -6,7 +6,7 @@ The **develop** branch is the integration environment. **main** stays production
 | --- | --- | --- |
 | Git branch | `main` | `develop` |
 | Consumer web (Vercel) | Project **kitchmate** → [kitchmate-one.vercel.app](https://kitchmate-one.vercel.app) | **Preview** on `develop` → [kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app](https://kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app) |
-| Partner web (Vercel) | *(not deployed from `main` yet)* | Project **kitchmate-partner** — **production branch `develop`** → staging API |
+| Partner web (Vercel) | *(not deployed from `main` yet)* | Project **kitchmate-partner** — **production branch `develop`** → [kitchmate-partner.vercel.app](https://kitchmate-partner.vercel.app) |
 | API (Cloud Run) | `kitchenai-backend` | `kitchenai-backend-staging` |
 | Razorpay | Live (`RAZORPAY_ENV=production`) | Test (`RAZORPAY_ENV=staging`) |
 | DB / Redis / Kafka / LLM keys | Shared (same GCP secrets for now) | Same secrets as production |
