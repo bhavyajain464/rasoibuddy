@@ -26,6 +26,11 @@ func normalizeCompoundKey(s string) string {
 	return NormalizeDishName(s)
 }
 
+// ExpandCompoundGrocery splits bundle ingredients into items you can buy individually.
+func ExpandCompoundGrocery(raw string) []string {
+	return expandCompoundGrocery(raw)
+}
+
 // expandCompoundGrocery splits bundle ingredients into items you can buy individually.
 func expandCompoundGrocery(raw string) []string {
 	raw = strings.TrimSpace(raw)

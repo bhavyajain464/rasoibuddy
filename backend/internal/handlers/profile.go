@@ -257,7 +257,11 @@ func GetProfile(db *sql.DB) http.HandlerFunc {
 		}
 
 		var kitchenID string
-		_ = db.QueryRow(`SELECT kitchen_id::text FROM kitchen_members WHERE user_id = $1 LIMIT 1`, userID).Scan(&kitchenID)
+		_ = db.QueryRow(`
+			SELECT kitchen_id::text FROM kitchen_members
+			WHERE user_id = $1 AND kitchen_kind = 'household'
+			LIMIT 1
+		`, userID).Scan(&kitchenID)
 		var invCount int
 		if kitchenID != "" {
 			db.QueryRow(`SELECT COUNT(*) FROM inventory WHERE kitchen_id = $1 AND qty > 0`, kitchenID).Scan(&invCount)

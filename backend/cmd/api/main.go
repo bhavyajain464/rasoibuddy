@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -11,6 +12,11 @@ import (
 	"kitchenai-backend/internal/handlers"
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/middleware"
+	invpostgres "kitchenai-backend/internal/platform/inventory/postgres"
+	kitchenpostgres "kitchenai-backend/internal/platform/kitchen/postgres"
+	zomatosvc "kitchenai-backend/internal/restaurant/integrations/zomato"
+	restauranthttp "kitchenai-backend/internal/restaurant/transport/http"
+	restaurantsvc "kitchenai-backend/internal/restaurant/services"
 	redislib "kitchenai-backend/internal/redis"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
@@ -24,7 +30,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key, X-App-Platform, X-App-Version, X-App-Build")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key, X-App-Platform, X-App-Version, X-App-Build, X-Zomato-Worker-Secret")
 		w.Header().Set("Access-Control-Max-Age", "300")
 
 		if r.Method == "OPTIONS" {
@@ -202,6 +208,26 @@ func main() {
 	api.Handle("/shopping/bulk-delete", middleware.RequireAuth(http.HandlerFunc(handlers.BulkDeleteShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.DeleteShoppingItem(sqlDB)))).Methods("DELETE", "OPTIONS")
+
+	// Restaurant platform (modular monolith — extractable to restaurant-api later)
+	kitchenSvc := kitchenpostgres.New(sqlDB)
+	invSvc := invpostgres.New(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB)
+	deductionSvc := restaurantsvc.NewDeductionEngine(invSvc)
+	orderSvc := restaurantsvc.NewOrderService(sqlDB, menuSvc, deductionSvc)
+	billingRestSvc := restaurantsvc.NewBillingService(kitchenSvc)
+	analyticsSvc := restaurantsvc.NewAnalyticsService(sqlDB)
+	shoppingRestSvc := restaurantsvc.NewShoppingService(sqlDB)
+	zomatoSvc := zomatosvc.NewService(sqlDB, orderSvc, menuSvc)
+	zomatoSvc.ResumeRunningSyncs(context.Background())
+	restHandler := restauranthttp.NewHandler(kitchenSvc, invSvc, menuSvc, orderSvc, shoppingRestSvc, billingRestSvc, analyticsSvc, zomatoSvc, sqlDB)
+	publicConnect := router.PathPrefix("/api/v1").Subrouter()
+	restHandler.RegisterZomatoPublicConnect(publicConnect)
+	restHandler.RegisterZomatoConnectFallback(router)
+	restRouter := api.PathPrefix("").Subrouter()
+	restRouter.Use(middleware.RequireAuth)
+	restHandler.RegisterRoutes(restRouter)
+	restHandler.RegisterZomatoIngest(api)
 
 	// Procurement (legacy)
 	api.Handle("/procurement/shopping-list", middleware.RequireAuth(http.HandlerFunc(handlers.GetShoppingListHandler(sqlDB)))).Methods("GET", "POST", "OPTIONS")

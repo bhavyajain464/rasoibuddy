@@ -1,0 +1,1289 @@
+{
+  "dishes": [
+    {
+      "name": "Standard Thali",
+      "category": "thali",
+      "catalogue_id": "750820921",
+      "price_cents": 22100,
+      "ingredients": [
+        "rice",
+        "dal",
+        "roti",
+        "sabzi",
+        "salad",
+        "papad",
+        "pickle",
+        "curd"
+      ]
+    },
+    {
+      "name": "Choudhary Special Thali",
+      "category": "thali",
+      "catalogue_id": "750820922",
+      "price_cents": 56000,
+      "ingredients": [
+        "rice",
+        "dal makhani",
+        "paneer butter masala",
+        "roti",
+        "salad",
+        "papad",
+        "raita",
+        "sweet"
+      ]
+    },
+    {
+      "name": "Basic thali",
+      "category": "thali",
+      "catalogue_id": "772943059",
+      "price_cents": 70000,
+      "ingredients": [
+        "rice",
+        "dal",
+        "roti",
+        "sabzi",
+        "salad"
+      ]
+    },
+    {
+      "name": "Green salad",
+      "category": "salads",
+      "catalogue_id": "772948540",
+      "price_cents": 14000,
+      "ingredients": [
+        "lettuce",
+        "cucumber",
+        "onion",
+        "lemon",
+        "salt",
+        "black pepper"
+      ]
+    },
+    {
+      "name": "Tomato salad",
+      "category": "salads",
+      "catalogue_id": "772948541",
+      "price_cents": 10000,
+      "ingredients": [
+        "tomato",
+        "onion",
+        "cucumber",
+        "lemon",
+        "salt",
+        "chaat masala"
+      ]
+    },
+    {
+      "name": "Kachumber salad",
+      "category": "salads",
+      "catalogue_id": "772948542",
+      "price_cents": 14000,
+      "ingredients": [
+        "tomato",
+        "onion",
+        "cucumber",
+        "green chilli",
+        "lemon",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Paneer tikka",
+      "category": "starters",
+      "catalogue_id": "772941980",
+      "price_cents": 40000,
+      "ingredients": [
+        "paneer",
+        "yogurt",
+        "ginger garlic paste",
+        "red chilli powder",
+        "garam masala",
+        "capsicum",
+        "onion"
+      ]
+    },
+    {
+      "name": "Mushroom tikka",
+      "category": "starters",
+      "catalogue_id": "772941981",
+      "price_cents": 48000,
+      "ingredients": [
+        "mushroom",
+        "yogurt",
+        "ginger garlic paste",
+        "red chilli powder",
+        "garam masala",
+        "capsicum",
+        "onion"
+      ]
+    },
+    {
+      "name": "Malai tikka",
+      "category": "starters",
+      "catalogue_id": "772942287",
+      "price_cents": 52000,
+      "ingredients": [
+        "paneer",
+        "cream",
+        "yogurt",
+        "ginger garlic paste",
+        "cashew paste",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Dal Fry",
+      "category": "main course",
+      "catalogue_id": "750814382",
+      "price_cents": 18000,
+      "ingredients": [
+        "toor dal",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cumin",
+        "turmeric",
+        "red chilli powder",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Dal Tadka",
+      "category": "main course",
+      "catalogue_id": "750814837",
+      "price_cents": 19000,
+      "ingredients": [
+        "toor dal",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cumin",
+        "mustard seeds",
+        "ghee",
+        "red chilli"
+      ]
+    },
+    {
+      "name": "Dal makhani",
+      "category": "main course",
+      "catalogue_id": "772943162",
+      "price_cents": 22000,
+      "ingredients": [
+        "urad dal",
+        "rajma",
+        "tomato",
+        "butter",
+        "cream",
+        "ginger garlic paste",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Aloo Gobhi",
+      "category": "main course",
+      "catalogue_id": "750814963",
+      "price_cents": 16000,
+      "ingredients": [
+        "potato",
+        "cauliflower",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "turmeric",
+        "cumin",
+        "coriander powder"
+      ]
+    },
+    {
+      "name": "Aloo Palak",
+      "category": "main course",
+      "catalogue_id": "750815198",
+      "price_cents": 18000,
+      "ingredients": [
+        "potato",
+        "spinach",
+        "onion",
+        "ginger garlic paste",
+        "cumin",
+        "turmeric",
+        "cream"
+      ]
+    },
+    {
+      "name": "Aloo Jeera",
+      "category": "main course",
+      "catalogue_id": "750815437",
+      "price_cents": 20000,
+      "ingredients": [
+        "potato",
+        "cumin",
+        "green chilli",
+        "coriander",
+        "oil",
+        "turmeric"
+      ]
+    },
+    {
+      "name": "Dum aloo",
+      "category": "main course",
+      "catalogue_id": "772943958",
+      "price_cents": 21000,
+      "ingredients": [
+        "potato",
+        "yogurt",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "kashmiri chilli",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Aloo Chole",
+      "category": "main course",
+      "catalogue_id": "750815898",
+      "price_cents": 22000,
+      "ingredients": [
+        "potato",
+        "chickpeas",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "chole masala",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Aloo pyaaz",
+      "category": "main course",
+      "catalogue_id": "772943959",
+      "price_cents": 20000,
+      "ingredients": [
+        "potato",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "turmeric",
+        "coriander powder",
+        "cumin"
+      ]
+    },
+    {
+      "name": "Palak masala",
+      "category": "main course",
+      "catalogue_id": "772943960",
+      "price_cents": 20000,
+      "ingredients": [
+        "spinach",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cumin",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Sev Tamatar",
+      "category": "main course",
+      "catalogue_id": "750817351",
+      "price_cents": 20000,
+      "ingredients": [
+        "tomato",
+        "sev",
+        "onion",
+        "ginger garlic paste",
+        "turmeric",
+        "coriander",
+        "cumin"
+      ]
+    },
+    {
+      "name": "Sev Bhaji",
+      "category": "main course",
+      "catalogue_id": "750816334",
+      "price_cents": 24000,
+      "ingredients": [
+        "sev",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "turmeric",
+        "coriander powder"
+      ]
+    },
+    {
+      "name": "Mix Veg",
+      "category": "main course",
+      "catalogue_id": "750820248",
+      "price_cents": 20000,
+      "ingredients": [
+        "potato",
+        "cauliflower",
+        "carrot",
+        "beans",
+        "peas",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Veg Kolhapuri",
+      "category": "main course",
+      "catalogue_id": "772944399",
+      "price_cents": 20000,
+      "ingredients": [
+        "mixed vegetables",
+        "onion",
+        "tomato",
+        "coconut",
+        "ginger garlic paste",
+        "kolhapuri masala",
+        "cream"
+      ]
+    },
+    {
+      "name": "Veg handi",
+      "category": "main course",
+      "catalogue_id": "772944400",
+      "price_cents": 21000,
+      "ingredients": [
+        "mixed vegetables",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cashew paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Veg Jaipuri",
+      "category": "main course",
+      "catalogue_id": "772944401",
+      "price_cents": 21000,
+      "ingredients": [
+        "mixed vegetables",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "besan",
+        "coriander powder"
+      ]
+    },
+    {
+      "name": "Mushroom masala",
+      "category": "main course",
+      "catalogue_id": "772944458",
+      "price_cents": 26000,
+      "ingredients": [
+        "mushroom",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Mushroom curry",
+      "category": "main course",
+      "catalogue_id": "772944459",
+      "price_cents": 26000,
+      "ingredients": [
+        "mushroom",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "coconut milk",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Dahi fry",
+      "category": "main course",
+      "catalogue_id": "772944460",
+      "price_cents": 21000,
+      "ingredients": [
+        "yogurt",
+        "besan",
+        "onion",
+        "ginger garlic paste",
+        "turmeric",
+        "coriander powder",
+        "cumin"
+      ]
+    },
+    {
+      "name": "Besan gatta",
+      "category": "main course",
+      "catalogue_id": "772944634",
+      "price_cents": 20000,
+      "ingredients": [
+        "besan",
+        "yogurt",
+        "onion",
+        "ginger garlic paste",
+        "turmeric",
+        "coriander powder",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Chana masala",
+      "category": "main course",
+      "catalogue_id": "772944635",
+      "price_cents": 24000,
+      "ingredients": [
+        "chickpeas",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "chole masala",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Kaju Curry",
+      "category": "main course",
+      "catalogue_id": "750818914",
+      "price_cents": 30000,
+      "ingredients": [
+        "cashew",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cream",
+        "garam masala",
+        "kashmiri chilli"
+      ]
+    },
+    {
+      "name": "Navratan korma",
+      "category": "main course",
+      "catalogue_id": "772947438",
+      "price_cents": 30000,
+      "ingredients": [
+        "mixed vegetables",
+        "cashew",
+        "paneer",
+        "onion",
+        "tomato",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Kaju khoya",
+      "category": "main course",
+      "catalogue_id": "772947492",
+      "price_cents": 32000,
+      "ingredients": [
+        "cashew",
+        "khoya",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Kaju Paneer",
+      "category": "main course",
+      "catalogue_id": "750819048",
+      "price_cents": 32300,
+      "ingredients": [
+        "cashew",
+        "paneer",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Matar Paneer",
+      "category": "main course",
+      "catalogue_id": "750817638",
+      "price_cents": 26000,
+      "ingredients": [
+        "green peas",
+        "paneer",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "garam masala",
+        "cream"
+      ]
+    },
+    {
+      "name": "Paneer Handi",
+      "category": "main course",
+      "catalogue_id": "750820671",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cashew paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Kadhai paneer",
+      "category": "main course",
+      "catalogue_id": "772946523",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "capsicum",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "kadhai masala",
+        "cream"
+      ]
+    },
+    {
+      "name": "Paneer korma",
+      "category": "main course",
+      "catalogue_id": "772946635",
+      "price_cents": 26000,
+      "ingredients": [
+        "paneer",
+        "onion",
+        "cashew paste",
+        "yogurt",
+        "cream",
+        "garam masala",
+        "kashmiri chilli"
+      ]
+    },
+    {
+      "name": "Paneer Butter Masala",
+      "category": "main course",
+      "catalogue_id": "750818569",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "tomato",
+        "butter",
+        "cream",
+        "ginger garlic paste",
+        "kashmiri chilli",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Paneer pasanda",
+      "category": "main course",
+      "catalogue_id": "772946764",
+      "price_cents": 30000,
+      "ingredients": [
+        "paneer",
+        "cashew paste",
+        "onion",
+        "tomato",
+        "cream",
+        "garam masala",
+        "kashmiri chilli"
+      ]
+    },
+    {
+      "name": "Shahi Paneer",
+      "category": "main course",
+      "catalogue_id": "750818488",
+      "price_cents": 26000,
+      "ingredients": [
+        "paneer",
+        "tomato",
+        "onion",
+        "cashew paste",
+        "cream",
+        "garam masala",
+        "kashmiri chilli"
+      ]
+    },
+    {
+      "name": "Paneer Lababdar",
+      "category": "main course",
+      "catalogue_id": "750818911",
+      "price_cents": 31000,
+      "ingredients": [
+        "paneer",
+        "tomato",
+        "onion",
+        "ginger garlic paste",
+        "cream",
+        "kasuri methi",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Khoya Paneer",
+      "category": "main course",
+      "catalogue_id": "750818913",
+      "price_cents": 30000,
+      "ingredients": [
+        "paneer",
+        "khoya",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Palak Paneer",
+      "category": "main course",
+      "catalogue_id": "750818912",
+      "price_cents": 26000,
+      "ingredients": [
+        "spinach",
+        "paneer",
+        "onion",
+        "ginger garlic paste",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Malai Kofta",
+      "category": "main course",
+      "catalogue_id": "750819047",
+      "price_cents": 28000,
+      "ingredients": [
+        "potato",
+        "paneer",
+        "cashew",
+        "onion",
+        "tomato",
+        "cream",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Paneer tikka masala",
+      "category": "main course",
+      "catalogue_id": "772947263",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "yogurt",
+        "tomato",
+        "onion",
+        "ginger garlic paste",
+        "cream",
+        "tikka masala"
+      ]
+    },
+    {
+      "name": "Paneer do pyaaza",
+      "category": "main course",
+      "catalogue_id": "772947360",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "coriander powder",
+        "garam masala"
+      ]
+    },
+    {
+      "name": "Plain Tawa Roti",
+      "category": "breads",
+      "catalogue_id": "750819238",
+      "price_cents": 1700,
+      "ingredients": [
+        "wheat flour",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Butter Tawa Roti",
+      "category": "breads",
+      "catalogue_id": "750819239",
+      "price_cents": 2400,
+      "ingredients": [
+        "wheat flour",
+        "butter",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Plain Tandoori Roti",
+      "category": "breads",
+      "catalogue_id": "750819240",
+      "price_cents": 2400,
+      "ingredients": [
+        "wheat flour",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Butter Tandoori Roti",
+      "category": "breads",
+      "catalogue_id": "750819241",
+      "price_cents": 3000,
+      "ingredients": [
+        "wheat flour",
+        "butter",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Stuffed Naan",
+      "category": "breads",
+      "catalogue_id": "750819243",
+      "price_cents": 11100,
+      "ingredients": [
+        "maida",
+        "potato",
+        "onion",
+        "ginger",
+        "coriander",
+        "yogurt",
+        "butter"
+      ]
+    },
+    {
+      "name": "Plain roti",
+      "category": "breads",
+      "catalogue_id": "772947522",
+      "price_cents": 2000,
+      "ingredients": [
+        "wheat flour",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Plain naan",
+      "category": "breads",
+      "catalogue_id": "772947762",
+      "price_cents": 9000,
+      "ingredients": [
+        "maida",
+        "yogurt",
+        "butter",
+        "salt"
+      ]
+    },
+    {
+      "name": "Plain paratha",
+      "category": "breads",
+      "catalogue_id": "772947763",
+      "price_cents": 6000,
+      "ingredients": [
+        "wheat flour",
+        "ghee",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Butter Naan",
+      "category": "breads",
+      "catalogue_id": "750819242",
+      "price_cents": 10000,
+      "ingredients": [
+        "maida",
+        "yogurt",
+        "butter",
+        "salt"
+      ]
+    },
+    {
+      "name": "Laccha Paratha",
+      "category": "breads",
+      "catalogue_id": "750820054",
+      "price_cents": 12000,
+      "ingredients": [
+        "wheat flour",
+        "ghee",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Paneer Paratha",
+      "category": "breads",
+      "catalogue_id": "750820135",
+      "price_cents": 16000,
+      "ingredients": [
+        "wheat flour",
+        "paneer",
+        "green chilli",
+        "coriander",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Aloo Paratha",
+      "category": "breads",
+      "catalogue_id": "750819438",
+      "price_cents": 12000,
+      "ingredients": [
+        "wheat flour",
+        "potato",
+        "green chilli",
+        "coriander",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Missi roti",
+      "category": "breads",
+      "catalogue_id": "772948346",
+      "price_cents": 10000,
+      "ingredients": [
+        "besan",
+        "wheat flour",
+        "onion",
+        "green chilli",
+        "ajwain",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Cheese naan",
+      "category": "breads",
+      "catalogue_id": "772948347",
+      "price_cents": 18000,
+      "ingredients": [
+        "maida",
+        "cheese",
+        "yogurt",
+        "butter",
+        "salt"
+      ]
+    },
+    {
+      "name": "Gralic naan",
+      "category": "breads",
+      "catalogue_id": "772948348",
+      "price_cents": 16000,
+      "ingredients": [
+        "maida",
+        "garlic",
+        "yogurt",
+        "butter",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Pudina paratha",
+      "category": "breads",
+      "catalogue_id": "772948349",
+      "price_cents": 12000,
+      "ingredients": [
+        "wheat flour",
+        "mint",
+        "green chilli",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Mix Paratha",
+      "category": "breads",
+      "catalogue_id": "750820134",
+      "price_cents": 13600,
+      "ingredients": [
+        "wheat flour",
+        "potato",
+        "cauliflower",
+        "onion",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Aloo do pyaaza",
+      "category": "breads",
+      "catalogue_id": "772948425",
+      "price_cents": 12000,
+      "ingredients": [
+        "potato",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "coriander powder",
+        "cumin"
+      ]
+    },
+    {
+      "name": "Plain rice",
+      "category": "rice and biryani",
+      "catalogue_id": "772949148",
+      "price_cents": 16000,
+      "ingredients": [
+        "basmati rice",
+        "water",
+        "salt"
+      ]
+    },
+    {
+      "name": "Jeera rice",
+      "category": "rice and biryani",
+      "catalogue_id": "772949149",
+      "price_cents": 18000,
+      "ingredients": [
+        "basmati rice",
+        "cumin",
+        "ghee",
+        "bay leaf"
+      ]
+    },
+    {
+      "name": "Veg pulao",
+      "category": "rice and biryani",
+      "catalogue_id": "772949150",
+      "price_cents": 17000,
+      "ingredients": [
+        "basmati rice",
+        "mixed vegetables",
+        "onion",
+        "ginger garlic paste",
+        "garam masala",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Matar pulao",
+      "category": "rice and biryani",
+      "catalogue_id": "772949151",
+      "price_cents": 18000,
+      "ingredients": [
+        "basmati rice",
+        "green peas",
+        "onion",
+        "ghee",
+        "cumin",
+        "bay leaf"
+      ]
+    },
+    {
+      "name": "Masala rice",
+      "category": "rice and biryani",
+      "catalogue_id": "772949152",
+      "price_cents": 19000,
+      "ingredients": [
+        "basmati rice",
+        "onion",
+        "tomato",
+        "ginger garlic paste",
+        "garam masala",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Paneer pulao",
+      "category": "rice and biryani",
+      "catalogue_id": "772949329",
+      "price_cents": 19000,
+      "ingredients": [
+        "basmati rice",
+        "paneer",
+        "onion",
+        "ginger garlic paste",
+        "garam masala",
+        "ghee"
+      ]
+    },
+    {
+      "name": "Veg Biryani",
+      "category": "rice and biryani",
+      "catalogue_id": "750820670",
+      "price_cents": 20000,
+      "ingredients": [
+        "basmati rice",
+        "mixed vegetables",
+        "onion",
+        "yogurt",
+        "ginger garlic paste",
+        "biryani masala",
+        "saffron"
+      ]
+    },
+    {
+      "name": "Veg Hyderabadi biryani",
+      "category": "rice and biryani",
+      "catalogue_id": "772949330",
+      "price_cents": 20000,
+      "ingredients": [
+        "basmati rice",
+        "mixed vegetables",
+        "onion",
+        "yogurt",
+        "ginger garlic paste",
+        "biryani masala",
+        "mint",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Aloo pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942288",
+      "price_cents": 14000,
+      "ingredients": [
+        "potato",
+        "besan",
+        "red chilli powder",
+        "ajwain",
+        "oil"
+      ]
+    },
+    {
+      "name": "Mirchi pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942289",
+      "price_cents": 14000,
+      "ingredients": [
+        "green chilli",
+        "besan",
+        "ajwain",
+        "oil",
+        "salt"
+      ]
+    },
+    {
+      "name": "Burger",
+      "category": "snacks",
+      "catalogue_id": "772942290",
+      "price_cents": 12000,
+      "ingredients": [
+        "burger bun",
+        "potato patty",
+        "onion",
+        "tomato",
+        "lettuce",
+        "mayonnaise",
+        "cheese"
+      ]
+    },
+    {
+      "name": "Paneer pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942291",
+      "price_cents": 28000,
+      "ingredients": [
+        "paneer",
+        "besan",
+        "red chilli powder",
+        "ajwain",
+        "oil"
+      ]
+    },
+    {
+      "name": "Mix pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942339",
+      "price_cents": 20000,
+      "ingredients": [
+        "onion",
+        "potato",
+        "cauliflower",
+        "besan",
+        "red chilli powder",
+        "ajwain",
+        "oil"
+      ]
+    },
+    {
+      "name": "Bread pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942340",
+      "price_cents": 10000,
+      "ingredients": [
+        "bread",
+        "potato",
+        "besan",
+        "red chilli powder",
+        "ajwain",
+        "oil"
+      ]
+    },
+    {
+      "name": "Pyaaz pakoda",
+      "category": "snacks",
+      "catalogue_id": "772942341",
+      "price_cents": 14000,
+      "ingredients": [
+        "onion",
+        "besan",
+        "red chilli powder",
+        "ajwain",
+        "oil"
+      ]
+    },
+    {
+      "name": "Roasted papad",
+      "category": "accompaniments",
+      "catalogue_id": "772941518",
+      "price_cents": 4000,
+      "ingredients": [
+        "papad"
+      ]
+    },
+    {
+      "name": "Roasted masala papad",
+      "category": "accompaniments",
+      "catalogue_id": "772941519",
+      "price_cents": 6000,
+      "ingredients": [
+        "papad",
+        "onion",
+        "tomato",
+        "chaat masala",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Fried masala papad",
+      "category": "accompaniments",
+      "catalogue_id": "772941520",
+      "price_cents": 8000,
+      "ingredients": [
+        "papad",
+        "onion",
+        "tomato",
+        "chaat masala",
+        "coriander",
+        "oil"
+      ]
+    },
+    {
+      "name": "Fried papad",
+      "category": "accompaniments",
+      "catalogue_id": "772941521",
+      "price_cents": 6000,
+      "ingredients": [
+        "papad",
+        "oil"
+      ]
+    },
+    {
+      "name": "Boondi raita",
+      "category": "accompaniments",
+      "catalogue_id": "772949545",
+      "price_cents": 12000,
+      "ingredients": [
+        "yogurt",
+        "boondi",
+        "cumin powder",
+        "salt",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Mix veg raita",
+      "category": "accompaniments",
+      "catalogue_id": "772949546",
+      "price_cents": 14000,
+      "ingredients": [
+        "yogurt",
+        "cucumber",
+        "tomato",
+        "onion",
+        "cumin powder",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Plain dahi",
+      "category": "accompaniments",
+      "catalogue_id": "772949547",
+      "price_cents": 7000,
+      "ingredients": [
+        "yogurt"
+      ]
+    },
+    {
+      "name": "Fresh lemon soda",
+      "category": "beverages",
+      "catalogue_id": "772941966",
+      "price_cents": 8000,
+      "ingredients": [
+        "lemon",
+        "soda water",
+        "sugar",
+        "salt"
+      ]
+    },
+    {
+      "name": "Fresh lemon water soda",
+      "category": "beverages",
+      "catalogue_id": "772941967",
+      "price_cents": 10000,
+      "ingredients": [
+        "lemon",
+        "soda water",
+        "sugar",
+        "salt"
+      ]
+    },
+    {
+      "name": "Fresh nimbu pani",
+      "category": "beverages",
+      "catalogue_id": "772941968",
+      "price_cents": 6000,
+      "ingredients": [
+        "lemon",
+        "water",
+        "sugar",
+        "salt",
+        "cumin powder"
+      ]
+    },
+    {
+      "name": "Chaas",
+      "category": "beverages",
+      "catalogue_id": "772949647",
+      "price_cents": 5000,
+      "ingredients": [
+        "yogurt",
+        "water",
+        "cumin powder",
+        "salt",
+        "coriander"
+      ]
+    },
+    {
+      "name": "Sweet lassi",
+      "category": "beverages",
+      "catalogue_id": "772949648",
+      "price_cents": 8000,
+      "ingredients": [
+        "yogurt",
+        "sugar",
+        "water",
+        "cardamom"
+      ]
+    },
+    {
+      "name": "Namkeen lassi",
+      "category": "beverages",
+      "catalogue_id": "772949649",
+      "price_cents": 8000,
+      "ingredients": [
+        "yogurt",
+        "salt",
+        "cumin powder",
+        "water"
+      ]
+    }
+  ]
+}

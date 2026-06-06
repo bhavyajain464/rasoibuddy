@@ -1,8 +1,7 @@
 {
-  "extends": "./frontend/kitchenai-frontend/tsconfig.json",
-  "include": [
-    "frontend/kitchenai-frontend/**/*.ts",
-    "frontend/kitchenai-frontend/**/*.tsx"
-  ],
-  "exclude": ["**/node_modules", "**/android", "**/ios"]
+  "files": [],
+  "references": [
+    { "path": "./frontend/kitchenai-frontend" },
+    { "path": "./frontend/kitchenai-restaurant" }
+  ]
 }
