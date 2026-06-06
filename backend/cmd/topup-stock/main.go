@@ -41,7 +41,7 @@ func main() {
 	if err := sqlDB.QueryRowContext(ctx, `
 		SELECT z.order_id::text, COALESCE(s.actor_user_id::text, '')
 		FROM zomato_external_orders z
-		LEFT JOIN zomato_kitchen_sync s ON s.kitchen_id = z.kitchen_id
+		LEFT JOIN partner_order_sync s ON s.kitchen_id = z.kitchen_id
 		WHERE z.external_order_id = $1 AND z.kitchen_id = $2
 	`, extID, kid).Scan(&orderID, &actorID); err != nil {
 		return

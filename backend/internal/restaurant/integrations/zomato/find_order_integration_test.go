@@ -27,8 +27,12 @@ func TestFindOrder8207761308(t *testing.T) {
 	var authJSON []byte
 	var outletID string
 	if err := db.QueryRow(`
-		SELECT auth_json, COALESCE(outlet_id,'')
-		FROM zomato_kitchen_sync WHERE kitchen_id = $1
+		SELECT a.auth_json, COALESCE(o.partner_outlet_id, '')
+		FROM zomato_kitchen_auth a
+		LEFT JOIN partner_order_sync o ON o.kitchen_id = a.kitchen_id
+		WHERE a.kitchen_id = $1
+		ORDER BY o.updated_at DESC NULLS LAST
+		LIMIT 1
 	`, kitchenID).Scan(&authJSON, &outletID); err != nil {
 		t.Fatal(err)
 	}

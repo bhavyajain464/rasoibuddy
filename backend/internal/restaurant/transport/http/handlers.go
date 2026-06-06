@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -11,12 +10,21 @@ import (
 	"time"
 
 	restmw "kitchenai-backend/internal/restaurant/middleware"
-	zomatosvc "kitchenai-backend/internal/restaurant/integrations/zomato"
+	zomatosvc 	"kitchenai-backend/internal/restaurant/integrations/zomato"
 	"kitchenai-backend/internal/restaurant/services"
+	"kitchenai-backend/internal/restaurant/staff"
 	"kitchenai-backend/pkg/contracts"
 
 	"github.com/gorilla/mux"
 )
+
+func isMissingRelation(err error, table string) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "does not exist") && strings.Contains(msg, strings.ToLower(table))
+}
 
 type Handler struct {
 	kitchen    contracts.KitchenService
@@ -51,7 +59,7 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/restaurant/kitchens", h.listMyKitchens).Methods("GET", "OPTIONS")
 	r.HandleFunc("/restaurant/kitchen", h.createKitchen).Methods("POST", "OPTIONS")
 	r.HandleFunc("/restaurant/join", h.joinKitchen).Methods("POST", "OPTIONS")
-	r.HandleFunc("/restaurant/join-by-outlet", h.joinKitchenByOutlet).Methods("POST", "OPTIONS")
+	r.HandleFunc("/restaurant/join-by-outlet", h.joinKitchenByOutletID).Methods("POST", "OPTIONS")
 	r.HandleFunc("/restaurant/provision-zomato", h.provisionRestaurantWithZomato).Methods("POST", "OPTIONS")
 
 	k := r.PathPrefix("/restaurant/{kitchen_id}").Subrouter()
@@ -61,8 +69,9 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	k.HandleFunc("", h.getKitchen).Methods("GET", "OPTIONS")
 	k.HandleFunc("/members", h.listMembers).Methods("GET", "OPTIONS")
 	k.HandleFunc("/members", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.addMember)).ServeHTTP).Methods("POST", "OPTIONS")
+	k.HandleFunc("/members/invite", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.cancelMemberInvite)).ServeHTTP).Methods("DELETE", "OPTIONS")
 	k.HandleFunc("/members/{user_id}", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleOwner)(http.HandlerFunc(h.updateMemberRole)).ServeHTTP).Methods("PATCH", "OPTIONS")
-	k.HandleFunc("/members/{user_id}", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleOwner)(http.HandlerFunc(h.removeMember)).ServeHTTP).Methods("DELETE", "OPTIONS")
+	k.HandleFunc("/members/{user_id}", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.removeMember)).ServeHTTP).Methods("DELETE", "OPTIONS")
 
 	k.HandleFunc("/menu", h.listMenu).Methods("GET", "OPTIONS")
 	k.HandleFunc("/menu", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.upsertMenu)).ServeHTTP).Methods("POST", "OPTIONS")
@@ -124,18 +133,37 @@ func (h *Handler) listMyKitchens(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	memberships, err := h.kitchen.ListRestaurantMemberships(r.Context(), userID)
+	rows, err := h.db.QueryContext(r.Context(), `
+		SELECT km.kitchen_id::text, km.role, k.name
+		FROM kitchen_members km
+		JOIN kitchens k ON k.kitchen_id = km.kitchen_id
+		WHERE km.user_id = $1 AND km.kitchen_kind = 'restaurant'
+		ORDER BY km.joined_at
+	`, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer rows.Close()
 	type view struct {
 		KitchenID string `json:"kitchen_id"`
+		OutletID  string `json:"outlet_id"`
 		Role      string `json:"role"`
+		Name      string `json:"name"`
 	}
-	out := make([]view, 0, len(memberships))
-	for _, m := range memberships {
-		out = append(out, view{KitchenID: m.KitchenID, Role: m.Role})
+	out := make([]view, 0)
+	for rows.Next() {
+		var v view
+		if err := rows.Scan(&v.KitchenID, &v.Role, &v.Name); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		v.OutletID = v.KitchenID
+		out = append(out, v)
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -155,25 +183,19 @@ func (h *Handler) createKitchen(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusCreated, k)
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"kitchen_id":  k.KitchenID,
+		"outlet_id":   k.KitchenID,
+		"name":        k.Name,
+		"invite_code": k.InviteCode,
+		"role":        contracts.RoleOwner,
+	})
 }
 
-func (h *Handler) userHasRestaurant(ctx context.Context, userID string) (bool, error) {
-	memberships, err := h.kitchen.ListRestaurantMemberships(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	return len(memberships) > 0, nil
-}
-
-func (h *Handler) joinKitchenByOutlet(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) joinKitchenByOutletID(w http.ResponseWriter, r *http.Request) {
 	userID := restmw.UserIDFromRequest(r)
 	if userID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	if h.zomato == nil {
-		http.Error(w, "zomato integration not configured", http.StatusServiceUnavailable)
 		return
 	}
 	var req struct {
@@ -188,26 +210,43 @@ func (h *Handler) joinKitchenByOutlet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "outlet_id required", http.StatusBadRequest)
 		return
 	}
-	hasRestaurant, err := h.userHasRestaurant(r.Context(), userID)
+	k, err := h.kitchen.GetKitchen(r.Context(), outletID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if hasRestaurant {
-		http.Error(w, "you already belong to a restaurant", http.StatusConflict)
+	if k == nil || k.Kind != contracts.KitchenKindRestaurant {
+		http.Error(w, "outlet not found", http.StatusNotFound)
 		return
 	}
-	kitchenID, err := h.zomato.KitchenIDByOutletID(r.Context(), outletID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if existing, _ := h.kitchen.GetMembership(r.Context(), outletID, userID); existing != nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"kitchen_id": k.KitchenID,
+			"outlet_id":  k.KitchenID,
+			"name":       k.Name,
+			"role":       existing.Role,
+		})
 		return
 	}
-	if err := h.kitchen.AddMember(r.Context(), kitchenID, userID, contracts.RoleStaff); err != nil {
+	var userEmail string
+	_ = h.db.QueryRowContext(r.Context(), `SELECT LOWER(email) FROM users WHERE user_id = $1`, userID).Scan(&userEmail)
+	if blocked, err := staff.IsRevoked(r.Context(), h.db, outletID, userID, userEmail); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if blocked {
+		http.Error(w, "You were removed from this outlet. Ask the owner to add you back.", http.StatusForbidden)
+		return
+	}
+	if err := h.kitchen.AddMember(r.Context(), outletID, userID, contracts.RoleStaff); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	k, _ := h.kitchen.GetKitchen(r.Context(), kitchenID)
-	writeJSON(w, http.StatusOK, k)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"kitchen_id": k.KitchenID,
+		"outlet_id":  k.KitchenID,
+		"name":       k.Name,
+		"role":       contracts.RoleStaff,
+	})
 }
 
 func (h *Handler) provisionRestaurantWithZomato(w http.ResponseWriter, r *http.Request) {
@@ -226,56 +265,60 @@ func (h *Handler) provisionRestaurantWithZomato(w http.ResponseWriter, r *http.R
 		return
 	}
 	var req struct {
-		Name         string `json:"name"`
-		OutletID     string `json:"outlet_id"`
-		OutletName   string `json:"outlet_name"`
-		CookieHeader string `json:"cookie_header"`
+		Name               string `json:"name"`
+		PartnerOutletID    string `json:"partner_outlet_id"`
+		PartnerOutletName  string `json:"partner_outlet_name"`
+		PartnerStoreID     string `json:"partner_store_id"`
+		OutletID           string `json:"outlet_id"`
+		PartnerStoreName   string `json:"partner_store_name"`
+		OutletName         string `json:"outlet_name"`
+		CookieHeader       string `json:"cookie_header"`
 	}
 	if err := json.Unmarshal(raw, &req); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
-	outletID := strings.TrimSpace(req.OutletID)
-	if outletID == "" {
-		http.Error(w, "outlet_id required", http.StatusBadRequest)
+	partnerOutletID := strings.TrimSpace(req.PartnerOutletID)
+	if partnerOutletID == "" {
+		partnerOutletID = strings.TrimSpace(req.PartnerStoreID)
+	}
+	if partnerOutletID == "" {
+		partnerOutletID = strings.TrimSpace(req.OutletID)
+	}
+	if partnerOutletID == "" {
+		http.Error(w, "partner_outlet_id required (partner platform store id)", http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(req.CookieHeader) == "" {
 		http.Error(w, "cookie_header required — paste Zomato partner cookies after login", http.StatusBadRequest)
 		return
 	}
-	hasRestaurant, err := h.userHasRestaurant(r.Context(), userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if hasRestaurant {
-		http.Error(w, "you already belong to a restaurant", http.StatusConflict)
-		return
-	}
-	taken, err := h.zomato.IsOutletRegistered(r.Context(), outletID)
+	taken, err := h.zomato.IsOutletRegistered(r.Context(), partnerOutletID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if taken {
-		http.Error(w, "this outlet is already registered — use Join with the outlet ID instead", http.StatusConflict)
+		http.Error(w, "this Zomato store is already linked — ask the owner for the KitchenAI outlet ID to join", http.StatusConflict)
 		return
 	}
 
-	// Phase 1: validate Zomato session + outlet — no kitchen row is created until this passes.
+	// Phase 1: validate Zomato session + partner store — no kitchen row is created until this passes.
 	auth, err := zomatosvc.ParseAuth(raw)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := h.zomato.ValidateAuthForOutlet(r.Context(), auth, outletID); err != nil {
+	if err := h.zomato.ValidateAuthForOutlet(r.Context(), auth, partnerOutletID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Phase 2: create kitchen only after cookie/outlet validation succeeded.
+	// Phase 2: create kitchen only after cookie/partner store validation succeeded.
 	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = strings.TrimSpace(req.PartnerStoreName)
+	}
 	if name == "" {
 		name = strings.TrimSpace(req.OutletName)
 	}
@@ -285,28 +328,42 @@ func (h *Handler) provisionRestaurantWithZomato(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Phase 3: save validated session + outlet, then try to start polling.
-	outletName := strings.TrimSpace(req.OutletName)
-	if err := h.zomato.SaveProvisionedSession(r.Context(), k.KitchenID, userID, outletID, outletName, auth); err != nil {
+	// Phase 3: save validated session + partner worker, then try to start polling.
+	partnerOutletName := strings.TrimSpace(req.PartnerOutletName)
+	if partnerOutletName == "" {
+		partnerOutletName = strings.TrimSpace(req.PartnerStoreName)
+	}
+	if partnerOutletName == "" {
+		partnerOutletName = strings.TrimSpace(req.OutletName)
+	}
+	if err := h.zomato.SaveProvisionedSession(r.Context(), k.KitchenID, userID, partnerOutletID, partnerOutletName, auth); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	authRaw, _ := json.Marshal(auth)
 	st, syncErr := h.zomato.StartSync(r.Context(), k.KitchenID, userID, zomatosvc.StartCredentials{
-		OutletID:     outletID,
-		OutletName:   outletName,
-		AuthJSON:     authRaw,
-		AuthVerified: true,
+		Partner:           "zomato",
+		PartnerOutletID:   partnerOutletID,
+		PartnerOutletName: partnerOutletName,
+		PartnerStoreID:    partnerOutletID,
+		PartnerStoreName:  partnerOutletName,
+		OutletID:          partnerOutletID,
+		OutletName:        partnerOutletName,
+		AuthJSON:          authRaw,
+		AuthVerified:      true,
 	})
 	resp := map[string]any{
-		"kitchen_id":  k.KitchenID,
-		"name":        k.Name,
-		"outlet_id":   outletID,
-		"outlet_name": outletName,
-		"sync_started": syncErr == nil,
+		"kitchen_id":          k.KitchenID,
+		"outlet_id":           k.KitchenID,
+		"name":                k.Name,
+		"partner_outlet_id":   partnerOutletID,
+		"partner_outlet_name": partnerOutletName,
+		"partner_store_id":    partnerOutletID,
+		"partner_store_name":  partnerOutletName,
+		"sync_started":        syncErr == nil,
 	}
 	if syncErr != nil {
-		_ = h.zomato.MarkSyncError(r.Context(), k.KitchenID, syncErr.Error())
+		_ = h.zomato.MarkSyncError(r.Context(), k.KitchenID, partnerOutletID, syncErr.Error())
 		if idle, _ := h.zomato.GetStatus(r.Context(), k.KitchenID); idle != nil {
 			resp["sync_status"] = idle
 		}
@@ -348,12 +405,27 @@ func (h *Handler) joinKitchen(w http.ResponseWriter, r *http.Request) {
 	if role == "" {
 		role = contracts.RoleStaff
 	}
+	var userEmail string
+	_ = h.db.QueryRowContext(r.Context(), `SELECT LOWER(email) FROM users WHERE user_id = $1`, userID).Scan(&userEmail)
+	if blocked, err := staff.IsRevoked(r.Context(), h.db, kitchenID, userID, userEmail); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if blocked {
+		http.Error(w, "You were removed from this outlet. Ask the owner to add you back.", http.StatusForbidden)
+		return
+	}
 	if err := h.kitchen.AddMember(r.Context(), kitchenID, userID, role); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	k, _ := h.kitchen.GetKitchen(r.Context(), kitchenID)
-	writeJSON(w, http.StatusOK, k)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"kitchen_id":  k.KitchenID,
+		"outlet_id":   k.KitchenID,
+		"name":        k.Name,
+		"invite_code": k.InviteCode,
+		"role":        role,
+	})
 }
 
 func (h *Handler) listInventory(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +466,17 @@ func (h *Handler) getKitchen(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, k)
+	if k == nil {
+		http.Error(w, "outlet not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"kitchen_id":  k.KitchenID,
+		"outlet_id":   k.KitchenID,
+		"name":        k.Name,
+		"invite_code": k.InviteCode,
+		"kind":        k.Kind,
+	})
 }
 
 func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {
@@ -410,11 +492,39 @@ func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {
 		_ = h.db.QueryRowContext(r.Context(), `SELECT email, name FROM users WHERE user_id = $1`, m.UserID).Scan(&v.Email, &v.Name)
 		views = append(views, v)
 	}
+	pendingRows, err := h.db.QueryContext(r.Context(), `
+		SELECT email, role, created_at
+		FROM restaurant_staff_invites
+		WHERE kitchen_id = $1
+		ORDER BY created_at
+	`, kitchenID)
+	if err != nil {
+		if !isMissingRelation(err, "restaurant_staff_invites") {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		defer pendingRows.Close()
+		for pendingRows.Next() {
+			var v services.KitchenMemberView
+			if err := pendingRows.Scan(&v.Email, &v.Role, &v.JoinedAt); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			v.Pending = true
+			views = append(views, v)
+		}
+		if err := pendingRows.Err(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	writeJSON(w, http.StatusOK, views)
 }
 
 func (h *Handler) addMember(w http.ResponseWriter, r *http.Request) {
 	kitchenID := restmw.KitchenIDFromContext(r)
+	inviterID := restmw.UserIDFromRequest(r)
 	var req struct {
 		Email string `json:"email"`
 		Role  string `json:"role"`
@@ -423,25 +533,62 @@ func (h *Handler) addMember(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
-	var userID string
-	err := h.db.QueryRowContext(r.Context(), `SELECT user_id::text FROM users WHERE LOWER(email) = LOWER($1)`, strings.TrimSpace(req.Email)).Scan(&userID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "user not found — they must sign in once first", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		http.Error(w, "email required", http.StatusBadRequest)
 		return
 	}
 	role := req.Role
 	if role == "" {
 		role = contracts.RoleStaff
 	}
+
+	var userID string
+	err := h.db.QueryRowContext(r.Context(), `SELECT user_id::text FROM users WHERE LOWER(email) = $1`, email).Scan(&userID)
+	if err == sql.ErrNoRows {
+		if err := staff.ClearRevocation(r.Context(), h.db, kitchenID, email); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = h.db.ExecContext(r.Context(), `
+			INSERT INTO restaurant_staff_invites (kitchen_id, email, role, invited_by)
+			VALUES ($1, $2, $3, NULLIF($4, '')::uuid)
+			ON CONFLICT (kitchen_id, email) DO UPDATE SET
+				role = EXCLUDED.role,
+				invited_by = EXCLUDED.invited_by
+		`, kitchenID, email, role, inviterID)
+		if err != nil {
+			if isMissingRelation(err, "restaurant_staff_invites") {
+				http.Error(w, "staff invites not configured — run migration 028_restaurant_staff_invites.sql", http.StatusServiceUnavailable)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{
+			"email":   email,
+			"role":    role,
+			"pending": true,
+		})
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := staff.ClearRevocation(r.Context(), h.db, kitchenID, email); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if err := h.kitchen.AddMember(r.Context(), kitchenID, userID, role); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]string{"user_id": userID, "role": role})
+	_, _ = h.db.ExecContext(r.Context(), `
+		DELETE FROM restaurant_staff_invites
+		WHERE kitchen_id = $1 AND LOWER(email) = LOWER($2)
+	`, kitchenID, email)
+	writeJSON(w, http.StatusCreated, map[string]string{"user_id": userID, "role": role, "email": email})
 }
 
 func (h *Handler) updateMemberRole(w http.ResponseWriter, r *http.Request) {
@@ -464,11 +611,33 @@ func (h *Handler) updateMemberRole(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 	kitchenID := restmw.KitchenIDFromContext(r)
 	userID := mux.Vars(r)["user_id"]
-	if err := h.kitchen.RemoveMember(r.Context(), kitchenID, userID); err != nil {
+	revokedBy := restmw.UserIDFromRequest(r)
+	if err := staff.RemoveMember(r.Context(), h.db, kitchenID, userID, revokedBy); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "removed"})
+}
+
+func (h *Handler) cancelMemberInvite(w http.ResponseWriter, r *http.Request) {
+	kitchenID := restmw.KitchenIDFromContext(r)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		http.Error(w, "email required", http.StatusBadRequest)
+		return
+	}
+	if err := staff.CancelInvite(r.Context(), h.db, kitchenID, email); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "invite cancelled"})
 }
 
 func (h *Handler) listMenu(w http.ResponseWriter, r *http.Request) {

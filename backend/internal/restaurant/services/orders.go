@@ -31,10 +31,10 @@ type CreateOrderInput struct {
 }
 
 type AggregatorLineInput struct {
-	MenuItemID   string
-	Name         string
-	Qty          int
-	PriceCents   int
+	MenuItemID string
+	Name       string
+	Qty        int
+	PriceCents int
 }
 
 type CreateAggregatorOrderInput struct {
@@ -45,8 +45,8 @@ type CreateAggregatorOrderInput struct {
 }
 
 const (
-	OrderStatusProcessed  = "processed"
-	OrderStatusInProcess  = "in_process"
+	OrderStatusProcessed = "processed"
+	OrderStatusInProcess = "in_process"
 )
 
 func formatItemsSummary(lines []OrderLine) string {

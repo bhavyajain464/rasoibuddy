@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"kitchenai-backend/internal/models"
+	restaurantinvites "kitchenai-backend/internal/restaurant/invites"
 	"kitchenai-backend/pkg/config"
 
 	"github.com/google/uuid"
@@ -96,6 +97,9 @@ func (s *AuthService) LoginWithGoogleAndMetadata(ctx context.Context, idToken st
 	user, err := s.upsertGoogleUser(*profile)
 	if err != nil {
 		return nil, err
+	}
+	if err := applyPendingRestaurantInvites(ctx, s.db, user.UserID, user.Email); err != nil {
+		log.Printf("apply pending restaurant invites: %v", err)
 	}
 
 	return s.createSession(user, "google", metadata)
@@ -488,4 +492,8 @@ func GenerateRandomSecret() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func applyPendingRestaurantInvites(ctx context.Context, db *sql.DB, userID, email string) error {
+	return restaurantinvites.ApplyPendingStaffInvites(ctx, db, userID, email)
 }

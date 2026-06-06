@@ -43,7 +43,7 @@ func main() {
 	var userID string
 	err = sqlDB.QueryRow(`
 		SELECT COALESCE(actor_user_id::text, '')
-		FROM zomato_kitchen_sync WHERE kitchen_id = $1
+		FROM partner_order_sync WHERE kitchen_id = $1
 	`, kitchenID).Scan(&userID)
 	if err != nil || userID == "" {
 		err = sqlDB.QueryRow(`

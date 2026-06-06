@@ -104,11 +104,12 @@ type UsageReportRow struct {
 }
 
 type KitchenMemberView struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email,omitempty"`
-	Name     string `json:"name,omitempty"`
-	Role     string `json:"role"`
-	JoinedAt time.Time `json:"joined_at"`
+	UserID   string    `json:"user_id,omitempty"`
+	Email    string    `json:"email,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joined_at,omitempty"`
+	Pending  bool      `json:"pending,omitempty"`
 }
 
 type BillingPlan struct {

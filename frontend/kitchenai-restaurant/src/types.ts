@@ -1,13 +1,80 @@
+// Product vocabulary: Outlet = business location (menu/stock/orders).
+// kitchen_id in API responses is also exposed as outlet_id.
+
+export type OutletRef = {
+  /** Our outlet id (same as kitchen_id in legacy API). */
+  outlet_id: string;
+  /** @deprecated Use outlet_id — kept for backward compatibility. */
+  kitchen_id: string;
+  role: string;
+  name?: string;
+};
+
+/** @deprecated Use OutletRef */
+export type KitchenRef = OutletRef;
+
+export type PartnerWorkerStatus = {
+  partner: string;
+  partner_outlet_id: string;
+  partner_outlet_name?: string;
+  status: string;
+  last_sync_at?: string;
+  last_error?: string;
+  last_sync_message?: string;
+  last_sync_ok?: boolean;
+  orders_imported_count?: number;
+  poll_interval_minutes?: number;
+  next_poll_at?: string;
+  sync_mode?: string;
+  /** @deprecated Use partner_outlet_id */
+  partner_store_id?: string;
+  partner_store_name?: string;
+  /** @deprecated Partner store id was wrongly named outlet_id */
+  outlet_id?: string;
+  outlet_name?: string;
+};
+
+export type OutletIntegrationsStatus = {
+  session_saved?: boolean;
+  poll_interval_minutes?: number;
+  sync_mode?: string;
+  workers: PartnerWorkerStatus[];
+  /** @deprecated Use workers */
+  outlets?: PartnerWorkerStatus[];
+};
+
+export function integrationWorkers(st: OutletIntegrationsStatus | null | undefined): PartnerWorkerStatus[] {
+  if (!st) return [];
+  return st.workers?.length ? st.workers : st.outlets ?? [];
+}
+
+export function workerStoreId(w: PartnerWorkerStatus): string {
+  return w.partner_outlet_id || w.partner_store_id || w.outlet_id || '';
+}
+
+export function workerLabel(w: PartnerWorkerStatus): string {
+  const id = workerStoreId(w);
+  const name = w.partner_outlet_name?.trim() || w.partner_store_name?.trim() || w.outlet_name?.trim();
+  const partner = w.partner?.trim() || 'partner';
+  if (name && id) return `${partner}: ${name} (${id})`;
+  if (name) return `${partner}: ${name}`;
+  return id ? `${partner}: ${id}` : partner;
+}
+
+export type OutletMember = {
+  user_id?: string;
+  email?: string;
+  name?: string;
+  role: string;
+  joined_at?: string;
+  pending?: boolean;
+};
+
 export type AuthUser = {
   user_id: string;
   email: string;
   name: string;
   picture_url?: string;
-};
-
-export type KitchenRef = {
-  kitchen_id: string;
-  role: string;
 };
 
 export type MenuItem = {

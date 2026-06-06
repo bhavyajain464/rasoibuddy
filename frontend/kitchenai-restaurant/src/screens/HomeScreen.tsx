@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -19,32 +19,18 @@ import { openProfile } from '../navigation/rootNavigation';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
-import { InventoryListPage, InventoryRow, MenuItem, MenuListPage, Order, OrderListPage, RecipeIngredient, ShoppingRow } from '../types';
+import { integrationWorkers, InventoryListPage, InventoryRow, MenuItem, MenuListPage, Order, OrderListPage, OutletIntegrationsStatus, PartnerWorkerStatus, RecipeIngredient, ShoppingRow } from '../types';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { palette } from '../theme';
 
-type ZomatoStatus = {
-  status: string;
-  last_sync_at?: string;
-  last_error?: string;
-  last_sync_message?: string;
-  last_sync_ok?: boolean;
-  orders_imported_count?: number;
-  poll_interval_minutes?: number;
-  next_poll_at?: string;
-  session_saved?: boolean;
-  outlet_id?: string;
-  outlet_name?: string;
-};
-
 type HomeSummary = {
-  kitchenName: string;
+  outletName: string;
   orders: Order[];
   inventory: InventoryRow[];
   shopping: ShoppingRow[];
   menuItems: MenuItem[];
   menuCount: number;
-  zomato: ZomatoStatus | null;
+  integrations: OutletIntegrationsStatus | null;
 };
 
 const LOW_STOCK_MAX = 1;
@@ -56,21 +42,30 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function zomatoStatusLabel(st: ZomatoStatus | null): string {
+function partnerStatusLabel(st: OutletIntegrationsStatus | null): string {
   if (!st) return 'Not configured';
-  if (st.status === 'running') return 'Syncing';
-  if (st.status === 'login_required') return 'Reconnect needed';
-  if (st.status === 'error') return 'Sync error';
-  if (st.session_saved) return 'Connected — idle';
+  const workers = integrationWorkers(st);
+  const running = workers.filter((o) => o.status === 'running');
+  if (running.length > 0) {
+    return running.length === 1 ? '1 worker live' : `${running.length} workers live`;
+  }
+  if (workers.some((o) => o.status === 'login_required')) return 'Reconnect partner session';
+  if (workers.some((o) => o.status === 'error')) return 'Worker error';
+  if (st.session_saved) return workers.length ? 'Connected · idle' : 'Session saved';
   return 'Not connected';
+}
+
+function primaryRunningWorker(st: OutletIntegrationsStatus | null): PartnerWorkerStatus | undefined {
+  const workers = integrationWorkers(st);
+  return workers.find((o) => o.status === 'running') ?? workers[0];
 }
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { kitchen } = useRestaurant();
-  const kitchenId = kitchen?.kitchen_id ?? '';
+  const { outlet } = useRestaurant();
+  const outletId = outlet?.outlet_id ?? outlet?.kitchen_id ?? '';
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState<HomeSummary | null>(null);
@@ -82,46 +77,54 @@ export default function HomeScreen() {
   const [ordersExpanded, setOrdersExpanded] = useState(false);
 
   const load = useCallback(async () => {
-    if (!kitchenId) {
+    if (!outletId) {
       setSummary(null);
       setLoading(false);
       return;
     }
     try {
-      const [kitchenRes, orders, inventory, shoppingRes, menu, zomato] = await Promise.all([
-        restaurantFetch<{ name?: string }>(`/restaurant/${kitchenId}`).catch(() => ({ name: '' })),
-        restaurantFetch<OrderListPage>(`/restaurant/${kitchenId}/orders?limit=50`)
+      const [outletRes, orders, inventory, shoppingRes, menu, integrations] = await Promise.all([
+        restaurantFetch<{ name?: string }>(`/restaurant/${outletId}`).catch(() => ({ name: '' })),
+        restaurantFetch<OrderListPage>(`/restaurant/${outletId}/orders?limit=50`)
           .then((page) => page.orders ?? [])
           .catch(() => []),
-        restaurantFetch<InventoryListPage>(`/restaurant/${kitchenId}/inventory?limit=100`)
+        restaurantFetch<InventoryListPage>(`/restaurant/${outletId}/inventory?limit=100`)
           .then((page) => page.items ?? [])
           .catch(() => []),
-        restaurantFetch<{ items: ShoppingRow[] }>(`/restaurant/${kitchenId}/shopping`).catch(() => ({ items: [] })),
-        restaurantFetch<MenuListPage>(`/restaurant/${kitchenId}/menu?active=true&limit=50`)
+        restaurantFetch<{ items: ShoppingRow[] }>(`/restaurant/${outletId}/shopping`).catch(() => ({ items: [] })),
+        restaurantFetch<MenuListPage>(`/restaurant/${outletId}/menu?active=true&limit=50`)
           .then((page) => page.items ?? [])
           .catch(() => []),
-        restaurantFetch<ZomatoStatus>(`/restaurant/${kitchenId}/integrations/zomato/status`).catch(() => null),
+        restaurantFetch<OutletIntegrationsStatus>(`/restaurant/${outletId}/integrations/zomato/status`).catch(
+          () => null,
+        ),
       ]);
       const menuList = Array.isArray(menu) ? menu : [];
       setSummary({
-        kitchenName: kitchenRes?.name?.trim() || 'Your restaurant',
+        outletName: outletRes?.name?.trim() || 'Your outlet',
         orders: orders ?? [],
         inventory: inventory ?? [],
         shopping: shoppingRes?.items ?? [],
         menuItems: menuList,
         menuCount: menuList.length,
-        zomato: zomato,
+        integrations,
       });
     } finally {
       setLoading(false);
     }
-  }, [kitchenId]);
+  }, [outletId]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load]),
   );
+
+  useEffect(() => {
+    if (!outletId) return;
+    setLoading(true);
+    void load();
+  }, [outletId, load]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -133,15 +136,17 @@ export default function HomeScreen() {
   };
 
   const firstName = user?.name?.split(' ')[0] ?? 'Partner';
+  const outletDisplayName = outlet?.name?.trim() || summary?.outletName || 'Your outlet';
   const orders = summary?.orders ?? [];
   const inProcessOrders = orders.filter((o) => o.status === 'in_process' || o.status === 'open');
   const lowStock = (summary?.inventory ?? []).filter((i) => i.qty <= LOW_STOCK_MAX);
-  const zomato = summary?.zomato ?? null;
-  const zomatoRunning = zomato?.status === 'running';
+  const integrations = summary?.integrations ?? null;
+  const zomatoWorker = primaryRunningWorker(integrations);
+  const workers = integrationWorkers(integrations);
+  const zomatoRunning = workers.some((o) => o.status === 'running');
   const zomatoNeedsAttention =
-    zomato?.status === 'error' ||
-    zomato?.status === 'login_required' ||
-    (!zomatoRunning && zomato?.session_saved && zomato?.status === 'idle');
+    workers.some((o) => o.status === 'error' || o.status === 'login_required') ||
+    (!zomatoRunning && integrations?.session_saved && workers.some((o) => o.status === 'idle'));
 
   const navigateTab = (tab: 'Orders' | 'Stock' | 'Menu' | 'Buy') => {
     navigation.navigate(tab);
@@ -152,10 +157,10 @@ export default function HomeScreen() {
     category: string;
     ingredients: IngredientDraft[];
   }) => {
-    if (!kitchenId) return;
+    if (!outletId) return;
     setSavingMenu(true);
     try {
-      const saved = await restaurantFetch<MenuItem>(`/restaurant/${kitchenId}/menu`, {
+      const saved = await restaurantFetch<MenuItem>(`/restaurant/${outletId}/menu`, {
         method: 'POST',
         body: JSON.stringify({
           name: payload.name,
@@ -174,7 +179,7 @@ export default function HomeScreen() {
           sort_order: i + 1,
         }));
       if (recipePayload.length > 0) {
-        await restaurantFetch<RecipeIngredient[]>(`/restaurant/${kitchenId}/menu/${saved.menu_item_id}/ingredients`, {
+        await restaurantFetch<RecipeIngredient[]>(`/restaurant/${outletId}/menu/${saved.menu_item_id}/ingredients`, {
           method: 'PUT',
           body: JSON.stringify(recipePayload),
         });
@@ -190,10 +195,10 @@ export default function HomeScreen() {
   };
 
   const handleAddToBuyList = async (payload: { name: string; qty: number; unit: string }) => {
-    if (!kitchenId) return;
+    if (!outletId) return;
     setSavingBuy(true);
     try {
-      await restaurantFetch<ShoppingRow>(`/restaurant/${kitchenId}/shopping`, {
+      await restaurantFetch<ShoppingRow>(`/restaurant/${outletId}/shopping`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -228,8 +233,8 @@ export default function HomeScreen() {
               {firstName}
             </Text>
             <Text variant="bodySmall" style={styles.headerSub}>
-              {summary?.kitchenName ?? '…'}
-              {zomato?.outlet_id ? ` · Outlet ${zomato.outlet_id}` : ''}
+              {outletDisplayName}
+              {outletId ? ` · ${outletId}` : ''}
             </Text>
           </View>
           <ProfileHeaderButton size={44} />
@@ -249,7 +254,7 @@ export default function HomeScreen() {
           />
 
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Zomato sync
+            Partners
           </Text>
           <Pressable
             onPress={() => openProfile()}
@@ -259,7 +264,7 @@ export default function HomeScreen() {
               style={[
                 styles.zomatoCard,
                 zomatoRunning && styles.zomatoCardOk,
-                zomato?.status === 'error' && styles.zomatoCardErr,
+                workers.some((o) => o.status === 'error') && styles.zomatoCardErr,
                 zomatoNeedsAttention && !zomatoRunning && styles.zomatoCardWarn,
               ]}
               elevation={0}
@@ -271,26 +276,28 @@ export default function HomeScreen() {
                   color={zomatoRunning ? palette.success : palette.primary}
                 />
                 <Text variant="titleSmall" style={styles.zomatoTitle}>
-                  {zomatoStatusLabel(zomato)}
+                  {partnerStatusLabel(integrations)}
                 </Text>
               </View>
-              {zomato?.outlet_name ? (
-                <Text style={styles.zomatoMeta}>{zomato.outlet_name}</Text>
-              ) : null}
-              {zomato?.last_sync_message ? (
-                <Text style={styles.zomatoMsg} numberOfLines={2}>
-                  {zomato.last_sync_message}
-                </Text>
-              ) : zomato?.last_error ? (
-                <Text style={styles.zomatoErr} numberOfLines={2}>
-                  {zomato.last_error}
-                </Text>
-              ) : zomatoRunning && zomato.next_poll_at ? (
+              {zomatoWorker?.partner_store_name || zomatoWorker?.outlet_name ? (
                 <Text style={styles.zomatoMeta}>
-                  Next poll {new Date(zomato.next_poll_at).toLocaleTimeString()}
+                  {zomatoWorker.partner_store_name ?? zomatoWorker.outlet_name}
+                </Text>
+              ) : null}
+              {zomatoWorker?.last_sync_message ? (
+                <Text style={styles.zomatoMsg} numberOfLines={2}>
+                  {zomatoWorker.last_sync_message}
+                </Text>
+              ) : zomatoWorker?.last_error ? (
+                <Text style={styles.zomatoErr} numberOfLines={2}>
+                  {zomatoWorker.last_error}
+                </Text>
+              ) : zomatoRunning && zomatoWorker?.next_poll_at ? (
+                <Text style={styles.zomatoMeta}>
+                  Next poll {new Date(zomatoWorker.next_poll_at).toLocaleTimeString()}
                 </Text>
               ) : (
-                <Text style={styles.zomatoMeta}>Tap to manage in Profile</Text>
+                <Text style={styles.zomatoMeta}>Tap Profile → Partners to manage workers</Text>
               )}
             </Surface>
           </Pressable>
@@ -314,7 +321,7 @@ export default function HomeScreen() {
                   No orders yet
                 </Text>
                 <Text variant="bodySmall" style={styles.emptySub}>
-                  Connect Zomato in Profile to import orders
+                  Connect a partner in Profile to import orders
                 </Text>
               </Surface>
             </Pressable>
@@ -358,7 +365,7 @@ export default function HomeScreen() {
       <OrderDetailSheet
         visible={selectedOrderId != null}
         orderId={selectedOrderId}
-        kitchenId={kitchenId}
+        kitchenId={outletId}
         onClose={() => setSelectedOrderId(null)}
       />
 

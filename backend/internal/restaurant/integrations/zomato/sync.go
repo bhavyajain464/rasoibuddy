@@ -24,41 +24,46 @@ func newSyncManager() *syncManager {
 	return &syncManager{jobs: map[string]*syncJob{}}
 }
 
-func (m *syncManager) running(kitchenID string) bool {
+func syncJobKey(kitchenID, outletID string) string {
+	return kitchenID + ":" + normalizeOutletID(outletID)
+}
+
+func (m *syncManager) running(kitchenID, outletID string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	_, ok := m.jobs[kitchenID]
+	_, ok := m.jobs[syncJobKey(kitchenID, outletID)]
 	return ok
 }
 
 func (m *syncManager) start(s *Service, kitchenID, actorUserID, outletID string, auth *Auth) {
-	m.stopLocked(kitchenID)
+	key := syncJobKey(kitchenID, outletID)
+	m.stopLocked(key)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	m.jobs[kitchenID] = &syncJob{cancel: cancel}
+	m.jobs[key] = &syncJob{cancel: cancel}
 
 	go func() {
 		ticker := time.NewTicker(defaultPollInterval)
 		defer ticker.Stop()
-		defer m.clear(kitchenID)
+		defer m.clear(key)
 
 		deepBackfill := true
 
 		run := func() {
 			if err := s.runSyncCycle(ctx, kitchenID, actorUserID, outletID, auth, deepBackfill); err != nil {
-				log.Printf("[zomato-sync] kitchen=%s poll failed: %v", kitchenID, err)
+				log.Printf("[zomato-sync] kitchen=%s outlet=%s poll failed: %v", kitchenID, outletID, err)
 				if _, ok := err.(*AuthError); ok {
-					_ = s.markLoginRequired(context.Background(), kitchenID, err.Error())
+					_ = s.markLoginRequired(context.Background(), kitchenID, outletID, err.Error())
 					cancel()
 				} else {
-					_ = s.RecordPollError(context.Background(), kitchenID, err.Error())
+					_ = s.RecordPollError(context.Background(), kitchenID, outletID, err.Error())
 				}
 				return
 			}
 			deepBackfill = false
-			row, _ := s.loadSyncRow(context.Background(), kitchenID)
+			row, _ := s.loadOutletSyncRow(context.Background(), kitchenID, outletID)
 			if row != nil && row.LastSyncMessage.Valid {
-				log.Printf("[zomato-sync] kitchen=%s %s", kitchenID, row.LastSyncMessage.String)
+				log.Printf("[zomato-sync] kitchen=%s outlet=%s %s", kitchenID, outletID, row.LastSyncMessage.String)
 			}
 		}
 
@@ -68,14 +73,12 @@ func (m *syncManager) start(s *Service, kitchenID, actorUserID, outletID string,
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				row, _ := s.loadSyncRow(context.Background(), kitchenID)
+				row, _ := s.loadOutletSyncRow(context.Background(), kitchenID, outletID)
 				if row == nil || row.Status != StatusRunning {
 					return
 				}
-				if len(row.AuthJSON) > 0 {
-					if parsed, err := ParseAuth(row.AuthJSON); err == nil {
-						auth = parsed
-					}
+				if parsed, err := s.loadKitchenAuth(context.Background(), kitchenID); err == nil && parsed != nil {
+					auth = parsed
 				}
 				run()
 			}
@@ -83,34 +86,30 @@ func (m *syncManager) start(s *Service, kitchenID, actorUserID, outletID string,
 	}()
 }
 
-func (m *syncManager) stop(kitchenID string) {
+func (m *syncManager) stop(kitchenID, outletID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.stopLocked(kitchenID)
+	m.stopLocked(syncJobKey(kitchenID, outletID))
 }
 
-func (m *syncManager) stopLocked(kitchenID string) {
-	if job, ok := m.jobs[kitchenID]; ok {
+func (m *syncManager) stopLocked(key string) {
+	if job, ok := m.jobs[key]; ok {
 		job.cancel()
-		delete(m.jobs, kitchenID)
+		delete(m.jobs, key)
 	}
 }
 
-func (m *syncManager) clear(kitchenID string) {
+func (m *syncManager) clear(key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.jobs, kitchenID)
+	delete(m.jobs, key)
 }
 
 func (s *Service) runSyncCycle(ctx context.Context, kitchenID, actorUserID, outletID string, auth *Auth, deepBackfill bool) error {
-	row, err := s.loadSyncRow(ctx, kitchenID)
-	if err != nil {
+	if parsed, err := s.loadKitchenAuth(ctx, kitchenID); err != nil {
 		return err
-	}
-	if row != nil && len(row.AuthJSON) > 0 {
-		if parsed, err := ParseAuth(row.AuthJSON); err == nil {
-			auth = parsed
-		}
+	} else if parsed != nil {
+		auth = parsed
 	}
 	if auth == nil {
 		return &AuthError{Code: "login_required", Message: "Zomato session not configured — import partner cookies in Settings"}
@@ -118,6 +117,7 @@ func (s *Service) runSyncCycle(ctx context.Context, kitchenID, actorUserID, outl
 
 	var orders []FetchedOrder
 	var checked int
+	var err error
 	if deepBackfill {
 		orders, checked, err = s.fetchOrdersDeep(ctx, auth, kitchenID, outletID)
 	} else {
@@ -126,30 +126,33 @@ func (s *Service) runSyncCycle(ctx context.Context, kitchenID, actorUserID, outl
 	if err != nil {
 		return err
 	}
-	result, err := s.IngestOrders(ctx, kitchenID, actorUserID, fetchedToIngest(orders))
+	result, err := s.IngestOrders(ctx, kitchenID, outletID, actorUserID, fetchedToIngest(orders))
 	if err != nil {
 		return err
 	}
-	if err := s.markPollSuccess(ctx, kitchenID, checked, result); err != nil {
+	if err := s.markPollSuccess(ctx, kitchenID, outletID, checked, result); err != nil {
 		return err
 	}
 	if n, err := s.BackfillPlacedTimes(ctx, kitchenID); err != nil {
 		return err
 	} else if n > 0 {
-		log.Printf("[zomato-sync] kitchen=%s backfilled placed_at on %d orders", kitchenID, n)
+		log.Printf("[zomato-sync] kitchen=%s outlet=%s backfilled placed_at on %d orders", kitchenID, outletID, n)
 	}
-	return s.saveAuth(ctx, kitchenID, auth)
+	return s.saveKitchenAuth(ctx, kitchenID, auth)
 }
 
-func (s *Service) saveAuth(ctx context.Context, kitchenID string, auth *Auth) error {
+func (s *Service) saveKitchenAuth(ctx context.Context, kitchenID string, auth *Auth) error {
 	raw, err := json.Marshal(auth)
 	if err != nil {
 		return err
 	}
 	_, err = s.db.ExecContext(ctx, `
-		UPDATE zomato_kitchen_sync
-		SET auth_json = $2, auth_refreshed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-		WHERE kitchen_id = $1
+		INSERT INTO zomato_kitchen_auth (kitchen_id, auth_json, auth_refreshed_at, updated_at)
+		VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT (kitchen_id) DO UPDATE SET
+			auth_json = EXCLUDED.auth_json,
+			auth_refreshed_at = CURRENT_TIMESTAMP,
+			updated_at = CURRENT_TIMESTAMP
 	`, kitchenID, string(raw))
 	return err
 }
@@ -158,20 +161,7 @@ func (s *Service) ImportAuth(ctx context.Context, kitchenID string, auth *Auth) 
 	if auth == nil || len(auth.Cookies) == 0 {
 		return fmt.Errorf("cookies required")
 	}
-	raw, err := json.Marshal(auth)
-	if err != nil {
-		return err
-	}
-	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, auth_json, auth_refreshed_at, updated_at)
-		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET
-			auth_json = EXCLUDED.auth_json,
-			auth_refreshed_at = CURRENT_TIMESTAMP,
-			last_error = NULL,
-			updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusIdle, string(raw))
-	return err
+	return s.saveKitchenAuth(ctx, kitchenID, auth)
 }
 
 func (s *Service) VerifyAndImportAuth(ctx context.Context, kitchenID string, auth *Auth) error {

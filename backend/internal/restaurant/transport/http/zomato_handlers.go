@@ -45,7 +45,14 @@ func (h *Handler) zomatoStart(w http.ResponseWriter, r *http.Request) {
 	}
 	st, err := h.zomato.StartSync(r.Context(), kitchenID, userID, creds)
 	if err != nil {
-		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, err.Error())
+		partnerOutletID := strings.TrimSpace(creds.PartnerOutletID)
+		if partnerOutletID == "" {
+			partnerOutletID = strings.TrimSpace(creds.PartnerStoreID)
+		}
+		if partnerOutletID == "" {
+			partnerOutletID = strings.TrimSpace(creds.OutletID)
+		}
+		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, partnerOutletID, err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -58,7 +65,23 @@ func (h *Handler) zomatoStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	kitchenID := restmw.KitchenIDFromContext(r)
-	st, err := h.zomato.StopSync(r.Context(), kitchenID)
+	var body struct {
+		PartnerOutletID string `json:"partner_outlet_id"`
+		PartnerStoreID  string `json:"partner_store_id"`
+		OutletID        string `json:"outlet_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	partnerOutletID := strings.TrimSpace(body.PartnerOutletID)
+	if partnerOutletID == "" {
+		partnerOutletID = strings.TrimSpace(body.PartnerStoreID)
+	}
+	if partnerOutletID == "" {
+		partnerOutletID = strings.TrimSpace(body.OutletID)
+	}
+	st, err := h.zomato.StopSync(r.Context(), kitchenID, partnerOutletID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,6 +129,7 @@ func (h *Handler) zomatoIngest(w http.ResponseWriter, r *http.Request) {
 	kitchenID := mux.Vars(r)["kitchen_id"]
 	var body struct {
 		ActorUserID string              `json:"actor_user_id"`
+		OutletID    string              `json:"outlet_id"`
 		Orders      []zomato.IngestOrder `json:"orders"`
 		Error       string              `json:"error,omitempty"`
 	}
@@ -114,7 +138,7 @@ func (h *Handler) zomatoIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Error != "" {
-		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, body.Error)
+		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, body.OutletID, body.Error)
 		http.Error(w, body.Error, http.StatusBadRequest)
 		return
 	}
@@ -123,9 +147,9 @@ func (h *Handler) zomatoIngest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "actor_user_id required", http.StatusBadRequest)
 		return
 	}
-	n, err := h.zomato.IngestOrders(r.Context(), kitchenID, actor, body.Orders)
+	n, err := h.zomato.IngestOrders(r.Context(), kitchenID, body.OutletID, actor, body.Orders)
 	if err != nil {
-		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, err.Error())
+		_ = h.zomato.MarkSyncError(r.Context(), kitchenID, body.OutletID, err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -141,12 +165,13 @@ func (h *Handler) zomatoImportOrder(w http.ResponseWriter, r *http.Request) {
 	userID := restmw.UserIDFromRequest(r)
 	var body struct {
 		ExternalOrderID string `json:"external_order_id"`
+		OutletID        string `json:"outlet_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
-	result, err := h.zomato.ImportOrderByExternalID(r.Context(), kitchenID, userID, body.ExternalOrderID)
+	result, err := h.zomato.ImportOrderByExternalID(r.Context(), kitchenID, userID, body.OutletID, body.ExternalOrderID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

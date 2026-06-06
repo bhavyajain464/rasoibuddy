@@ -109,7 +109,10 @@ func parseZomatoPlacedAt(raw string) *time.Time {
 	return nil
 }
 
-type SyncStatus struct {
+type PartnerWorkerStatus struct {
+	Partner             string     `json:"partner"`
+	PartnerOutletID     string     `json:"partner_outlet_id"`
+	PartnerOutletName   string     `json:"partner_outlet_name,omitempty"`
 	Status              string     `json:"status"`
 	LastSyncAt          *time.Time `json:"last_sync_at,omitempty"`
 	LastError           string     `json:"last_error,omitempty"`
@@ -118,17 +121,68 @@ type SyncStatus struct {
 	OrdersImportedCount int        `json:"orders_imported_count"`
 	PollIntervalMinutes int        `json:"poll_interval_minutes"`
 	NextPollAt          *time.Time `json:"next_poll_at,omitempty"`
-	SessionSaved        bool       `json:"session_saved"`
-	OutletID            string     `json:"outlet_id,omitempty"`
-	OutletName          string     `json:"outlet_name,omitempty"`
 	SyncMode            string     `json:"sync_mode,omitempty"`
+	// Legacy JSON aliases.
+	PartnerStoreID string `json:"partner_store_id,omitempty"`
+	PartnerStoreName string `json:"partner_store_name,omitempty"`
+	OutletID       string `json:"outlet_id,omitempty"`
+	OutletName     string `json:"outlet_name,omitempty"`
 }
 
+type OutletIntegrationsStatus struct {
+	SessionSaved        bool                    `json:"session_saved"`
+	PollIntervalMinutes int                     `json:"poll_interval_minutes"`
+	SyncMode            string                  `json:"sync_mode"`
+	Workers             []PartnerWorkerStatus   `json:"workers"`
+	Outlets             []PartnerWorkerStatus   `json:"outlets,omitempty"`
+}
+
+// Legacy aliases used inside the zomato integration package.
+type OutletSyncStatus = PartnerWorkerStatus
+type KitchenZomatoStatus = OutletIntegrationsStatus
+type SyncStatus = PartnerWorkerStatus
+
 type StartCredentials struct {
-	OutletName   string          `json:"outlet_name"`
-	OutletID     string          `json:"outlet_id"`
-	AuthJSON     json.RawMessage `json:"auth_json,omitempty"`
-	AuthVerified bool            `json:"-"`
+	Partner            string          `json:"partner"`
+	PartnerOutletID    string          `json:"partner_outlet_id"`
+	PartnerOutletName  string          `json:"partner_outlet_name"`
+	PartnerStoreID     string          `json:"partner_store_id"`
+	PartnerStoreName   string          `json:"partner_store_name"`
+	OutletName         string          `json:"outlet_name"`
+	OutletID           string          `json:"outlet_id"`
+	AuthJSON           json.RawMessage `json:"auth_json,omitempty"`
+	AuthVerified       bool            `json:"-"`
+}
+
+func (c StartCredentials) resolvedPartner() string {
+	p := strings.TrimSpace(c.Partner)
+	if p == "" {
+		return "zomato"
+	}
+	if p == "dine_in" || p == "dine-in" {
+		return "dineout"
+	}
+	return p
+}
+
+func (c StartCredentials) resolvedPartnerOutletID() string {
+	if id := normalizePartnerOutletID(c.PartnerOutletID); id != "" {
+		return id
+	}
+	if id := normalizePartnerOutletID(c.PartnerStoreID); id != "" {
+		return id
+	}
+	return normalizePartnerOutletID(c.OutletID)
+}
+
+func (c StartCredentials) resolvedPartnerOutletName() string {
+	if n := strings.TrimSpace(c.PartnerOutletName); n != "" {
+		return n
+	}
+	if n := strings.TrimSpace(c.PartnerStoreName); n != "" {
+		return n
+	}
+	return strings.TrimSpace(c.OutletName)
 }
 
 type IngestLine struct {
@@ -144,15 +198,15 @@ type IngestOrder struct {
 	PlacedAt        string       `json:"placed_at,omitempty"`
 }
 
-type kitchenSyncRow struct {
+type outletSyncRow struct {
 	Status              string
 	LastSyncAt          sql.NullTime
 	LastError           string
 	LastSyncMessage     sql.NullString
 	OrdersImportedCount int
-	OutletID            sql.NullString
-	OutletName          sql.NullString
-	AuthJSON            []byte
+	Partner             string
+	PartnerStoreID      string
+	PartnerStoreName    sql.NullString
 	ActorUserID         sql.NullString
 }
 
@@ -175,144 +229,269 @@ func NewService(db *sql.DB, orders *restsvc.OrderService, menu *restsvc.MenuServ
 	}
 }
 
-func (s *Service) loadSyncRow(ctx context.Context, kitchenID string) (*kitchenSyncRow, error) {
-	row := s.db.QueryRowContext(ctx, `
-		SELECT status, last_sync_at, COALESCE(last_error, ''), last_sync_message,
-		       orders_imported_count, outlet_id, outlet_name, auth_json, actor_user_id::text
-		FROM zomato_kitchen_sync WHERE kitchen_id = $1
-	`, kitchenID)
-	var r kitchenSyncRow
-	var auth sql.NullString
-	err := row.Scan(&r.Status, &r.LastSyncAt, &r.LastError, &r.LastSyncMessage, &r.OrdersImportedCount,
-		&r.OutletID, &r.OutletName, &auth, &r.ActorUserID)
+func (s *Service) loadKitchenAuth(ctx context.Context, kitchenID string) (*Auth, error) {
+	var raw sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT auth_json FROM zomato_kitchen_auth WHERE kitchen_id = $1
+	`, kitchenID).Scan(&raw)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	if auth.Valid {
-		r.AuthJSON = []byte(auth.String)
+	if !raw.Valid || raw.String == "" {
+		return nil, nil
+	}
+	return ParseAuth([]byte(raw.String))
+}
+
+func (s *Service) hasKitchenAuth(ctx context.Context, kitchenID string) (bool, error) {
+	var exists bool
+	err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM zomato_kitchen_auth WHERE kitchen_id = $1)
+	`, kitchenID).Scan(&exists)
+	return exists, err
+}
+
+func scanPartnerWorkerRow(row *sql.Row) (*outletSyncRow, error) {
+	var r outletSyncRow
+	err := row.Scan(&r.Status, &r.LastSyncAt, &r.LastError, &r.LastSyncMessage, &r.OrdersImportedCount,
+		&r.Partner, &r.PartnerStoreID, &r.PartnerStoreName, &r.ActorUserID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &r, nil
 }
 
-func (s *Service) GetStatus(ctx context.Context, kitchenID string) (*SyncStatus, error) {
-	row, err := s.loadSyncRow(ctx, kitchenID)
+func (s *Service) loadOutletSyncRow(ctx context.Context, kitchenID, partnerStoreID string) (*outletSyncRow, error) {
+	partnerStoreID = normalizeOutletID(partnerStoreID)
+	row := s.db.QueryRowContext(ctx, `
+		SELECT status, last_sync_at, COALESCE(last_error, ''), last_sync_message,
+		       orders_imported_count, COALESCE(partner, 'zomato'), partner_outlet_id, partner_outlet_name, actor_user_id::text
+		FROM partner_order_sync
+		WHERE kitchen_id = $1 AND partner_outlet_id = $2
+	`, kitchenID, partnerStoreID)
+	return scanPartnerWorkerRow(row)
+}
+
+func (s *Service) listOutletSyncRows(ctx context.Context, kitchenID string) ([]outletSyncRow, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT status, last_sync_at, COALESCE(last_error, ''), last_sync_message,
+		       orders_imported_count, COALESCE(partner, 'zomato'), partner_outlet_id, partner_outlet_name, actor_user_id::text
+		FROM partner_order_sync
+		WHERE kitchen_id = $1
+		ORDER BY partner, partner_outlet_name NULLS LAST, partner_outlet_id
+	`, kitchenID)
 	if err != nil {
 		return nil, err
 	}
-	st := &SyncStatus{
-		Status:              StatusIdle,
+	defer rows.Close()
+	var out []outletSyncRow
+	for rows.Next() {
+		var r outletSyncRow
+		if err := rows.Scan(&r.Status, &r.LastSyncAt, &r.LastError, &r.LastSyncMessage, &r.OrdersImportedCount,
+			&r.Partner, &r.PartnerStoreID, &r.PartnerStoreName, &r.ActorUserID); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func (s *Service) rowToWorkerStatus(outletID string, row outletSyncRow) PartnerWorkerStatus {
+	partner := strings.TrimSpace(row.Partner)
+	if partner == "" {
+		partner = "zomato"
+	}
+	storeName := ""
+	if row.PartnerStoreName.Valid {
+		storeName = row.PartnerStoreName.String
+	}
+	st := PartnerWorkerStatus{
+		Partner:             partner,
+		PartnerOutletID:     row.PartnerStoreID,
+		PartnerOutletName:   storeName,
+		PartnerStoreID:      row.PartnerStoreID,
+		PartnerStoreName:    storeName,
+		OutletID:            row.PartnerStoreID,
+		OutletName:          storeName,
+		Status:              row.Status,
+		LastError:           row.LastError,
+		OrdersImportedCount: row.OrdersImportedCount,
 		PollIntervalMinutes: 5,
 		SyncMode:            "api",
 	}
-	if row != nil {
-		st.Status = row.Status
-		st.LastError = row.LastError
-		st.OrdersImportedCount = row.OrdersImportedCount
-		if row.LastSyncMessage.Valid {
-			st.LastSyncMessage = row.LastSyncMessage.String
-		}
-		st.LastSyncOK = row.LastError == "" && row.LastSyncAt.Valid
-		if row.LastSyncAt.Valid {
-			st.LastSyncAt = &row.LastSyncAt.Time
-			if st.Status == StatusRunning || s.sync.running(kitchenID) {
-				next := row.LastSyncAt.Time.Add(defaultPollInterval)
-				st.NextPollAt = &next
-			}
-		}
-		if row.OutletID.Valid {
-			st.OutletID = row.OutletID.String
-		}
-		if row.OutletName.Valid {
-			st.OutletName = row.OutletName.String
-		}
-		if len(row.AuthJSON) > 0 {
-			st.SessionSaved = true
+	if row.LastSyncMessage.Valid {
+		st.LastSyncMessage = row.LastSyncMessage.String
+	}
+	st.LastSyncOK = row.LastError == "" && row.LastSyncAt.Valid
+	if row.LastSyncAt.Valid {
+		st.LastSyncAt = &row.LastSyncAt.Time
+		if st.Status == StatusRunning || s.sync.running(outletID, row.PartnerStoreID) {
+			next := row.LastSyncAt.Time.Add(defaultPollInterval)
+			st.NextPollAt = &next
 		}
 	}
-	if s.sync.running(kitchenID) {
+	if s.sync.running(outletID, row.PartnerStoreID) {
 		st.Status = StatusRunning
 	}
+	return st
+}
+
+func (s *Service) GetKitchenStatus(ctx context.Context, kitchenID string) (*KitchenZomatoStatus, error) {
+	sessionSaved, err := s.hasKitchenAuth(ctx, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.listOutletSyncRows(ctx, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	st := &OutletIntegrationsStatus{
+		SessionSaved:        sessionSaved,
+		PollIntervalMinutes: 5,
+		SyncMode:            "api",
+		Workers:             make([]PartnerWorkerStatus, 0, len(rows)),
+	}
+	for _, row := range rows {
+		w := s.rowToWorkerStatus(kitchenID, row)
+		st.Workers = append(st.Workers, w)
+	}
+	st.Outlets = st.Workers
 	return st, nil
 }
 
-func (s *Service) StartSync(ctx context.Context, kitchenID, actorUserID string, creds StartCredentials) (*SyncStatus, error) {
-	if s.sync.running(kitchenID) {
-		return s.GetStatus(ctx, kitchenID)
+// GetStatus returns partner worker status for an outlet (all partners).
+func (s *Service) GetStatus(ctx context.Context, kitchenID string) (*OutletIntegrationsStatus, error) {
+	return s.GetKitchenStatus(ctx, kitchenID)
+}
+
+func (s *Service) assertPartnerStoreAvailable(ctx context.Context, outletID, partnerStoreID string) error {
+	partnerStoreID = normalizeOutletID(partnerStoreID)
+	existing, err := s.KitchenIDByOutletID(ctx, partnerStoreID)
+	if err != nil {
+		return nil
 	}
-	outletID := strings.TrimSpace(creds.OutletID)
-	outletName := strings.TrimSpace(creds.OutletName)
-	if outletID == "" {
-		return nil, fmt.Errorf("outlet_id required — Zomato restaurant ID (e.g. 22267610)")
+	if existing != outletID {
+		return fmt.Errorf("partner store %s is already linked to another outlet", partnerStoreID)
+	}
+	return nil
+}
+
+func (s *Service) resolveAuth(ctx context.Context, kitchenID string, creds StartCredentials) (*Auth, error) {
+	if len(creds.AuthJSON) > 0 {
+		return ParseAuth(creds.AuthJSON)
+	}
+	auth, err := s.loadKitchenAuth(ctx, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	if auth == nil {
+		return nil, fmt.Errorf("Zomato session required — paste partner cookies in Settings")
+	}
+	return auth, nil
+}
+
+func (s *Service) upsertPartnerWorker(ctx context.Context, outletID, actorUserID, partner, partnerStoreID, partnerStoreName, status string) error {
+	partnerStoreID = normalizeOutletID(partnerStoreID)
+	partner = strings.TrimSpace(partner)
+	if partner == "" {
+		partner = "zomato"
+	}
+	partnerStoreName = strings.TrimSpace(partnerStoreName)
+	if partnerStoreName == "" {
+		partnerStoreName = partner + " store " + partnerStoreID
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO partner_order_sync (kitchen_id, partner, partner_outlet_id, partner_outlet_name, status, actor_user_id, last_error, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NULL, CURRENT_TIMESTAMP)
+		ON CONFLICT (kitchen_id, partner) DO UPDATE SET
+			partner_outlet_id = EXCLUDED.partner_outlet_id,
+			partner_outlet_name = EXCLUDED.partner_outlet_name,
+			status = EXCLUDED.status,
+			actor_user_id = EXCLUDED.actor_user_id,
+			last_error = NULL,
+			updated_at = CURRENT_TIMESTAMP
+	`, outletID, partner, partnerStoreID, partnerStoreName, status, actorUserID)
+	if err != nil && strings.Contains(err.Error(), "no unique or exclusion constraint") {
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO partner_order_sync (kitchen_id, partner_outlet_id, partner_outlet_name, status, actor_user_id, last_error, updated_at)
+			VALUES ($1, $2, $3, $4, $5, NULL, CURRENT_TIMESTAMP)
+			ON CONFLICT (kitchen_id, partner_outlet_id) DO UPDATE SET
+				partner_outlet_name = EXCLUDED.partner_outlet_name,
+				status = EXCLUDED.status,
+				actor_user_id = EXCLUDED.actor_user_id,
+				last_error = NULL,
+				updated_at = CURRENT_TIMESTAMP
+		`, outletID, partnerStoreID, partnerStoreName, status, actorUserID)
+	}
+	return err
+}
+
+func (s *Service) StartSync(ctx context.Context, outletID, actorUserID string, creds StartCredentials) (*OutletIntegrationsStatus, error) {
+	partner := creds.resolvedPartner()
+	partnerOutletID := creds.resolvedPartnerOutletID()
+	partnerOutletName := creds.resolvedPartnerOutletName()
+	if partnerOutletID == "" {
+		return nil, fmt.Errorf("partner_outlet_id required — partner platform store id")
 	}
 	if strings.TrimSpace(actorUserID) == "" {
 		return nil, fmt.Errorf("actor user required")
 	}
-
-	row, _ := s.loadSyncRow(ctx, kitchenID)
-	var auth *Auth
-	var err error
-	if len(creds.AuthJSON) > 0 {
-		auth, err = ParseAuth(creds.AuthJSON)
-		if err != nil {
-			return nil, err
-		}
-	} else if row != nil && len(row.AuthJSON) > 0 {
-		auth, err = ParseAuth(row.AuthJSON)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("Zomato session required — paste partner cookies in Settings")
+	if s.sync.running(outletID, partnerOutletID) {
+		return s.GetKitchenStatus(ctx, outletID)
 	}
 
+	auth, err := s.resolveAuth(ctx, outletID, creds)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.assertPartnerStoreAvailable(ctx, outletID, partnerOutletID); err != nil {
+		return nil, err
+	}
 	if !creds.AuthVerified {
-		if err := s.verifyAuth(ctx, auth, outletID); err != nil {
+		if err := s.verifyAuth(ctx, auth, partnerOutletID); err != nil {
 			if ae, ok := err.(*AuthError); ok {
-				_ = s.markLoginRequired(ctx, kitchenID, ae.Message)
+				_ = s.markLoginRequired(ctx, outletID, partnerOutletID, ae.Message)
 			}
 			return nil, err
 		}
 	}
-
-	authRaw, _ := json.Marshal(auth)
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, outlet_id, outlet_name, auth_json, auth_refreshed_at, actor_user_id, last_error, updated_at)
-		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, NULL, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET
-			status = EXCLUDED.status,
-			outlet_id = EXCLUDED.outlet_id,
-			outlet_name = EXCLUDED.outlet_name,
-			auth_json = EXCLUDED.auth_json,
-			auth_refreshed_at = CURRENT_TIMESTAMP,
-			actor_user_id = EXCLUDED.actor_user_id,
-			last_error = NULL,
-			updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusRunning, outletID, outletName, string(authRaw), actorUserID); err != nil {
+	if err := s.saveKitchenAuth(ctx, outletID, auth); err != nil {
+		return nil, err
+	}
+	if err := s.upsertPartnerWorker(ctx, outletID, actorUserID, partner, partnerOutletID, partnerOutletName, StatusRunning); err != nil {
 		return nil, err
 	}
 
-	s.sync.start(s, kitchenID, actorUserID, outletID, auth)
-	return s.GetStatus(ctx, kitchenID)
+	s.sync.start(s, outletID, actorUserID, partnerOutletID, auth)
+	return s.GetKitchenStatus(ctx, outletID)
 }
 
-func (s *Service) StopSync(ctx context.Context, kitchenID string) (*SyncStatus, error) {
-	s.sync.stop(kitchenID)
+func (s *Service) StopSync(ctx context.Context, outletID, partnerStoreID string) (*OutletIntegrationsStatus, error) {
+	partnerStoreID = normalizeOutletID(partnerStoreID)
+	if partnerStoreID == "" {
+		return nil, fmt.Errorf("partner_outlet_id required")
+	}
+	s.sync.stop(outletID, partnerStoreID)
 	_, _ = s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, updated_at)
-		VALUES ($1, $2, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusIdle)
-	return s.GetStatus(ctx, kitchenID)
+		UPDATE partner_order_sync
+		SET status = $3, updated_at = CURRENT_TIMESTAMP
+		WHERE kitchen_id = $1 AND partner_outlet_id = $2
+	`, outletID, partnerStoreID, StatusIdle)
+	return s.GetKitchenStatus(ctx, outletID)
 }
 
 func (s *Service) ResumeRunningSyncs(ctx context.Context) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT kitchen_id::text, COALESCE(outlet_id, ''), COALESCE(actor_user_id::text, ''), auth_json
-		FROM zomato_kitchen_sync
-		WHERE status = $1 AND outlet_id IS NOT NULL AND auth_json IS NOT NULL
+		SELECT o.kitchen_id::text, o.partner_outlet_id, COALESCE(o.actor_user_id::text, ''), a.auth_json
+		FROM partner_order_sync o
+		JOIN zomato_kitchen_auth a ON a.kitchen_id = o.kitchen_id
+		WHERE o.status = $1
 	`, StatusRunning)
 	if err != nil {
 		return
@@ -335,45 +514,51 @@ func (s *Service) ResumeRunningSyncs(ctx context.Context) {
 	}
 }
 
-func (s *Service) MarkSyncError(ctx context.Context, kitchenID, msg string) error {
+func (s *Service) MarkSyncError(ctx context.Context, kitchenID, outletID, msg string) error {
+	outletID = normalizeOutletID(outletID)
+	if outletID == "" {
+		return fmt.Errorf("partner_outlet_id required")
+	}
 	pollMsg := "Poll failed — " + msg
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, last_error, last_sync_message, updated_at)
-		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET
+		INSERT INTO partner_order_sync (kitchen_id, partner_outlet_id, status, last_error, last_sync_message, updated_at)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+		ON CONFLICT (kitchen_id, partner_outlet_id) DO UPDATE SET
 			status = EXCLUDED.status,
 			last_error = EXCLUDED.last_error,
 			last_sync_message = EXCLUDED.last_sync_message,
 			updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusError, msg, pollMsg)
+	`, kitchenID, outletID, StatusError, msg, pollMsg)
 	return err
 }
 
 // RecordPollError logs a failed poll but keeps sync status running so the worker keeps retrying.
-func (s *Service) RecordPollError(ctx context.Context, kitchenID, msg string) error {
+func (s *Service) RecordPollError(ctx context.Context, kitchenID, outletID, msg string) error {
+	outletID = normalizeOutletID(outletID)
 	pollMsg := "Poll failed — " + msg
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE zomato_kitchen_sync SET
-			last_error = $2,
-			last_sync_message = $3,
+		UPDATE partner_order_sync SET
+			last_error = $3,
+			last_sync_message = $4,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE kitchen_id = $1 AND status = $4
-	`, kitchenID, msg, pollMsg, StatusRunning)
+		WHERE kitchen_id = $1 AND partner_outlet_id = $2 AND status = $5
+	`, kitchenID, outletID, msg, pollMsg, StatusRunning)
 	return err
 }
 
-func (s *Service) markLoginRequired(ctx context.Context, kitchenID, msg string) error {
-	s.sync.stop(kitchenID)
+func (s *Service) markLoginRequired(ctx context.Context, kitchenID, outletID, msg string) error {
+	outletID = normalizeOutletID(outletID)
+	s.sync.stop(kitchenID, outletID)
 	pollMsg := "Poll failed — " + msg
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, last_error, last_sync_message, updated_at)
-		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET
+		INSERT INTO partner_order_sync (kitchen_id, partner_outlet_id, status, last_error, last_sync_message, updated_at)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+		ON CONFLICT (kitchen_id, partner_outlet_id) DO UPDATE SET
 			status = EXCLUDED.status,
 			last_error = EXCLUDED.last_error,
 			last_sync_message = EXCLUDED.last_sync_message,
 			updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusLoginRequired, msg, pollMsg)
+	`, kitchenID, outletID, StatusLoginRequired, msg, pollMsg)
 	return err
 }
 
@@ -384,7 +569,8 @@ type IngestResult struct {
 	SkippedExisting int
 }
 
-func (s *Service) markPollSuccess(ctx context.Context, kitchenID string, fetched int, result IngestResult) error {
+func (s *Service) markPollSuccess(ctx context.Context, kitchenID, outletID string, fetched int, result IngestResult) error {
+	outletID = normalizeOutletID(outletID)
 	var total int
 	_ = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM zomato_external_orders WHERE kitchen_id = $1
@@ -397,31 +583,31 @@ func (s *Service) markPollSuccess(ctx context.Context, kitchenID string, fetched
 		msg += fmt.Sprintf("; skipped %d already imported", result.SkippedExisting)
 	}
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE zomato_kitchen_sync SET
+		UPDATE partner_order_sync SET
 			last_sync_at = CURRENT_TIMESTAMP,
 			last_error = NULL,
-			last_sync_message = $2,
+			last_sync_message = $3,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE kitchen_id = $1
-	`, kitchenID, msg)
+		WHERE kitchen_id = $1 AND partner_outlet_id = $2
+	`, kitchenID, outletID, msg)
 	return err
 }
 
-func (s *Service) MarkSyncOK(ctx context.Context, kitchenID string, imported int) error {
+func (s *Service) MarkSyncOK(ctx context.Context, kitchenID, outletID string, imported int) error {
+	outletID = normalizeOutletID(outletID)
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO zomato_kitchen_sync (kitchen_id, status, last_sync_at, orders_imported_count, last_error, updated_at)
-		VALUES ($1, $2, CURRENT_TIMESTAMP, $3, NULL, CURRENT_TIMESTAMP)
-		ON CONFLICT (kitchen_id) DO UPDATE SET
-			status = EXCLUDED.status,
+		UPDATE partner_order_sync SET
+			status = $3,
 			last_sync_at = CURRENT_TIMESTAMP,
-			orders_imported_count = zomato_kitchen_sync.orders_imported_count + $3,
+			orders_imported_count = orders_imported_count + $4,
 			last_error = NULL,
 			updated_at = CURRENT_TIMESTAMP
-	`, kitchenID, StatusRunning, imported)
+		WHERE kitchen_id = $1 AND partner_outlet_id = $2
+	`, kitchenID, outletID, StatusRunning, imported)
 	return err
 }
 
-func (s *Service) IngestOrders(ctx context.Context, kitchenID, actorUserID string, orders []IngestOrder) (IngestResult, error) {
+func (s *Service) IngestOrders(ctx context.Context, kitchenID, outletID, actorUserID string, orders []IngestOrder) (IngestResult, error) {
 	out := IngestResult{}
 	if len(orders) == 0 {
 		return out, nil
@@ -496,30 +682,33 @@ func (s *Service) IngestOrders(ctx context.Context, kitchenID, actorUserID strin
 		out.Imported++
 	}
 	if out.Imported > 0 {
-		_ = s.MarkSyncOK(ctx, kitchenID, out.Imported)
+		_ = s.MarkSyncOK(ctx, kitchenID, outletID, out.Imported)
 	}
 	return out, nil
 }
 
 // ImportOrderByExternalID fetches a single order via order-details when it is missing from history.
-func (s *Service) ImportOrderByExternalID(ctx context.Context, kitchenID, actorUserID, externalOrderID string) (IngestResult, error) {
+func (s *Service) ImportOrderByExternalID(ctx context.Context, kitchenID, actorUserID, outletID, externalOrderID string) (IngestResult, error) {
 	externalOrderID = strings.TrimSpace(externalOrderID)
+	outletID = normalizeOutletID(outletID)
 	if externalOrderID == "" {
 		return IngestResult{}, fmt.Errorf("external_order_id required")
 	}
-	row, err := s.loadSyncRow(ctx, kitchenID)
+	auth, err := s.loadKitchenAuth(ctx, kitchenID)
 	if err != nil {
 		return IngestResult{}, err
 	}
-	if row == nil || len(row.AuthJSON) == 0 {
+	if auth == nil {
 		return IngestResult{}, fmt.Errorf("Zomato session required — import partner cookies in Settings")
 	}
-	auth, err := ParseAuth(row.AuthJSON)
-	if err != nil {
-		return IngestResult{}, err
-	}
-	if actorUserID == "" && row.ActorUserID.Valid {
-		actorUserID = row.ActorUserID.String
+	if actorUserID == "" {
+		row, err := s.loadOutletSyncRow(ctx, kitchenID, outletID)
+		if err != nil {
+			return IngestResult{}, err
+		}
+		if row != nil && row.ActorUserID.Valid {
+			actorUserID = row.ActorUserID.String
+		}
 	}
 	if actorUserID == "" {
 		return IngestResult{}, fmt.Errorf("actor user required")
@@ -532,14 +721,15 @@ func (s *Service) ImportOrderByExternalID(ctx context.Context, kitchenID, actorU
 	if detail == nil {
 		return IngestResult{}, fmt.Errorf("order %s not found on Zomato", externalOrderID)
 	}
-	if row.OutletID.Valid && strings.TrimSpace(row.OutletID.String) != "" &&
-		strings.TrimSpace(detail.ResID) != "" &&
-		detail.ResID != row.OutletID.String {
-		return IngestResult{}, fmt.Errorf("order %s belongs to outlet %s, not %s", externalOrderID, detail.ResID, row.OutletID.String)
+	if outletID != "" && strings.TrimSpace(detail.ResID) != "" && detail.ResID != outletID {
+		return IngestResult{}, fmt.Errorf("order %s belongs to outlet %s, not %s", externalOrderID, detail.ResID, outletID)
+	}
+	if outletID == "" && strings.TrimSpace(detail.ResID) != "" {
+		outletID = detail.ResID
 	}
 
 	merged := mergeFetchedOrder(&FetchedOrder{ExternalOrderID: externalOrderID}, detail)
-	return s.IngestOrders(ctx, kitchenID, actorUserID, fetchedToIngest([]FetchedOrder{merged}))
+	return s.IngestOrders(ctx, kitchenID, outletID, actorUserID, fetchedToIngest([]FetchedOrder{merged}))
 }
 
 // BackfillPlacedTimes sets restaurant_orders.created_at from stored Zomato placed_at when

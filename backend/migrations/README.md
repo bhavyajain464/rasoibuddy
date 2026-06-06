@@ -44,7 +44,8 @@ If you already ran the old `database/schema.sql` and partial migrations, only ru
 | `015_shopping_kitchen.sql` | `shopping_items.kitchen_id` |
 | `016_backfill_orphan_user_kitchens.sql` | Backfill kitchens for users without membership |
 | `017_restaurant_platform.sql` | Kitchen kind/roles, menu, orders, inventory_movements, analytics opt-in |
-| `018_kitchen_member_kind_unique.sql` | `kitchen_kind` on members + unique `(user_id, kitchen_kind)` |
+| `018_kitchen_member_kind_unique.sql` | `kitchen_kind` on members + unique household membership |
+| `026_multi_restaurant_membership.sql` | Allow multiple restaurant kitchens per user |
 | `010_diet_analysis_email.sql` | Nightly diet digest email opt-in on users |
 | `011_bill_scan_daily.sql` | Daily bill scan reset date (`bill_scan_count_date`) |
 

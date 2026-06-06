@@ -1,68 +1,73 @@
-import React, { useCallback, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import { Button, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { palette } from '../theme';
 
-const ZOMATO_LOGIN_URL = 'https://www.zomato.com/partners/login';
-
 type Mode = 'join' | 'create';
+type JoinMethod = 'outlet_id' | 'invite_code';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function SetupKitchenScreen() {
   const { user, signOut } = useAuth();
-  const { setKitchen, refreshKitchen } = useRestaurant();
+  const { setKitchen, refreshKitchen, switchKitchen } = useRestaurant();
   const [mode, setMode] = useState<Mode>('create');
-  const [outletId, setOutletId] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
-  const [cookieHeader, setCookieHeader] = useState('');
+  const [joinMethod, setJoinMethod] = useState<JoinMethod>('outlet_id');
+  const [joinValue, setJoinValue] = useState('');
+  const [outletName, setOutletName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const openZomatoLogin = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const popup = window.open(ZOMATO_LOGIN_URL, 'zomato-connect', 'width=520,height=760');
-    if (!popup) {
-      setError('Popup blocked — allow popups, or open zomato.com/partners/login manually.');
-    }
-  }, []);
-
-  const finishWithKitchen = async (kitchenId: string, role: string) => {
-    setKitchen({ kitchen_id: kitchenId, role });
+  const finishWithOutlet = async (outletKey: string, role: string, name?: string) => {
+    setKitchen({ outlet_id: outletKey, kitchen_id: outletKey, role, name });
     await refreshKitchen();
+    await switchKitchen(outletKey);
   };
 
-  const joinRestaurant = async () => {
-    const id = outletId.trim();
-    if (!id) {
-      setError('Enter your Zomato outlet ID');
+  const joinOutlet = async () => {
+    const raw = joinValue.trim();
+    if (!raw) {
+      setError(joinMethod === 'outlet_id' ? 'Enter the outlet ID from your owner' : 'Enter the invite code');
       return;
     }
     setBusy(true);
     setError('');
     try {
-      const k = await restaurantFetch<{ kitchen_id: string }>('/restaurant/join-by-outlet', {
-        method: 'POST',
-        body: JSON.stringify({ outlet_id: id }),
-      });
-      await finishWithKitchen(k.kitchen_id, 'staff');
+      if (joinMethod === 'outlet_id' || UUID_RE.test(raw)) {
+        const k = await restaurantFetch<{ kitchen_id: string; outlet_id?: string; name?: string; role?: string }>(
+          '/restaurant/join-by-outlet',
+          {
+            method: 'POST',
+            body: JSON.stringify({ outlet_id: raw }),
+          },
+        );
+        const outletKey = k.outlet_id ?? k.kitchen_id;
+        await finishWithOutlet(outletKey, k.role ?? 'staff', k.name);
+        return;
+      }
+      const k = await restaurantFetch<{ kitchen_id: string; outlet_id?: string; name?: string; role?: string }>(
+        '/restaurant/join',
+        {
+          method: 'POST',
+          body: JSON.stringify({ invite_code: raw.toUpperCase() }),
+        },
+      );
+      const outletKey = k.outlet_id ?? k.kitchen_id;
+      await finishWithOutlet(outletKey, k.role ?? 'staff', k.name);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not join restaurant');
+      setError(e instanceof Error ? e.message : 'Could not join outlet');
     } finally {
       setBusy(false);
     }
   };
 
-  const createRestaurant = async () => {
-    const id = outletId.trim();
-    const cookies = cookieHeader.trim();
-    if (!id) {
-      setError('Enter your Zomato outlet ID');
-      return;
-    }
-    if (!cookies) {
-      setError('Paste the Cookie header from Zomato after partner login');
+  const createOutlet = async () => {
+    const name = outletName.trim();
+    if (!name) {
+      setError('Enter a name for your outlet');
       return;
     }
     setBusy(true);
@@ -70,20 +75,17 @@ export default function SetupKitchenScreen() {
     try {
       const res = await restaurantFetch<{
         kitchen_id: string;
-        sync_started?: boolean;
-        sync_error?: string;
-      }>('/restaurant/provision-zomato', {
+        outlet_id?: string;
+        name?: string;
+        role?: string;
+      }>('/restaurant/kitchen', {
         method: 'POST',
-        body: JSON.stringify({
-          name: restaurantName.trim() || undefined,
-          outlet_id: id,
-          outlet_name: restaurantName.trim() || undefined,
-          cookie_header: cookies,
-        }),
+        body: JSON.stringify({ name }),
       });
-      await finishWithKitchen(res.kitchen_id, 'owner');
+      const outletKey = res.outlet_id ?? res.kitchen_id;
+      await finishWithOutlet(outletKey, res.role ?? 'owner', res.name ?? name);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create restaurant');
+      setError(e instanceof Error ? e.message : 'Could not create outlet');
     } finally {
       setBusy(false);
     }
@@ -95,8 +97,8 @@ export default function SetupKitchenScreen() {
         Welcome, {user?.name?.split(' ')[0] ?? 'Partner'}
       </Text>
       <Text variant="bodyMedium" style={styles.sub}>
-        Set up your restaurant workspace. Create links your Zomato outlet and starts importing orders. Join an
-        existing workspace with an outlet ID the owner already registered.
+        Sign in is with Google only. Choose an outlet to work in — create a new one or join one your owner shared
+        (outlet ID, invite code, or staff email invite).
       </Text>
 
       <SegmentedButtons
@@ -108,94 +110,81 @@ export default function SetupKitchenScreen() {
           }
         }}
         buttons={[
-          { value: 'create', label: 'Create' },
-          { value: 'join', label: 'Join' },
+          { value: 'create', label: 'Create outlet' },
+          { value: 'join', label: 'Join outlet' },
         ]}
         style={styles.segment}
       />
 
-      <TextInput
-        label="Zomato outlet ID"
-        value={outletId}
-        onChangeText={setOutletId}
-        mode="outlined"
-        keyboardType="number-pad"
-        placeholder="e.g. 22267610"
-        style={styles.input}
-        outlineColor={palette.border}
-        textColor={palette.text}
-      />
-
       {mode === 'join' ? (
         <>
+          <SegmentedButtons
+            value={joinMethod}
+            onValueChange={(v) => {
+              if (v === 'outlet_id' || v === 'invite_code') {
+                setJoinMethod(v);
+                setError('');
+              }
+            }}
+            buttons={[
+              { value: 'outlet_id', label: 'Outlet ID' },
+              { value: 'invite_code', label: 'Invite code' },
+            ]}
+            style={styles.segment}
+          />
+          <TextInput
+            label={joinMethod === 'outlet_id' ? 'Outlet ID (from owner)' : 'Invite code'}
+            value={joinValue}
+            onChangeText={setJoinValue}
+            mode="outlined"
+            placeholder={joinMethod === 'outlet_id' ? 'e.g. 12ca918f-2297-4ff0-9da8-50466d2bf767' : 'AB12CD34'}
+            autoCapitalize="characters"
+            style={styles.input}
+            outlineColor={palette.border}
+            textColor={palette.text}
+          />
           <Text style={styles.hint}>
-            The outlet must already be registered by the owner (Create flow). Staff use the same outlet ID to join.
+            {joinMethod === 'outlet_id'
+              ? 'Ask your owner for the KitchenAI outlet ID (Profile → Switch outlet). Not the Zomato store ID.'
+              : 'Owners can share the invite code from Profile. Staff email invites apply automatically when you sign in.'}
           </Text>
           <Button
             mode="contained"
-            onPress={joinRestaurant}
+            onPress={joinOutlet}
             loading={busy}
-            disabled={!outletId.trim() || busy}
+            disabled={!joinValue.trim() || busy}
             buttonColor={palette.primary}
             textColor="#0F172A"
             style={styles.btn}
           >
-            Join restaurant
+            Join outlet
           </Button>
         </>
       ) : (
         <>
           <TextInput
-            label="Restaurant name (optional)"
-            value={restaurantName}
-            onChangeText={setRestaurantName}
+            label="Outlet name"
+            value={outletName}
+            onChangeText={setOutletName}
             mode="outlined"
             placeholder="Choudhary Hotel"
             style={styles.input}
             outlineColor={palette.border}
             textColor={palette.text}
           />
-
-          {Platform.OS === 'web' ? (
-            <>
-              <Text style={styles.hint}>
-                1. Open Zomato partner login and sign in{'\n'}
-                2. DevTools → Network → copy the cookie header from an api.zomato.com request{'\n'}
-                3. Paste below — we validate the session and outlet, then create your workspace and start syncing orders (retry from Settings if sync does not start)
-              </Text>
-              <Button mode="outlined" onPress={openZomatoLogin} textColor={palette.primary} style={styles.btn}>
-                Open Zomato partner login
-              </Button>
-            </>
-          ) : (
-            <Text style={styles.hint}>
-              Sign in at zomato.com/partners on a browser, copy the cookie header from DevTools, and paste it below.
-            </Text>
-          )}
-
-          <TextInput
-            label="Cookie header (from Network tab)"
-            value={cookieHeader}
-            onChangeText={setCookieHeader}
-            mode="outlined"
-            multiline
-            numberOfLines={4}
-            placeholder="session_id=...; other_cookie=..."
-            style={styles.input}
-            outlineColor={palette.border}
-            textColor={palette.text}
-          />
-
+          <Text style={styles.hint}>
+            Creates your outlet (menu, stock, orders). Link partners later from Profile → Partners.
+          </Text>
           <Button
             mode="contained"
-            onPress={createRestaurant}
+            onPress={createOutlet}
             loading={busy}
-            disabled={!outletId.trim() || !cookieHeader.trim() || busy}
+            disabled={!outletName.trim() || busy}
             buttonColor={palette.primary}
             textColor="#0F172A"
             style={styles.btn}
           >
-            Create restaurant & sync orders
+            Create outlet
           </Button>
         </>
       )}

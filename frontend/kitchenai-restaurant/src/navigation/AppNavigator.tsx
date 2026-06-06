@@ -137,7 +137,7 @@ function AuthenticatedNavigator() {
 
 export function AppNavigator() {
   const { loading, user } = useAuth();
-  const { kitchen, loading: kitchenLoading } = useRestaurant();
+  const { kitchen, loading: kitchenLoading, kitchens } = useRestaurant();
 
   const initialState = useMemo(
     () => getWebNavigationStateFromUrl(linking.config as NonNullable<LinkingOptions<RootStackParamList>['config']>),
@@ -152,7 +152,11 @@ export function AppNavigator() {
     return <LoginScreen />;
   }
 
-  if (!kitchenLoading && !kitchen) {
+  if (kitchenLoading) {
+    return <LoginLoading />;
+  }
+
+  if (!kitchenLoading && kitchens.length === 0) {
     return <SetupKitchenScreen />;
   }
 

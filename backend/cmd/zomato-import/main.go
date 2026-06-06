@@ -53,12 +53,18 @@ func main() {
 		return
 	}
 
-	var actorID string
-	if err := sqlDB.QueryRow(`SELECT actor_user_id::text FROM zomato_kitchen_sync WHERE kitchen_id = $1`, kitchenID).Scan(&actorID); err != nil {
+	var actorID, outletID string
+	if err := sqlDB.QueryRow(`
+		SELECT COALESCE(actor_user_id::text, ''), partner_outlet_id
+		FROM partner_order_sync
+		WHERE kitchen_id = $1
+		ORDER BY updated_at DESC
+		LIMIT 1
+	`, kitchenID).Scan(&actorID, &outletID); err != nil {
 		log.Fatal(err)
 	}
 
-	result, err := zomatoSvc.ImportOrderByExternalID(context.Background(), kitchenID, actorID, orderID)
+	result, err := zomatoSvc.ImportOrderByExternalID(context.Background(), kitchenID, actorID, outletID, orderID)
 	if err != nil {
 		log.Fatal(err)
 	}
