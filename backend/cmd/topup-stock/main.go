@@ -29,7 +29,7 @@ func main() {
 	kid := "12ca918f-2297-4ff0-9da8-50466d2bf767"
 	ctx := context.Background()
 
-	menuSvc := restaurantsvc.NewMenuService(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB, cfg)
 	n, err := menuSvc.TopUpLowStock(ctx, kid)
 	if err != nil {
 		log.Fatal(err)

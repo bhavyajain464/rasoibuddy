@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Searchbar, Text } from 'react-native-paper';
+import { ActivityIndicator, IconButton, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterPill, FilterPillRow } from '../components/FilterPill';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { AddStockSheet } from '../components/stock/AddStockSheet';
 import { StockListItem } from '../components/stock/StockListItem';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { InventoryListPage, InventoryRow } from '../types';
-import { formatFoodGroupLabel } from '../utils/foodGroup';
-import { showAppError } from '../utils/alertMessage';
+import { formatFoodGroupLabel, normalizeFoodGroup, STATIC_FOOD_GROUPS } from '../utils/foodGroup';
+import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { palette } from '../theme';
 
-const STOCK_PAGE_SIZE = 10;
+const STOCK_PAGE_SIZE = 50;
 
 type StockFilter = 'all' | 'low' | string;
 
@@ -38,6 +40,9 @@ export default function InventoryScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { catalog } = useIngredientCatalog();
   const [error, setError] = useState('');
   const { listRef, loadMoreLockRef, handleListScroll, handleContentSizeChange, resetForFilterChange, canAutoLoadMore } =
     useSectionListFilterScroll<InventoryRow>(groupFilter, loading);
@@ -111,13 +116,48 @@ export default function InventoryScreen() {
     }
   };
 
+  const handleAdd = async (payload: { name: string; qty: number; unit: string }) => {
+    if (!kitchenId) return;
+    setSaving(true);
+    try {
+      await restaurantFetch<InventoryRow>(`/restaurant/${kitchenId}/inventory`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      setSheetOpen(false);
+      showAppSuccess(`Added ${payload.name} to stock`);
+      setSearch('');
+      setGroupFilter('all');
+      resetForFilterChange();
+      setLoading(true);
+      // Refetch with all filter (groupFilter state may not have flushed yet).
+      const params = new URLSearchParams({ limit: String(STOCK_PAGE_SIZE) });
+      const page = await restaurantFetch<InventoryListPage>(
+        `/restaurant/${kitchenId}/inventory?${params.toString()}`,
+      );
+      setTotalCount(page.total_count ?? 0);
+      setLowStockCount(page.low_stock_count ?? 0);
+      setFoodGroupCounts(page.food_group_counts ?? {});
+      setNextCursor(page.next_cursor);
+      setHasMore(page.has_more);
+      setItems(page.items ?? []);
+    } catch (e) {
+      showAppError(e instanceof Error ? e.message : 'Could not add stock item');
+    } finally {
+      setSaving(false);
+      setLoading(false);
+    }
+  };
+
   const searchLower = search.trim().toLowerCase();
 
   const foodGroups = useMemo(
     () =>
-      Object.entries(foodGroupCounts)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([key, count]) => ({ key, label: formatFoodGroupLabel(key), count })),
+      STATIC_FOOD_GROUPS.map((key) => ({
+        key,
+        label: formatFoodGroupLabel(key),
+        count: foodGroupCounts[key] ?? 0,
+      })).filter((group) => group.count > 0),
     [foodGroupCounts],
   );
 
@@ -136,13 +176,37 @@ export default function InventoryScreen() {
           const group = formatFoodGroupLabel(item.food_group).toLowerCase();
           return name.includes(searchLower) || group.includes(searchLower);
         });
-    return [...base].sort((a, b) => a.canonical_name.localeCompare(b.canonical_name));
+    return [...base].sort((a, b) => {
+      const ga = normalizeFoodGroup(a.food_group);
+      const gb = normalizeFoodGroup(b.food_group);
+      const ai = STATIC_FOOD_GROUPS.indexOf(ga as (typeof STATIC_FOOD_GROUPS)[number]);
+      const bi = STATIC_FOOD_GROUPS.indexOf(gb as (typeof STATIC_FOOD_GROUPS)[number]);
+      const orderA = ai === -1 ? STATIC_FOOD_GROUPS.length : ai;
+      const orderB = bi === -1 ? STATIC_FOOD_GROUPS.length : bi;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.canonical_name.localeCompare(b.canonical_name);
+    });
   }, [items, searchLower]);
 
-  const listSections = useMemo(
-    (): StockSection[] => [{ key: 'stock', title: '', data: filteredItems }],
-    [filteredItems],
-  );
+  const showGroupedSections = groupFilter === 'all';
+
+  const listSections = useMemo((): StockSection[] => {
+    if (!showGroupedSections) {
+      return [{ key: String(groupFilter), title: '', data: filteredItems }];
+    }
+    const grouped = new Map<string, InventoryRow[]>();
+    for (const item of filteredItems) {
+      const key = normalizeFoodGroup(item.food_group);
+      const bucket = grouped.get(key) ?? [];
+      bucket.push(item);
+      grouped.set(key, bucket);
+    }
+    return STATIC_FOOD_GROUPS.filter((key) => (grouped.get(key)?.length ?? 0) > 0).map((key) => ({
+      key,
+      title: formatFoodGroupLabel(key),
+      data: grouped.get(key) ?? [],
+    }));
+  }, [filteredItems, groupFilter, showGroupedSections]);
 
   const subtitle = loading
     ? 'Loading stock…'
@@ -162,6 +226,16 @@ export default function InventoryScreen() {
           iconColor={palette.primary}
           placeholderTextColor={palette.textMuted}
           elevation={0}
+        />
+        <IconButton
+          icon="plus"
+          mode="contained"
+          containerColor={palette.primary}
+          iconColor="#0F172A"
+          size={22}
+          onPress={() => setSheetOpen(true)}
+          style={styles.addBtn}
+          accessibilityLabel="Add stock item"
         />
       </View>
 
@@ -223,7 +297,7 @@ export default function InventoryScreen() {
             <Text style={styles.empty}>
               {searchLower || groupFilter !== 'all'
                 ? 'No items match your filters'
-                : 'No stock yet — inventory updates when orders are processed'}
+                : 'No stock yet — tap + to add items or import from menu seed'}
             </Text>
           }
           ListFooterComponent={
@@ -231,9 +305,24 @@ export default function InventoryScreen() {
               <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
             ) : null
           }
-          renderItem={({ item }) => <StockListItem item={item} />}
+          renderItem={({ item }) => <StockListItem item={item} showGroup={!showGroupedSections} />}
+          renderSectionHeader={({ section }) =>
+            section.title ? (
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                {section.title}
+              </Text>
+            ) : null
+          }
         />
       )}
+
+      <AddStockSheet
+        visible={sheetOpen}
+        saving={saving}
+        catalog={catalog}
+        onDismiss={() => setSheetOpen(false)}
+        onSave={handleAdd}
+      />
     </View>
   );
 }
@@ -241,12 +330,17 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.background },
   toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
+    gap: 4,
   },
+  addBtn: { margin: 0 },
   filterRowWrap: { backgroundColor: palette.background },
   searchbar: {
+    flex: 1,
     backgroundColor: palette.surfaceElevated,
     borderRadius: 12,
     borderWidth: 1,
@@ -257,6 +351,15 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   footerLoader: { marginVertical: 16 },
   listContent: { paddingHorizontal: 16, paddingTop: 4 },
+  sectionHeader: {
+    color: palette.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontSize: 12,
+    marginTop: 12,
+    marginBottom: 8,
+  },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
   empty: { color: palette.textMuted, textAlign: 'center', padding: 32 },
   error: { color: palette.error, paddingHorizontal: 16, marginBottom: 8 },

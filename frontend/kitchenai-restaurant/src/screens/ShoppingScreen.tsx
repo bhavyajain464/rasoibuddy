@@ -7,17 +7,28 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { ActivityIndicator, IconButton, Menu, Searchbar, Text } from 'react-native-paper';
+import { ActivityIndicator, IconButton, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FilterPill, FilterPillRow } from '../components/FilterPill';
 import { AddShoppingSheet } from '../components/shopping/AddShoppingSheet';
 import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { ShoppingRow } from '../types';
+import { formatFoodGroupLabel, normalizeFoodGroup, STATIC_FOOD_GROUPS } from '../utils/foodGroup';
 import { showAppError } from '../utils/alertMessage';
 import { palette } from '../theme';
+
+type BuyFilter = 'all' | string;
+
+type BuySection = {
+  key: string;
+  title: string;
+  data: ShoppingRow[];
+};
 
 async function confirmRemove(name: string): Promise<boolean> {
   if (Platform.OS === 'web') {
@@ -37,70 +48,41 @@ export default function ShoppingScreen() {
   const kitchenId = kitchen?.kitchen_id ?? '';
   const [items, setItems] = useState<ShoppingRow[]>([]);
   const [search, setSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState<BuyFilter>('all');
   const [loading, setLoading] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
-  const [seeding, setSeeding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const autoSeedAttempted = useRef(false);
+  const { catalog } = useIngredientCatalog();
   const loadGenRef = useRef(0);
-  const listMountKey = `buy-${loading ? 'loading' : 'ready'}`;
+  const listMountKey = `buy-${groupFilter}-${loading ? 'loading' : 'ready'}`;
   const {
     listRef,
     handleListScroll,
     handleContentSizeChange,
-  } = useSectionListFilterScroll<ShoppingRow>('buy', loading);
+    resetForFilterChange,
+  } = useSectionListFilterScroll<ShoppingRow>(groupFilter, loading);
+
+  const selectGroupFilter = useCallback(
+    (filter: BuyFilter) => {
+      if (filter === groupFilter) return;
+      resetForFilterChange();
+      setGroupFilter(filter);
+    },
+    [groupFilter, resetForFilterChange],
+  );
 
   const load = useCallback(
     async (gen?: number) => {
       if (!kitchenId) return;
       const data = await restaurantFetch<{ items: ShoppingRow[] }>(`/restaurant/${kitchenId}/shopping`);
       if (gen != null && gen !== loadGenRef.current) return;
-
-      let list = data?.items ?? [];
-
-      if (list.length === 0 && !autoSeedAttempted.current) {
-        autoSeedAttempted.current = true;
-        try {
-          await restaurantFetch(`/restaurant/${kitchenId}/shopping/seed-samples`, {
-            method: 'POST',
-            body: '{}',
-          });
-          const seeded = await restaurantFetch<{ items: ShoppingRow[] }>(`/restaurant/${kitchenId}/shopping`);
-          if (gen != null && gen !== loadGenRef.current) return;
-          list = seeded?.items ?? [];
-        } catch {
-          // Keep empty if seed fails (e.g. offline).
-        }
-      }
-
-      setItems(list);
+      setItems(data?.items ?? []);
     },
     [kitchenId],
   );
-
-  const seedSamples = async () => {
-    if (!kitchenId) return;
-    setSeeding(true);
-    try {
-      await restaurantFetch(`/restaurant/${kitchenId}/shopping/seed-samples`, {
-        method: 'POST',
-        body: '{}',
-      });
-      await load();
-    } catch (e) {
-      showAppError(e instanceof Error ? e.message : 'Could not load sample items');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  useEffect(() => {
-    autoSeedAttempted.current = false;
-  }, [kitchenId]);
 
   useEffect(() => {
     const gen = ++loadGenRef.current;
@@ -132,10 +114,75 @@ export default function ShoppingScreen() {
 
   const searchLower = search.trim().toLowerCase();
 
+  const foodGroupCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      const key = normalizeFoodGroup(item.food_group);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [items]);
+
+  const foodGroups = useMemo(
+    () =>
+      STATIC_FOOD_GROUPS.map((key) => ({
+        key,
+        label: formatFoodGroupLabel(key),
+        count: foodGroupCounts[key] ?? 0,
+      })).filter((group) => group.count > 0),
+    [foodGroupCounts],
+  );
+
+  useEffect(() => {
+    if (groupFilter === 'all' || foodGroups.some((g) => g.key === groupFilter)) {
+      return;
+    }
+    selectGroupFilter('all');
+  }, [groupFilter, foodGroups, selectGroupFilter]);
+
   const filteredItems = useMemo(() => {
-    if (!searchLower) return items;
-    return items.filter((item) => item.name.toLowerCase().includes(searchLower));
-  }, [items, searchLower]);
+    const byGroup =
+      groupFilter === 'all'
+        ? items
+        : items.filter((item) => normalizeFoodGroup(item.food_group) === groupFilter);
+    const base = !searchLower
+      ? byGroup
+      : byGroup.filter((item) => {
+          const name = item.name.toLowerCase();
+          const group = formatFoodGroupLabel(item.food_group).toLowerCase();
+          return name.includes(searchLower) || group.includes(searchLower);
+        });
+    return [...base].sort((a, b) => {
+      const ga = normalizeFoodGroup(a.food_group);
+      const gb = normalizeFoodGroup(b.food_group);
+      const ai = STATIC_FOOD_GROUPS.indexOf(ga as (typeof STATIC_FOOD_GROUPS)[number]);
+      const bi = STATIC_FOOD_GROUPS.indexOf(gb as (typeof STATIC_FOOD_GROUPS)[number]);
+      const orderA = ai === -1 ? STATIC_FOOD_GROUPS.length : ai;
+      const orderB = bi === -1 ? STATIC_FOOD_GROUPS.length : bi;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+  }, [items, searchLower, groupFilter]);
+
+  const showGroupedSections = groupFilter === 'all';
+
+  const listSections = useMemo((): BuySection[] => {
+    if (!showGroupedSections) {
+      return [{ key: String(groupFilter), title: '', data: filteredItems }];
+    }
+    const grouped = new Map<string, ShoppingRow[]>();
+    for (const item of filteredItems) {
+      const key = normalizeFoodGroup(item.food_group);
+      const bucket = grouped.get(key) ?? [];
+      bucket.push(item);
+      grouped.set(key, bucket);
+    }
+    return STATIC_FOOD_GROUPS.filter((key) => (grouped.get(key)?.length ?? 0) > 0).map((key) => ({
+      key,
+      title: formatFoodGroupLabel(key),
+      data: grouped.get(key) ?? [],
+    }));
+  }, [filteredItems, groupFilter, showGroupedSections]);
 
   const handleAdd = async (payload: { name: string; qty: number; unit: string }) => {
     if (!kitchenId) return;
@@ -147,6 +194,8 @@ export default function ShoppingScreen() {
       });
       setItems((prev) => [created, ...prev]);
       setSheetOpen(false);
+      setGroupFilter('all');
+      resetForFilterChange();
     } catch (e) {
       showAppError(e instanceof Error ? e.message : 'Could not add item');
     } finally {
@@ -176,7 +225,7 @@ export default function ShoppingScreen() {
 
       <View style={styles.toolbar}>
         <Searchbar
-          placeholder="Search buy list…"
+          placeholder="Search items or groups…"
           value={search}
           onChangeText={setSearch}
           style={styles.searchbar}
@@ -185,42 +234,37 @@ export default function ShoppingScreen() {
           placeholderTextColor={palette.textMuted}
           elevation={0}
         />
-        <Menu
-          visible={addMenuOpen}
-          onDismiss={() => setAddMenuOpen(false)}
-          anchor={
-            <IconButton
-              icon="plus"
-              mode="contained"
-              containerColor={palette.primary}
-              iconColor="#0F172A"
-              size={22}
-              loading={seeding}
-              onPress={() => setAddMenuOpen(true)}
-              style={styles.addBtn}
-              accessibilityLabel="Add buy list item"
-            />
-          }
-          anchorPosition="bottom"
-        >
-          <Menu.Item
-            leadingIcon="cart-plus"
-            title="Add item"
-            onPress={() => {
-              setAddMenuOpen(false);
-              setSheetOpen(true);
-            }}
-          />
-          <Menu.Item
-            leadingIcon="download"
-            title="Load sample ingredients"
-            onPress={() => {
-              setAddMenuOpen(false);
-              void seedSamples();
-            }}
-          />
-        </Menu>
+        <IconButton
+          icon="plus"
+          mode="contained"
+          containerColor={palette.primary}
+          iconColor="#0F172A"
+          size={22}
+          onPress={() => setSheetOpen(true)}
+          style={styles.addBtn}
+          accessibilityLabel="Add buy list item"
+        />
       </View>
+
+      {items.length > 0 ? (
+        <View style={styles.filterRowWrap}>
+          <FilterPillRow>
+            <FilterPill
+              label={`All (${items.length})`}
+              selected={groupFilter === 'all'}
+              onPress={() => selectGroupFilter('all')}
+            />
+            {foodGroups.map((group) => (
+              <FilterPill
+                key={group.key}
+                label={`${group.label} (${group.count})`}
+                selected={groupFilter === group.key}
+                onPress={() => selectGroupFilter(group.key)}
+              />
+            ))}
+          </FilterPillRow>
+        </View>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -230,7 +274,7 @@ export default function ShoppingScreen() {
         <SectionList
           key={listMountKey}
           ref={listRef}
-          sections={[{ key: 'buy', title: '', data: filteredItems }]}
+          sections={listSections}
           style={styles.list}
           scrollEnabled={!loading}
           keyExtractor={(item) => item.id}
@@ -252,11 +296,18 @@ export default function ShoppingScreen() {
               <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
             ) : (
               <Text style={styles.empty}>
-                {searchLower
-                  ? 'No items match your search'
-                  : 'Nothing to buy — tap + to add vendor items'}
+                {searchLower || groupFilter !== 'all'
+                  ? 'No items match your filters'
+                  : 'Nothing to buy — tap + to add ingredients'}
               </Text>
             )
+          }
+          renderSectionHeader={({ section }) =>
+            section.title ? (
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                {section.title}
+              </Text>
+            ) : null
           }
           renderItem={({ item }) => (
             <ShoppingListItem
@@ -278,6 +329,7 @@ export default function ShoppingScreen() {
       <AddShoppingSheet
         visible={sheetOpen}
         saving={saving}
+        catalog={catalog}
         onDismiss={() => setSheetOpen(false)}
         onSave={handleAdd}
       />
@@ -304,10 +356,20 @@ const styles = StyleSheet.create({
   },
   searchInput: { color: palette.text, fontSize: 14 },
   addBtn: { margin: 0 },
+  filterRowWrap: { backgroundColor: palette.background },
   loader: { marginTop: 48 },
   list: { flex: 1 },
   footerLoader: { marginVertical: 16 },
   listContent: { paddingHorizontal: 16, paddingTop: 4 },
+  sectionHeader: {
+    color: palette.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontSize: 12,
+    marginTop: 12,
+    marginBottom: 8,
+  },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
   empty: { color: palette.textMuted, textAlign: 'center', padding: 32 },
   error: { color: palette.error, paddingHorizontal: 16, marginBottom: 8 },

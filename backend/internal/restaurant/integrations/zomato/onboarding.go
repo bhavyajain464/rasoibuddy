@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	restsvc "kitchenai-backend/internal/restaurant/services"
 )
 
 func normalizePartnerOutletID(id string) string {
@@ -57,6 +59,27 @@ func (s *Service) IsOutletRegistered(ctx context.Context, partnerOutletID string
 	return s.IsPartnerOutletRegistered(ctx, partnerOutletID)
 }
 
+func (s *Service) PartnerOutletIDForKitchen(ctx context.Context, kitchenID string) (string, error) {
+	var outletID string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT partner_outlet_id FROM partner_order_sync
+		WHERE kitchen_id = $1
+		ORDER BY updated_at DESC
+		LIMIT 1
+	`, kitchenID).Scan(&outletID)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("partner_outlet_id required — link Zomato on this outlet first")
+	}
+	if err != nil {
+		return "", err
+	}
+	outletID = normalizePartnerOutletID(outletID)
+	if outletID == "" {
+		return "", fmt.Errorf("partner_outlet_id required — link Zomato on this outlet first")
+	}
+	return outletID, nil
+}
+
 func (s *Service) ValidateAuthForPartnerOutlet(ctx context.Context, auth *Auth, partnerOutletID string) error {
 	partnerOutletID = normalizePartnerOutletID(partnerOutletID)
 	if partnerOutletID == "" {
@@ -82,4 +105,30 @@ func (s *Service) SaveProvisionedSession(ctx context.Context, kitchenID, actorUs
 		return err
 	}
 	return s.upsertPartnerWorker(ctx, kitchenID, actorUserID, "zomato", partnerOutletID, partnerOutletName, StatusIdle)
+}
+
+// FetchAndSeedMenu pulls the partner menu once and seeds kitchen menu + inventory.
+func (s *Service) FetchAndSeedMenu(ctx context.Context, kitchenID, actorUserID, outletID string, auth *Auth) (*restsvc.ZomatoMenuSeedResult, error) {
+	if s.menu == nil {
+		return nil, fmt.Errorf("menu service not configured")
+	}
+	if auth == nil {
+		var err error
+		auth, err = s.loadKitchenAuth(ctx, kitchenID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if auth == nil {
+		return nil, &AuthError{Code: "login_required", Message: "Zomato session not configured — import partner cookies in Settings"}
+	}
+	raw, err := s.fetchContentMenu(ctx, auth, outletID)
+	if err != nil {
+		return nil, err
+	}
+	dishes, err := restsvc.ParseZomatoMenuJSON(raw)
+	if err != nil {
+		return nil, err
+	}
+	return s.menu.SeedFromZomatoDishes(ctx, kitchenID, actorUserID, dishes)
 }

@@ -8,6 +8,8 @@ import { useAuth } from './AuthContext';
 type RestaurantContextValue = {
   outlet: OutletRef | null;
   outlets: OutletRef[];
+  /** True when user has multiple outlets and must pick one (no saved preference). */
+  needsOutletPick: boolean;
   /** @deprecated Use outlet */
   kitchen: OutletRef | null;
   /** @deprecated Use outlets */
@@ -16,6 +18,7 @@ type RestaurantContextValue = {
   refreshKitchen: (opts?: { silent?: boolean }) => Promise<void>;
   setKitchen: (k: OutletRef | null) => void;
   switchKitchen: (outletId: string) => Promise<void>;
+  clearOutletPick: () => void;
   /** @deprecated Use switchKitchen */
   switchOutlet: (outletId: string) => Promise<void>;
 };
@@ -23,12 +26,14 @@ type RestaurantContextValue = {
 const RestaurantContext = createContext<RestaurantContextValue>({
   outlet: null,
   outlets: [],
+  needsOutletPick: false,
   kitchen: null,
   kitchens: [],
   loading: true,
   refreshKitchen: async () => {},
   setKitchen: () => {},
   switchKitchen: async () => {},
+  clearOutletPick: () => {},
   switchOutlet: async () => {},
 });
 
@@ -55,6 +60,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   const [outlets, setOutlets] = useState<OutletRef[]>([]);
   const [outlet, setOutletState] = useState<OutletRef | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsOutletPick, setNeedsOutletPick] = useState(false);
 
   const applyOutlet = useCallback(async (next: OutletRef | null) => {
     setOutletState(next);
@@ -81,6 +87,17 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       const normalized = (list ?? []).map(normalizeOutletRef);
       setOutlets(normalized);
       const storedId = await loadActiveKitchenId();
+      const storedMatch = storedId
+        ? normalized.find((k) => k.outlet_id === storedId || k.kitchen_id === storedId)
+        : undefined;
+
+      if (normalized.length > 1 && !storedMatch) {
+        setNeedsOutletPick(true);
+        await applyOutlet(null);
+        return;
+      }
+
+      setNeedsOutletPick(false);
       const active = pickActiveOutlet(normalized, storedId);
       await applyOutlet(active);
     } catch {
@@ -117,9 +134,14 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       const next = outlets.find((k) => k.outlet_id === outletId || k.kitchen_id === outletId);
       if (!next) return;
       await applyOutlet(next);
+      setNeedsOutletPick(false);
     },
     [outlets, applyOutlet],
   );
+
+  const clearOutletPick = useCallback(() => {
+    setNeedsOutletPick(false);
+  }, []);
 
   useEffect(() => {
     void refreshKitchen();
@@ -130,12 +152,14 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       value={{
         outlet,
         outlets,
+        needsOutletPick,
         kitchen: outlet,
         kitchens: outlets,
         loading,
         refreshKitchen,
         setKitchen,
         switchKitchen,
+        clearOutletPick,
         switchOutlet: switchKitchen,
       }}
     >

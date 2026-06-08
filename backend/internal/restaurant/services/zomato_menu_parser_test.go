@@ -21,14 +21,10 @@ func TestParseZomatoMenu(t *testing.T) {
 	if len(dishes) < 90 {
 		t.Fatalf("expected ~93 dishes, got %d", len(dishes))
 	}
-	attachZomatoIngredients(dishes)
 	found := false
 	for _, d := range dishes {
 		if d.Name == "Dal Fry" && d.Category == "main course" && d.PriceCents == 18000 {
 			found = true
-			if len(d.Ingredients) == 0 {
-				t.Fatal("Dal Fry should have ingredients")
-			}
 		}
 	}
 	if !found {

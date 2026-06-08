@@ -156,6 +156,47 @@ func (h *Handler) zomatoIngest(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"imported": n.Imported})
 }
 
+func (h *Handler) zomatoSeedMenu(w http.ResponseWriter, r *http.Request) {
+	if h.zomato == nil {
+		http.Error(w, "zomato integration not configured", http.StatusServiceUnavailable)
+		return
+	}
+	kitchenID := restmw.KitchenIDFromContext(r)
+	userID := restmw.UserIDFromRequest(r)
+	var body struct {
+		PartnerOutletID string `json:"partner_outlet_id"`
+		PartnerStoreID  string `json:"partner_store_id"`
+		OutletID        string `json:"outlet_id"`
+	}
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+	}
+	outletID := strings.TrimSpace(body.PartnerOutletID)
+	if outletID == "" {
+		outletID = strings.TrimSpace(body.PartnerStoreID)
+	}
+	if outletID == "" {
+		outletID = strings.TrimSpace(body.OutletID)
+	}
+	if outletID == "" {
+		var err error
+		outletID, err = h.zomato.PartnerOutletIDForKitchen(r.Context(), kitchenID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	result, err := h.zomato.FetchAndSeedMenu(r.Context(), kitchenID, userID, outletID, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (h *Handler) zomatoImportOrder(w http.ResponseWriter, r *http.Request) {
 	if h.zomato == nil {
 		http.Error(w, "zomato integration not configured", http.StatusServiceUnavailable)

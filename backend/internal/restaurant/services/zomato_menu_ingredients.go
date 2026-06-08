@@ -1,64 +1,68 @@
 package services
 
 import (
-	_ "embed"
-	"encoding/json"
+	"context"
+	"fmt"
 	"strings"
-	"sync"
+
+	consumersvc "kitchenai-backend/internal/services"
+	"kitchenai-backend/pkg/config"
 )
 
-//go:embed zomato_choudhary_menu.json
-var embeddedZomatoChoudharyMenu []byte
-
-var (
-	zomatoIngredientMap     map[string][]string
-	zomatoIngredientMapOnce sync.Once
-)
-
-type zomatoChoudharyMenuFile struct {
-	Dishes []struct {
-		Name        string   `json:"name"`
-		Ingredients []string `json:"ingredients"`
-	} `json:"dishes"`
+var fallbackDishIngredients = []string{
+	"onion", "tomato", "ginger garlic paste", "turmeric", "coriander powder",
 }
 
 func normalizeDishName(name string) string {
-	name = strings.ToLower(strings.TrimSpace(name))
-	repl := strings.NewReplacer(",", " ", "/", " ", "-", " ", "(", " ", ")", " ", "'", " ")
-	name = repl.Replace(name)
-	return strings.Join(strings.Fields(name), " ")
+	return consumersvc.NormalizeMenuDishName(name)
 }
 
-func loadZomatoIngredientMap() {
-	zomatoIngredientMapOnce.Do(func() {
-		zomatoIngredientMap = make(map[string][]string)
-		var file zomatoChoudharyMenuFile
-		if err := json.Unmarshal(embeddedZomatoChoudharyMenu, &file); err != nil {
-			return
-		}
-		for _, d := range file.Dishes {
-			key := normalizeDishName(d.Name)
-			if key == "" || len(d.Ingredients) == 0 {
-				continue
-			}
-			zomatoIngredientMap[key] = d.Ingredients
-		}
-	})
-}
-
-func zomatoIngredientsForDish(name string) []string {
-	loadZomatoIngredientMap()
-	key := normalizeDishName(name)
-	if ings, ok := zomatoIngredientMap[key]; ok {
-		out := make([]string, len(ings))
-		copy(out, ings)
-		return out
+func attachDishIngredientsFromGroq(ctx context.Context, cfg *config.Config, dishes []ZomatoMenuDish) []string {
+	if len(dishes) == 0 {
+		return nil
 	}
-	return []string{"onion", "tomato", "ginger garlic paste", "turmeric", "coriander powder"}
-}
 
-func attachZomatoIngredients(dishes []ZomatoMenuDish) {
+	var warnings []string
+	if cfg == nil || !cfg.HasGroqAPIKey() {
+		for i := range dishes {
+			dishes[i].Ingredients = append([]string(nil), fallbackDishIngredients...)
+		}
+		return []string{"groq not configured; used fallback ingredients for all dishes"}
+	}
+
+	input := make([]consumersvc.MenuDishIngredientInput, 0, len(dishes))
+	for _, dish := range dishes {
+		name := strings.TrimSpace(dish.Name)
+		if name == "" {
+			continue
+		}
+		input = append(input, consumersvc.MenuDishIngredientInput{
+			Name:     name,
+			Category: dish.Category,
+		})
+	}
+
+	lookup, err := consumersvc.GroqMenuDishIngredients(ctx, cfg, input)
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("groq menu ingredients: %v", err))
+		for i := range dishes {
+			dishes[i].Ingredients = append([]string(nil), fallbackDishIngredients...)
+		}
+		return warnings
+	}
+
+	missing := 0
 	for i := range dishes {
-		dishes[i].Ingredients = zomatoIngredientsForDish(dishes[i].Name)
+		key := normalizeDishName(dishes[i].Name)
+		if ings, ok := lookup[key]; ok && len(ings) > 0 {
+			dishes[i].Ingredients = ings
+			continue
+		}
+		missing++
+		dishes[i].Ingredients = append([]string(nil), fallbackDishIngredients...)
 	}
+	if missing > 0 {
+		warnings = append(warnings, fmt.Sprintf("fallback ingredients for %d dish(es) without groq match", missing))
+	}
+	return warnings
 }

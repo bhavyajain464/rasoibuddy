@@ -13,11 +13,13 @@ import { FilterPill, FilterPillRow } from '../components/FilterPill';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { EditMenuItemSheet, IngredientDraft } from '../components/menu/EditMenuItemSheet';
 import { MenuListItem } from '../components/menu/MenuListItem';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
-import { InventoryRow, InventoryListPage, MenuItem, MenuListPage, RecipeIngredient } from '../types';
-import { showAppError } from '../utils/alertMessage';
+import { InventoryRow, InventoryListPage, MenuImportResult, MenuItem, MenuListPage, RecipeIngredient } from '../types';
+import { showAppError, showAppSuccess } from '../utils/alertMessage';
+import { exportMenuToFile, importMenuFromFile, pickMenuSpreadsheetFile } from '../utils/menuCsvFile';
 import { palette } from '../theme';
 
 const MENU_PAGE_SIZE = 10;
@@ -64,6 +66,9 @@ export default function MenuScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const { catalog } = useIngredientCatalog();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [saving, setSaving] = useState(false);
@@ -241,7 +246,7 @@ export default function MenuScreen() {
         }),
       });
       const recipePayload = payload.ingredients
-        .filter((d) => d.ingredient_name.trim() && parseFloat(d.qty) > 0)
+        .filter((d) => d.ingredient_id && d.ingredient_name.trim() && parseFloat(d.qty) > 0)
         .map((d, i) => ({
           ingredient_name: d.ingredient_name.trim(),
           qty: parseFloat(d.qty) || 1,
@@ -321,6 +326,45 @@ export default function MenuScreen() {
     }
   };
 
+  const exportMenu = async () => {
+    if (!kitchenId) return;
+    setAddMenuOpen(false);
+    setExporting(true);
+    try {
+      const count = await exportMenuToFile(kitchenId);
+      showAppSuccess(`Downloaded menu file (${count} dishes)`);
+    } catch (e) {
+      showAppError(e instanceof Error ? e.message : 'Could not export menu file');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const importMenu = async () => {
+    if (!kitchenId) return;
+    setAddMenuOpen(false);
+    setImporting(true);
+    try {
+      const file = await pickMenuSpreadsheetFile();
+      const result: MenuImportResult = await importMenuFromFile(kitchenId, file);
+      const added = result.added?.length ?? 0;
+      const updated = result.updated?.length ?? 0;
+      const errors = result.errors?.length ?? 0;
+      showAppSuccess(`Import done — ${added} added, ${updated} updated${errors ? `, ${errors} warnings` : ''}`);
+      resetForFilterChange();
+      setItems([]);
+      setIngredientsByItem({});
+      setLoading(true);
+      await fetchPage(undefined, false, ++fetchGenRef.current);
+      await loadInventory();
+    } catch (e) {
+      showAppError(e instanceof Error ? e.message : 'Could not import menu file');
+    } finally {
+      setImporting(false);
+      setLoading(false);
+    }
+  };
+
   const editingIngredients = editingItem
     ? ingredientsByItem[editingItem.menu_item_id] ?? []
     : [];
@@ -357,7 +401,7 @@ export default function MenuScreen() {
               containerColor={palette.primary}
               iconColor="#0F172A"
               size={22}
-              loading={seeding}
+              loading={seeding || exporting || importing}
               onPress={() => setAddMenuOpen(true)}
               style={styles.addBtn}
               accessibilityLabel="Add menu item"
@@ -377,6 +421,20 @@ export default function MenuScreen() {
             leadingIcon="download"
             title="Import from catalog"
             onPress={seedCatalog}
+          />
+          <Menu.Item
+            leadingIcon="tray-arrow-down"
+            title="Export menu to file"
+            onPress={() => {
+              void exportMenu();
+            }}
+          />
+          <Menu.Item
+            leadingIcon="tray-arrow-up"
+            title="Import menu from file"
+            onPress={() => {
+              void importMenu();
+            }}
           />
         </Menu>
       </View>
@@ -474,6 +532,7 @@ export default function MenuScreen() {
         visible={sheetOpen}
         item={editingItem}
         ingredients={editingIngredients}
+        catalog={catalog}
         inventory={inventory}
         categoryOptions={categoryOptions}
         saving={saving}

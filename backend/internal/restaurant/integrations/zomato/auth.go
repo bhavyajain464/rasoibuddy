@@ -285,6 +285,37 @@ func (a *Auth) merchantAPIHeaders(csrf string) http.Header {
 	return h
 }
 
+func (a *Auth) menuEditorHeaders(resID string) http.Header {
+	h := http.Header{}
+	h.Set("cookie", a.cookieHeader())
+	h.Set("accept", "application/json, text/plain, */*")
+	h.Set("content-type", "application/json")
+	h.Set("referer", fmt.Sprintf("https://www.zomato.com/partners/onlineordering/menu/editor?resId=%s", resID))
+	h.Set("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36")
+	return h
+}
+
+func (a *Auth) doMenuEditor(ctx context.Context, client *http.Client, method, rawURL, resID string, body []byte) (*http.Response, error) {
+	var r io.Reader
+	if len(body) > 0 {
+		r = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, r)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = a.menuEditorHeaders(resID)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if isLoginRequired(resp.StatusCode) {
+		resp.Body.Close()
+		return nil, &AuthError{Code: "login_required", Message: "Zomato session expired — import a fresh partner session"}
+	}
+	return resp, nil
+}
+
 func (a *Auth) do(ctx context.Context, client *http.Client, method, url string, body []byte) (*http.Response, error) {
 	resp, err := a.doOnce(ctx, client, method, url, body)
 	if err != nil {

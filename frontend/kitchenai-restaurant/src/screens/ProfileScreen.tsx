@@ -6,6 +6,7 @@ import { closeProfile } from '../navigation/rootNavigation';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
 import ZomatoConnectModal from '../components/ZomatoConnectModal';
+import { OutletSetupForm } from '../components/outlet/OutletSetupForm';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { restaurantFetch } from '../services/api';
 import {
@@ -46,6 +47,7 @@ export default function ProfileScreen() {
   const [teamMembers, setTeamMembers] = useState<OutletMember[]>([]);
   const [teamBusy, setTeamBusy] = useState(false);
   const [teamMsg, setTeamMsg] = useState('');
+  const [outletMsg, setOutletMsg] = useState('');
   const [plan, setPlan] = useState('starter');
   const [zomatoMsg, setZomatoMsg] = useState('');
   const [zomatoStoreName, setZomatoStoreName] = useState('');
@@ -315,7 +317,7 @@ export default function ProfileScreen() {
         <View style={styles.content}>
           <SettingsSection title="Switch outlet">
             <Text style={styles.hint}>
-              Menu, stock, and orders follow the active outlet. Staff invited to multiple locations can switch here.
+              Menu, stock, and orders follow the active outlet. Switch between your locations or add another below.
             </Text>
             {outlets.length === 0 ? (
               <MetaLine>No outlets linked to your account yet.</MetaLine>
@@ -347,6 +349,19 @@ export default function ProfileScreen() {
                 );
               })
             )}
+          </SettingsSection>
+
+          <SettingsSection title="Add outlet">
+            <Text style={styles.hint}>
+              Create a new location or join another outlet with an outlet ID or invite code from the owner.
+            </Text>
+            <OutletSetupForm
+              onSuccess={(name) => {
+                setOutletMsg(name ? `Switched to ${name}` : 'Outlet added — you are now working in it');
+                setTeamMsg('');
+              }}
+            />
+            {outletMsg ? <Text style={styles.msg}>{outletMsg}</Text> : null}
           </SettingsSection>
 
           {canManageTeam ? (

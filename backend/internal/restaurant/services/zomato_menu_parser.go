@@ -71,6 +71,11 @@ func ParseZomatoMenu(path string) ([]ZomatoMenuDish, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseZomatoMenuJSON(raw)
+}
+
+// ParseZomatoMenuJSON parses Zomato get_content_menu JSON (data.menuResponse).
+func ParseZomatoMenuJSON(raw []byte) ([]ZomatoMenuDish, error) {
 	var file zomatoMenuFile
 	if err := json.Unmarshal(raw, &file); err != nil {
 		return nil, fmt.Errorf("parse menu json: %w", err)
@@ -112,7 +117,7 @@ func ParseZomatoMenu(path string) ([]ZomatoMenuDish, error) {
 		}
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("no catalogue dishes found in %s", path)
+		return nil, fmt.Errorf("no catalogue dishes found in menu response")
 	}
 	return out, nil
 }

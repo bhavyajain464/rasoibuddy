@@ -15,6 +15,7 @@ import { PendingOrdersPanel } from '../components/PendingOrdersPanel';
 import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { QuickActionsCarousel } from '../components/QuickActionsCarousel';
 import { AddShoppingSheet } from '../components/shopping/AddShoppingSheet';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { openProfile } from '../navigation/rootNavigation';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
@@ -74,6 +75,7 @@ export default function HomeScreen() {
   const [buySheetOpen, setBuySheetOpen] = useState(false);
   const [savingMenu, setSavingMenu] = useState(false);
   const [savingBuy, setSavingBuy] = useState(false);
+  const { catalog } = useIngredientCatalog();
   const [ordersExpanded, setOrdersExpanded] = useState(false);
 
   const load = useCallback(async () => {
@@ -170,7 +172,7 @@ export default function HomeScreen() {
         }),
       });
       const recipePayload = payload.ingredients
-        .filter((d) => d.ingredient_name.trim() && parseFloat(d.qty) > 0)
+        .filter((d) => d.ingredient_id && d.ingredient_name.trim() && parseFloat(d.qty) > 0)
         .map((d, i) => ({
           ingredient_name: d.ingredient_name.trim(),
           qty: parseFloat(d.qty) || 1,
@@ -373,6 +375,7 @@ export default function HomeScreen() {
         visible={menuSheetOpen}
         item={null}
         ingredients={[]}
+        catalog={catalog}
         inventory={summary?.inventory ?? []}
         categoryOptions={menuCategories}
         saving={savingMenu}
@@ -383,6 +386,7 @@ export default function HomeScreen() {
       <AddShoppingSheet
         visible={buySheetOpen}
         saving={savingBuy}
+        catalog={catalog}
         onDismiss={() => setBuySheetOpen(false)}
         onSave={handleAddToBuyList}
       />

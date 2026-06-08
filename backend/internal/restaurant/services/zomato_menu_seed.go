@@ -90,15 +90,19 @@ func collectUniqueIngredients(dishes []ZomatoMenuDish) []string {
 // SeedFromZomatoMenu imports dishes from a Zomato menu export, attaches recipe BOM,
 // and ensures all ingredients exist in kitchen inventory.
 func (s *MenuService) SeedFromZomatoMenu(ctx context.Context, kitchenID, userID, menuPath string) (*ZomatoMenuSeedResult, error) {
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("user_id required")
-	}
-
 	dishes, err := ParseZomatoMenu(menuPath)
 	if err != nil {
 		return nil, err
 	}
-	attachZomatoIngredients(dishes)
+	return s.SeedFromZomatoDishes(ctx, kitchenID, userID, dishes)
+}
+
+// SeedFromZomatoDishes imports parsed Zomato dishes, attaches recipe BOM,
+// and ensures all ingredients exist in kitchen inventory.
+func (s *MenuService) SeedFromZomatoDishes(ctx context.Context, kitchenID, userID string, dishes []ZomatoMenuDish) (*ZomatoMenuSeedResult, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("user_id required")
+	}
 
 	result := &ZomatoMenuSeedResult{
 		MenuAdded:       make([]string, 0),
@@ -107,8 +111,10 @@ func (s *MenuService) SeedFromZomatoMenu(ctx context.Context, kitchenID, userID,
 		InventoryExists: make([]string, 0),
 		Errors:          make([]string, 0),
 	}
+	if warns := attachDishIngredientsFromGroq(ctx, s.cfg, dishes); len(warns) > 0 {
+		result.Errors = append(result.Errors, warns...)
+	}
 
-	inventoryByName := make(map[string]string)
 	for _, ingName := range collectUniqueIngredients(dishes) {
 		_, unit := defaultIngredientQty(ingName)
 		qty := defaultStockQty(ingName, unit)
@@ -117,12 +123,12 @@ func (s *MenuService) SeedFromZomatoMenu(ctx context.Context, kitchenID, userID,
 			result.Errors = append(result.Errors, fmt.Sprintf("inventory %s: %v", ingName, err))
 			continue
 		}
-		inventoryByName[strings.ToLower(ingName)] = id
 		if created {
 			result.InventoryAdded = append(result.InventoryAdded, ingName)
 		} else {
 			result.InventoryExists = append(result.InventoryExists, ingName)
 		}
+		_ = id
 	}
 
 	var inventoryItems []contracts.InventoryItem

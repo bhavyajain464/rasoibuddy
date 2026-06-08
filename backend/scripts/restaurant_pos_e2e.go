@@ -79,7 +79,7 @@ func main() {
 	}
 	fmt.Println("Auth token ready")
 
-	// Seed inventory directly (no restaurant POST inventory API yet).
+	// Seed inventory via POST /restaurant/{id}/inventory or direct DB for scripts.
 	ingredients := []struct {
 		name string
 		qty  float64

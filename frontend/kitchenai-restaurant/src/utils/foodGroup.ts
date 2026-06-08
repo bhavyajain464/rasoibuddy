@@ -14,6 +14,22 @@ const FOOD_GROUP_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+/** Fixed ingredient types from the global catalog — stock is grouped using these. */
+export const STATIC_FOOD_GROUPS = [
+  'vegetables',
+  'fruits',
+  'grains_pulses',
+  'dairy',
+  'oils_fats',
+  'spices',
+  'non_veg',
+  'condiments',
+  'bakery',
+  'beverages',
+  'prepared',
+  'other',
+] as const;
+
 export function normalizeFoodGroup(group?: string): string {
   const raw = (group ?? 'other').trim().toLowerCase() || 'other';
   return raw === 'protein' ? 'non_veg' : raw;

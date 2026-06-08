@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
 import LoginScreen, { LoginLoading } from '../screens/LoginScreen';
 import SetupKitchenScreen from '../screens/SetupKitchenScreen';
+import SelectOutletScreen from '../screens/SelectOutletScreen';
 import HomeScreen from '../screens/HomeScreen';
 import OrdersScreen from '../screens/OrdersScreen';
 import MenuScreen from '../screens/MenuScreen';
@@ -137,7 +138,7 @@ function AuthenticatedNavigator() {
 
 export function AppNavigator() {
   const { loading, user } = useAuth();
-  const { kitchen, loading: kitchenLoading, kitchens } = useRestaurant();
+  const { kitchen, loading: kitchenLoading, kitchens, needsOutletPick } = useRestaurant();
 
   const initialState = useMemo(
     () => getWebNavigationStateFromUrl(linking.config as NonNullable<LinkingOptions<RootStackParamList>['config']>),
@@ -158,6 +159,10 @@ export function AppNavigator() {
 
   if (!kitchenLoading && kitchens.length === 0) {
     return <SetupKitchenScreen />;
+  }
+
+  if (!kitchenLoading && needsOutletPick) {
+    return <SelectOutletScreen />;
   }
 
   return (

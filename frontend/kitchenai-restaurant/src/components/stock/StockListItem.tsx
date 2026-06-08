@@ -10,9 +10,10 @@ export const LOW_STOCK_THRESHOLD = 1;
 type Props = {
   item: InventoryRow;
   style?: ViewStyle;
+  showGroup?: boolean;
 };
 
-export function StockListItem({ item, style }: Props) {
+export function StockListItem({ item, style, showGroup = false }: Props) {
   const lowStock = item.qty <= LOW_STOCK_THRESHOLD;
   const groupLabel = formatFoodGroupLabel(item.food_group);
 
@@ -23,7 +24,7 @@ export function StockListItem({ item, style }: Props) {
           <Text variant="bodyLarge" style={styles.name} numberOfLines={1}>
             {item.canonical_name}
           </Text>
-          <Text style={styles.group}>{groupLabel}</Text>
+          {showGroup ? <Text style={styles.group}>{groupLabel}</Text> : null}
         </View>
         <View style={styles.qtyBlock}>
           <Text style={[styles.qty, lowStock && styles.qtyLow]}>{formatQty(item.qty, item.unit)}</Text>

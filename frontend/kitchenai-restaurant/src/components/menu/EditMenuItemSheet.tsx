@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, IconButton, Text, TextInput } from 'react-native-paper';
 import { BottomSheet } from '../BottomSheet';
-import { FilterPill, FilterPillRow } from '../FilterPill';
-import { IngredientPicker } from './IngredientPicker';
-import { InventoryRow, MenuItem, RecipeIngredient } from '../../types';
+import { GroupDropdown, normalizeCategory } from './GroupDropdown';
+import { IngredientCatalogPicker } from './IngredientCatalogPicker';
+import { CatalogIngredient, InventoryRow, MenuItem, RecipeIngredient } from '../../types';
 import { palette } from '../../theme';
 
 export type IngredientDraft = {
   key: string;
+  ingredient_id?: string;
   inventory_item_id?: string;
   ingredient_name: string;
   qty: string;
@@ -19,6 +20,7 @@ type Props = {
   visible: boolean;
   item: MenuItem | null;
   ingredients: RecipeIngredient[];
+  catalog: CatalogIngredient[];
   inventory: InventoryRow[];
   categoryOptions?: string[];
   saving: boolean;
@@ -40,22 +42,11 @@ function newDraft(partial?: Partial<IngredientDraft>): IngredientDraft {
   };
 }
 
-function formatCategoryLabel(category: string): string {
-  const raw = category.trim() || 'general';
-  return raw
-    .split(/[\s_-]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function normalizeCategory(category: string): string {
-  return category.trim().toLowerCase() || 'general';
-}
-
 export function EditMenuItemSheet({
   visible,
   item,
   ingredients,
+  catalog,
   inventory,
   categoryOptions = [],
   saving,
@@ -96,20 +87,21 @@ export function EditMenuItemSheet({
   };
 
   const handleSave = () => {
+    const valid = drafts.filter((d) => d.ingredient_id && d.ingredient_name.trim());
     onSave({
       name: name.trim(),
       category: category.trim() || 'general',
-      ingredients: drafts.filter((d) => d.ingredient_name.trim()),
+      ingredients: valid,
     });
   };
 
   const title = item ? 'Edit dish' : 'Add dish';
   const subtitle = item ? item.name : 'Pick stock ingredients for deduction';
-  const groupChoices = useMemo(() => {
-    const set = new Set<string>(['general', ...categoryOptions.map(normalizeCategory)]);
+  const groupOptions = useMemo(() => {
+    const set = new Set<string>([...categoryOptions.map(normalizeCategory)]);
     if (item?.category) set.add(normalizeCategory(item.category));
     set.add(normalizeCategory(category));
-    return [...set].sort((a, b) => a.localeCompare(b));
+    return [...set];
   }, [categoryOptions, item?.category, category]);
 
   return (
@@ -124,47 +116,23 @@ export function EditMenuItemSheet({
           textColor={palette.text}
           outlineColor={palette.border}
         />
-        <TextInput
-          label="Group"
-          value={category}
-          onChangeText={setCategory}
-          mode="outlined"
-          style={[styles.input, styles.categoryInput]}
-          textColor={palette.text}
-          outlineColor={palette.border}
-          placeholder="general"
-        />
+        <GroupDropdown value={category} options={groupOptions} onChange={setCategory} />
       </View>
-
-      {groupChoices.length > 0 ? (
-        <>
-          <Text variant="labelMedium" style={styles.groupLabel}>
-            Quick group
-          </Text>
-          <FilterPillRow inset={20} style={styles.groupPills}>
-            {groupChoices.map((cat) => (
-              <FilterPill
-                key={cat}
-                label={formatCategoryLabel(cat)}
-                selected={normalizeCategory(category) === cat}
-                onPress={() => setCategory(cat)}
-              />
-            ))}
-          </FilterPillRow>
-        </>
-      ) : null}
 
       <Text variant="titleSmall" style={styles.sectionTitle}>
         Ingredients
       </Text>
       {drafts.map((draft, index) => (
         <View key={draft.key} style={[styles.ingRow, index > 0 && styles.ingRowSpaced]}>
-          <IngredientPicker
+          <IngredientCatalogPicker
+            catalog={catalog}
             inventory={inventory}
             ingredientName={draft.ingredient_name}
+            ingredientId={draft.ingredient_id}
             inventoryItemId={draft.inventory_item_id}
             onSelect={(pick) =>
               updateDraft(draft.key, {
+                ingredient_id: pick.ingredient_id,
                 inventory_item_id: pick.inventory_item_id,
                 ingredient_name: pick.ingredient_name,
                 unit: pick.unit,
@@ -218,11 +186,8 @@ export function EditMenuItemSheet({
 
 const styles = StyleSheet.create({
   input: { marginBottom: 10, backgroundColor: palette.surface },
-  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
   nameInput: { flex: 2, marginBottom: 0 },
-  categoryInput: { flex: 1, marginBottom: 0 },
-  groupLabel: { color: palette.textMuted, marginTop: 12, marginBottom: 4 },
-  groupPills: { marginHorizontal: -20, marginBottom: 4 },
   sectionTitle: { color: palette.text, marginTop: 16, marginBottom: 8 },
   ingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   ingRowSpaced: { marginTop: 8 },

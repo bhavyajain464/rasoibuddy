@@ -57,7 +57,7 @@ func main() {
 		}
 	}
 
-	menuSvc := restaurantsvc.NewMenuService(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB, cfg)
 	result, err := menuSvc.SeedFromZomatoMenu(context.Background(), kitchenID, userID, menuPath)
 	if err != nil {
 		log.Fatal(err)

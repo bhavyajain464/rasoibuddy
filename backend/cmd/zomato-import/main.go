@@ -39,7 +39,7 @@ func main() {
 	defer sqlDB.Close()
 
 	invSvc := invpostgres.New(sqlDB)
-	menuSvc := restaurantsvc.NewMenuService(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB, cfg)
 	deductionSvc := restaurantsvc.NewDeductionEngine(invSvc)
 	orderSvc := restaurantsvc.NewOrderService(sqlDB, menuSvc, deductionSvc)
 	zomatoSvc := zomato.NewService(sqlDB, orderSvc, menuSvc)

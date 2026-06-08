@@ -105,6 +105,13 @@ export type RecipeIngredient = {
   sort_order?: number;
 };
 
+export type MenuImportResult = {
+  added: string[];
+  updated: string[];
+  skipped: string[];
+  errors?: string[];
+};
+
 export type OrderLine = {
   line_id: string;
   order_id: string;
@@ -160,6 +167,13 @@ export type InventoryRow = {
   food_group?: string;
 };
 
+export type CatalogIngredient = {
+  ingredient_id: string;
+  name: string;
+  default_unit: string;
+  food_group?: string;
+};
+
 export type InventoryListPage = {
   items: InventoryRow[];
   next_cursor?: string;
@@ -174,4 +188,5 @@ export type ShoppingRow = {
   name: string;
   qty: number;
   unit: string;
+  food_group?: string;
 };

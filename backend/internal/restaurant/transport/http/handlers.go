@@ -3,6 +3,7 @@ package http
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -61,11 +62,13 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/restaurant/join", h.joinKitchen).Methods("POST", "OPTIONS")
 	r.HandleFunc("/restaurant/join-by-outlet", h.joinKitchenByOutletID).Methods("POST", "OPTIONS")
 	r.HandleFunc("/restaurant/provision-zomato", h.provisionRestaurantWithZomato).Methods("POST", "OPTIONS")
+	r.HandleFunc("/restaurant/ingredients", h.listCatalogIngredients).Methods("GET", "OPTIONS")
 
 	k := r.PathPrefix("/restaurant/{kitchen_id}").Subrouter()
 	k.Use(restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleStaff))
 
 	k.HandleFunc("/inventory", h.listInventory).Methods("GET", "OPTIONS")
+	k.HandleFunc("/inventory", h.addInventory).Methods("POST", "OPTIONS")
 	k.HandleFunc("", h.getKitchen).Methods("GET", "OPTIONS")
 	k.HandleFunc("/members", h.listMembers).Methods("GET", "OPTIONS")
 	k.HandleFunc("/members", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.addMember)).ServeHTTP).Methods("POST", "OPTIONS")
@@ -75,13 +78,14 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 
 	k.HandleFunc("/menu", h.listMenu).Methods("GET", "OPTIONS")
 	k.HandleFunc("/menu", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.upsertMenu)).ServeHTTP).Methods("POST", "OPTIONS")
+	k.HandleFunc("/menu/export", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.exportMenu)).ServeHTTP).Methods("GET", "OPTIONS")
+	k.HandleFunc("/menu/import", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.importMenu)).ServeHTTP).Methods("POST", "OPTIONS")
 	k.HandleFunc("/menu/seed-catalog", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.seedMenuFromCatalog)).ServeHTTP).Methods("POST", "OPTIONS")
 	k.HandleFunc("/menu/{menu_item_id}/ingredients", h.getRecipe).Methods("GET", "OPTIONS")
 	k.HandleFunc("/menu/{menu_item_id}/ingredients", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.setRecipe)).ServeHTTP).Methods("PUT", "OPTIONS")
 
 	k.HandleFunc("/shopping", h.listShopping).Methods("GET", "OPTIONS")
 	k.HandleFunc("/shopping", h.addShopping).Methods("POST", "OPTIONS")
-	k.HandleFunc("/shopping/seed-samples", h.seedShoppingSamples).Methods("POST", "OPTIONS")
 	k.HandleFunc("/shopping/{item_id}", h.deleteShopping).Methods("DELETE", "OPTIONS")
 
 	k.HandleFunc("/orders", h.listOrders).Methods("GET", "OPTIONS")
@@ -118,6 +122,9 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	).Methods("POST", "OPTIONS")
 	k.HandleFunc("/integrations/zomato/import-order",
 		restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.zomatoImportOrder)).ServeHTTP,
+	).Methods("POST", "OPTIONS")
+	k.HandleFunc("/integrations/zomato/seed-menu",
+		restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.zomatoSeedMenu)).ServeHTTP,
 	).Methods("POST", "OPTIONS")
 }
 
@@ -340,6 +347,7 @@ func (h *Handler) provisionRestaurantWithZomato(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	menuResult, menuErr := h.zomato.FetchAndSeedMenu(r.Context(), k.KitchenID, userID, partnerOutletID, auth)
 	authRaw, _ := json.Marshal(auth)
 	st, syncErr := h.zomato.StartSync(r.Context(), k.KitchenID, userID, zomatosvc.StartCredentials{
 		Partner:           "zomato",
@@ -361,6 +369,13 @@ func (h *Handler) provisionRestaurantWithZomato(w http.ResponseWriter, r *http.R
 		"partner_store_id":    partnerOutletID,
 		"partner_store_name":  partnerOutletName,
 		"sync_started":        syncErr == nil,
+		"menu_seeded":         menuErr == nil,
+	}
+	if menuResult != nil {
+		resp["menu_seed"] = menuResult
+	}
+	if menuErr != nil {
+		resp["menu_seed_error"] = menuErr.Error()
 	}
 	if syncErr != nil {
 		_ = h.zomato.MarkSyncError(r.Context(), k.KitchenID, partnerOutletID, syncErr.Error())
@@ -457,6 +472,42 @@ func (h *Handler) listInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, page)
+}
+
+func (h *Handler) listCatalogIngredients(w http.ResponseWriter, r *http.Request) {
+	items, err := services.ListCatalogIngredients(r.Context(), h.db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if items == nil {
+		items = []services.CatalogIngredient{}
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (h *Handler) addInventory(w http.ResponseWriter, r *http.Request) {
+	kitchenID := restmw.KitchenIDFromContext(r)
+	userID := restmw.UserIDFromRequest(r)
+	if userID == "" {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	var req services.AddInventoryInput
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	item, err := services.AddInventory(r.Context(), h.db, h.inventory, kitchenID, userID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "must be") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, item)
 }
 
 func (h *Handler) getKitchen(w http.ResponseWriter, r *http.Request) {
@@ -686,6 +737,66 @@ func (h *Handler) upsertMenu(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+func (h *Handler) exportMenu(w http.ResponseWriter, r *http.Request) {
+	kitchenID := restmw.KitchenIDFromContext(r)
+	raw, _, err := h.menu.ExportMenuCSV(r.Context(), kitchenID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="menu-%s.csv"`, kitchenID))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(raw)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
+}
+
+func (h *Handler) importMenu(w http.ResponseWriter, r *http.Request) {
+	kitchenID := restmw.KitchenIDFromContext(r)
+	raw, err := decodeMenuImportFile(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	out, err := h.menu.ImportMenuCSV(r.Context(), kitchenID, raw)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func decodeMenuImportFile(r *http.Request) ([]byte, error) {
+	const maxUpload = 32 << 20
+	ct := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Type")))
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		if err := r.ParseMultipartForm(maxUpload); err != nil {
+			return nil, fmt.Errorf("invalid multipart form")
+		}
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			file, _, err = r.FormFile("menu")
+		}
+		if err != nil {
+			return nil, fmt.Errorf("file field required")
+		}
+		defer file.Close()
+		raw, err := io.ReadAll(io.LimitReader(file, maxUpload))
+		if err != nil {
+			return nil, fmt.Errorf("read upload")
+		}
+		return raw, nil
+	}
+	raw, err := io.ReadAll(io.LimitReader(r.Body, maxUpload))
+	if err != nil {
+		return nil, fmt.Errorf("read body")
+	}
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("menu file required")
+	}
+	return raw, nil
+}
+
 func (h *Handler) getRecipe(w http.ResponseWriter, r *http.Request) {
 	kitchenID := restmw.KitchenIDFromContext(r)
 	menuItemID := mux.Vars(r)["menu_item_id"]
@@ -759,7 +870,11 @@ func (h *Handler) addShopping(w http.ResponseWriter, r *http.Request) {
 	}
 	item, err := h.shopping.Add(r.Context(), kitchenID, userID, req.Name, req.Qty, req.Unit)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if strings.Contains(err.Error(), "catalog") || strings.Contains(err.Error(), "required") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
@@ -773,17 +888,6 @@ func (h *Handler) deleteShopping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
-}
-
-func (h *Handler) seedShoppingSamples(w http.ResponseWriter, r *http.Request) {
-	kitchenID := restmw.KitchenIDFromContext(r)
-	userID := restmw.UserIDFromRequest(r)
-	out, err := h.shopping.SeedSamples(r.Context(), kitchenID, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, out)
 }
 
 func (h *Handler) listOrders(w http.ResponseWriter, r *http.Request) {

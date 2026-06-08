@@ -15,6 +15,7 @@ type ShoppingItem struct {
 	Name      string     `json:"name"`
 	Qty       float64    `json:"qty"`
 	Unit      string     `json:"unit"`
+	FoodGroup string     `json:"food_group"`
 	Bought    bool       `json:"bought"`
 	CreatedAt time.Time  `json:"created_at"`
 	BoughtAt  *time.Time `json:"bought_at,omitempty"`
@@ -29,12 +30,15 @@ func NewShoppingService(db *sql.DB) *ShoppingService {
 }
 
 func (s *ShoppingService) List(ctx context.Context, kitchenID string) ([]ShoppingItem, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id::text, name, qty, unit, bought, created_at, bought_at
-		FROM shopping_items
-		WHERE kitchen_id = $1 AND bought = FALSE
-		ORDER BY created_at DESC
-	`, kitchenID)
+	query := fmt.Sprintf(`
+		SELECT si.id::text, si.name, si.qty, si.unit, si.bought, si.created_at, si.bought_at,
+			%s
+		%s
+		WHERE si.kitchen_id = $1 AND si.bought = FALSE
+		ORDER BY %s, LOWER(si.name), si.created_at DESC
+	`, catalogJoinFoodGroupSelect(), catalogJoinFrom(), catalogJoinFoodGroupSortExpr())
+
+	rows, err := s.db.QueryContext(ctx, query, kitchenID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +47,12 @@ func (s *ShoppingService) List(ctx context.Context, kitchenID string) ([]Shoppin
 	out := make([]ShoppingItem, 0)
 	for rows.Next() {
 		var item ShoppingItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt, &item.BoughtAt); err != nil {
+		var rawGroup string
+		if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt, &item.BoughtAt, &rawGroup); err != nil {
 			return nil, err
 		}
 		item.Unit = units.Normalize(item.Unit)
+		item.FoodGroup = resolveShoppingFoodGroup(rawGroup, item.Name)
 		out = append(out, item)
 	}
 	return out, rows.Err()
@@ -60,13 +66,31 @@ func (s *ShoppingService) Add(ctx context.Context, kitchenID, userID, name strin
 	if qty < 0 {
 		qty = 0
 	}
-	unit = units.Normalize(unit)
+
+	var catalogName, catalogUnit, catalogFoodGroup string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT name, default_unit, COALESCE(NULLIF(TRIM(food_group), ''), 'other')
+		FROM restaurant_ingredients WHERE name_normalized = $1
+	`, normalizeIngredientName(name)).Scan(&catalogName, &catalogUnit, &catalogFoodGroup)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("ingredient not in catalog")
+	}
+	if err != nil {
+		return nil, err
+	}
+	name = catalogName
+	foodGroup := normalizeInventoryFoodGroup(catalogFoodGroup)
+
+	unit = units.Normalize(strings.TrimSpace(unit))
+	if unit == "" {
+		unit = units.Normalize(catalogUnit)
+	}
 	if unit == "" {
 		unit = "pcs"
 	}
 
 	var item ShoppingItem
-	err := s.db.QueryRowContext(ctx, `
+	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id::text, name, qty, unit, bought, created_at
@@ -76,6 +100,7 @@ func (s *ShoppingService) Add(ctx context.Context, kitchenID, userID, name strin
 	if err != nil {
 		return nil, err
 	}
+	item.FoodGroup = foodGroup
 	return &item, nil
 }
 

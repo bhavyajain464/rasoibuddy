@@ -7,15 +7,17 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
+	"kitchenai-backend/pkg/config"
 	"kitchenai-backend/pkg/contracts"
 )
 
 type MenuService struct {
-	db *sql.DB
+	db  *sql.DB
+	cfg *config.Config
 }
 
-func NewMenuService(db *sql.DB) *MenuService {
-	return &MenuService{db: db}
+func NewMenuService(db *sql.DB, cfg *config.Config) *MenuService {
+	return &MenuService{db: db, cfg: cfg}
 }
 
 func (s *MenuService) ListMenuItems(ctx context.Context, kitchenID string, activeOnly bool) ([]MenuItem, error) {

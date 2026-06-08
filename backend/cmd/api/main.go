@@ -212,7 +212,7 @@ func main() {
 	// Restaurant platform (modular monolith — extractable to restaurant-api later)
 	kitchenSvc := kitchenpostgres.New(sqlDB)
 	invSvc := invpostgres.New(sqlDB)
-	menuSvc := restaurantsvc.NewMenuService(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB, cfg)
 	deductionSvc := restaurantsvc.NewDeductionEngine(invSvc)
 	orderSvc := restaurantsvc.NewOrderService(sqlDB, menuSvc, deductionSvc)
 	billingRestSvc := restaurantsvc.NewBillingService(kitchenSvc)
