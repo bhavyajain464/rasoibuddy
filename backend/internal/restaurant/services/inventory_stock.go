@@ -28,6 +28,9 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 	if name == "" {
 		return nil, fmt.Errorf("name required")
 	}
+	if in.Qty <= 0 {
+		return nil, fmt.Errorf("qty must be positive")
+	}
 
 	var catalogName, catalogUnit, catalogFoodGroup string
 	err := db.QueryRowContext(ctx, `
@@ -42,9 +45,6 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 	}
 	name = catalogName
 
-	if in.Qty <= 0 {
-		return nil, fmt.Errorf("qty must be positive")
-	}
 	unit := units.Normalize(strings.TrimSpace(in.Unit))
 	if unit == "" {
 		unit = units.Normalize(catalogUnit)
