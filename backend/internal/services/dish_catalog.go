@@ -30,6 +30,10 @@ type CatalogDish struct {
 	FrequencyClass  string   `json:"frequency_class,omitempty"` // daily | weekly | special
 	HalfLifeDays    int      `json:"half_life_days,omitempty"`
 	Tags            []string `json:"tags,omitempty"`
+	SpiceLevel      string   `json:"spice_level,omitempty"`  // mild | medium | spicy
+	Allergens       []string `json:"allergens,omitempty"`    // dairy|gluten|nuts|peanut|sesame|soy|egg
+	OnionGarlic     bool     `json:"onion_garlic,omitempty"` // contains onion/garlic
+	JainSafe        bool     `json:"jain_safe,omitempty"`    // no onion/garlic/root veg
 }
 
 // CatalogIngredients returns key_ingredients (or legacy ingredients).

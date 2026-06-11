@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"net/http"
 	"strings"
@@ -78,6 +79,18 @@ type smartMealsGenerateInput struct {
 	Global bool
 	// MealOfDayForUser: personalized breakfast/lunch/dinner using prefs, allergies, and optional pantry.
 	MealOfDayForUser bool
+}
+
+// suggestionSeed derives a deterministic seed from user + calendar day + meal slot.
+// Same user/day/slot => stable pick (screen refresh won't reshuffle); a new day or slot
+// => fresh ordering. Drives the variance sampler in services.RetrieveDishes.
+func suggestionSeed(userID, mealSlot string, now time.Time) int64 {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(userID + "|" + now.Format("2006-01-02") + "|" + strings.ToLower(strings.TrimSpace(mealSlot))))
+	return int64(h.Sum64() & 0x7fffffffffffffff)
 }
 
 func generateSmartMeals(
@@ -190,7 +203,14 @@ func generateSmartMeals(
 		retrieveIn.Allergies = userPrefs.Allergies
 		retrieveIn.Dislikes = userPrefs.Dislikes
 		retrieveIn.FavCuisines = userPrefs.FavCuisines
+		retrieveIn.SpiceLevel = userPrefs.SpiceLevel
 		retrieveIn.Memories = userPrefs.Memories
+	}
+	// Variance: per-user, per-day, per-slot weighted sampling so suggestions rotate and
+	// don't repeat. Global (shared) meal-of-day stays deterministic for caching.
+	if !in.Global {
+		retrieveIn.Temperature = 0.7
+		retrieveIn.RandSeed = suggestionSeed(userID, effectiveMeal, retrieveIn.Now)
 	}
 	globalStars, _ := services.LoadGlobalStarCounts(db)
 	var userStarred map[string]bool
