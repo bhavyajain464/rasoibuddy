@@ -69,6 +69,10 @@ type Config struct {
 	// Razorpay premium checkout (RAZORPAY_ENV=staging|production selects key pair).
 	Razorpay RazorpayConfig
 
+	// Commerce (Phase 0): grocery "order this list" deep-links. Free/no-partnership —
+	// opens a quick-commerce app; affiliate templates are blank until you join a network.
+	Commerce CommerceConfig
+
 	// AdminAPIKey secures /api/v1/admin/* (X-Admin-Key header). Empty disables admin routes.
 	AdminAPIKey string
 
@@ -312,6 +316,7 @@ func Load() (*Config, error) {
 		KafkaConsumerPauseBetweenBatchesMs: kafkaConsumerPauseBetweenBatchesMs,
 		RedisURL:                           redisURL,
 		Razorpay:                           razorpay,
+		Commerce:                           loadCommerceConfig(),
 		AdminAPIKey:                        adminAPIKey,
 		SMTPHost:                           strings.TrimSpace(getEnv("SMTP_HOST", "")),
 		SMTPPort:                           smtpPort,

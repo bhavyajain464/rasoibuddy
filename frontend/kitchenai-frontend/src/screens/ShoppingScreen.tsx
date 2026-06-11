@@ -17,7 +17,8 @@ import {
 } from 'react-native-paper';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as api from '../services/api';
-import { OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
+import { CommercePartner, OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
+import { OrderOnlineSheet } from '../components/OrderOnlineSheet';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
@@ -60,6 +61,8 @@ export function ShoppingScreen() {
   const [orderLoading, setOrderLoading] = useState(true);
   const [addingSuggest, setAddingSuggest] = useState<string | null>(null);
   const [hiddenSuggest, setHiddenSuggest] = useState<Record<string, boolean>>({});
+  const [orderPartners, setOrderPartners] = useState<CommercePartner[]>([]);
+  const [orderSheetVisible, setOrderSheetVisible] = useState(false);
   const lastSuggestNamesRef = useRef<string[]>([]);
   const [suggestExpanded, setSuggestExpanded] = useState(false);
   const skipMountLoadItems = useRef(true);
@@ -133,6 +136,17 @@ export function ShoppingScreen() {
       void loadOrderSuggestions();
     }, [loadItems, loadOrderSuggestions]),
   );
+
+  // Load grocery-ordering partners once (hidden entirely if commerce is disabled server-side).
+  useEffect(() => {
+    let active = true;
+    void api.getCommercePartners().then((res) => {
+      if (active) setOrderPartners(res.enabled ? res.partners : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Shopping list changed elsewhere while this tab is focused.
   useEffect(() => {
@@ -624,7 +638,20 @@ export function ShoppingScreen() {
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} size="large" />
         ) : items.length > 0 ? (
-          <View style={styles.listWrap}>{items.map(renderItem)}</View>
+          <View style={styles.listWrap}>
+            {items.map(renderItem)}
+            {!selectionMode && orderPartners.length > 0 ? (
+              <Button
+                mode="contained-tonal"
+                icon="cart-arrow-right"
+                onPress={() => setOrderSheetVisible(true)}
+                style={styles.orderOnlineBtn}
+                textColor="#1B5E20"
+              >
+                Order this list online
+              </Button>
+            ) : null}
+          </View>
         ) : (
           <Surface style={styles.emptyCard} elevation={1}>
             <IconButton icon="cart-outline" iconColor="#2E7D32" size={44} style={{ margin: 0 }} />
@@ -673,6 +700,14 @@ export function ShoppingScreen() {
       <AddShoppingModal
         visible={addModalVisible}
         onDismiss={() => setAddModalVisible(false)}
+      />
+
+      <OrderOnlineSheet
+        visible={orderSheetVisible}
+        onClose={() => setOrderSheetVisible(false)}
+        items={items}
+        partners={orderPartners}
+        source="shopping_list"
       />
 
       {undoSnackbar}
@@ -782,6 +817,7 @@ const styles = StyleSheet.create({
   },
 
   listWrap: { paddingHorizontal: 20, marginTop: 8, gap: 8 },
+  orderOnlineBtn: { marginTop: 12, borderRadius: 12 },
   itemCard: {
     borderRadius: 14,
     backgroundColor: '#fff',

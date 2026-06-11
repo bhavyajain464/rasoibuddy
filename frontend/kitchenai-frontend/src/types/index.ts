@@ -111,6 +111,26 @@ export interface OrderSuggestResponse {
   generated_at: string;
 }
 
+// Commerce (Phase 0): grocery "order this list" deep-links.
+export interface CommercePartner {
+  id: string;
+  name: string;
+  logo_url?: string;
+  eta?: string;
+}
+
+export interface CommercePartnersResponse {
+  enabled: boolean;
+  partners: CommercePartner[];
+}
+
+export interface OrderLinkResponse {
+  partner: string;
+  url: string;
+  tracking_id: string;
+  copy_text: string;
+}
+
 export interface ShoppingListResponse {
   items: ShoppingListItem[];
   total_items: number;
