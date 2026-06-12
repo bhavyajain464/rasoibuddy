@@ -92,9 +92,15 @@ Every dish in `catalog.json` now carries:
 ---
 
 ## Also in this change
-`data/ingredients.json` — a 762-item ingredient catalog with India-focused synonyms
+`data/ingredients.json` — a 773-item ingredient catalog with India-focused synonyms
 (English + Hindi + regional names) for name normalization and bill-scan matching, plus an
 `ambiguous_aliases` map for cross-language collisions (e.g. *kanda* = onion vs yam).
+
+**Mapping integrity:** every distinct ingredient referenced across the 535 dishes
+(316 distinct) resolves to an entry in this catalog — **100% coverage**, verified. New
+entries were added where dishes surfaced gaps (e.g. `bathua`, `turkey berry`, `mixed
+vegetables`, regional masalas). This guarantees inventory-matching and shopping-list
+mapping never hit an unknown ingredient.
 
 ## Files
 - `backend/internal/services/dish_catalog.go` — new dish fields

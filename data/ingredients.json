@@ -1759,7 +1759,9 @@
         "hara moong",
         "whole moong",
         "green gram whole",
-        "pachai payaru"
+        "pachai payaru",
+        "whole green moong",
+        "green moong whole"
       ]
     },
     {
@@ -1852,7 +1854,8 @@
         "brown chana",
         "bengal gram whole",
         "kadale kalu",
-        "konda kadalai"
+        "konda kadalai",
+        "black chana"
       ]
     },
     {
@@ -9474,6 +9477,132 @@
         "baale yele",
         "arati aaku",
         "plantain leaf"
+      ]
+    },
+    {
+      "id": "mixed_vegetables",
+      "canonical": "Mixed Vegetables",
+      "category": "vegetables",
+      "veg": true,
+      "synonyms": [
+        "mix veg",
+        "mixed veg",
+        "mixed veggies",
+        "veg mix",
+        "assorted vegetables"
+      ]
+    },
+    {
+      "id": "mixed_herbs",
+      "canonical": "Mixed Herbs",
+      "category": "herbs",
+      "veg": true,
+      "synonyms": [
+        "herbs",
+        "mixed herbs",
+        "italian herbs",
+        "dried herbs",
+        "mixed dried herbs"
+      ]
+    },
+    {
+      "id": "bathua",
+      "canonical": "Bathua",
+      "category": "leafy_greens",
+      "veg": true,
+      "synonyms": [
+        "bathua leaves",
+        "bathua saag",
+        "chenopodium",
+        "pigweed",
+        "chakvat"
+      ]
+    },
+    {
+      "id": "turkey_berry",
+      "canonical": "Turkey Berry",
+      "category": "vegetables",
+      "veg": true,
+      "synonyms": [
+        "sundakkai",
+        "sundaikkai",
+        "sundakka",
+        "dried turkey berry",
+        "manathakkali"
+      ]
+    },
+    {
+      "id": "boondi",
+      "canonical": "Boondi",
+      "category": "staples_packaged",
+      "veg": true,
+      "synonyms": [
+        "besan boondi",
+        "plain boondi",
+        "namkeen boondi"
+      ]
+    },
+    {
+      "id": "bassaru_powder",
+      "canonical": "Bassaru Powder",
+      "category": "spice_blends",
+      "veg": true,
+      "synonyms": [
+        "bassaru masala",
+        "bassaru spice mix"
+      ]
+    },
+    {
+      "id": "gojju_powder",
+      "canonical": "Gojju Powder",
+      "category": "spice_blends",
+      "veg": true,
+      "synonyms": [
+        "gojju masala",
+        "gojju spice mix"
+      ]
+    },
+    {
+      "id": "vangi_bhaat_masala",
+      "canonical": "Vangi Bhaat Masala",
+      "category": "spice_blends",
+      "veg": true,
+      "synonyms": [
+        "vangi bath masala",
+        "vangibhath masala",
+        "brinjal rice masala"
+      ]
+    },
+    {
+      "id": "caesar_dressing",
+      "canonical": "Caesar Dressing",
+      "category": "condiments_sauces",
+      "veg": true,
+      "synonyms": [
+        "caesar sauce",
+        "caesar salad dressing"
+      ]
+    },
+    {
+      "id": "croutons",
+      "canonical": "Croutons",
+      "category": "staples_packaged",
+      "veg": true,
+      "synonyms": [
+        "bread croutons",
+        "toasted bread cubes"
+      ]
+    },
+    {
+      "id": "vegetable_patty",
+      "canonical": "Vegetable Patty",
+      "category": "staples_packaged",
+      "veg": true,
+      "synonyms": [
+        "veg patty",
+        "veg cutlet patty",
+        "burger patty veg",
+        "aloo patty"
       ]
     }
   ]
