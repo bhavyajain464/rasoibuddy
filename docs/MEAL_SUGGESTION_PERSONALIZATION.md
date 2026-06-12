@@ -108,3 +108,36 @@ Every dish in `catalog.json` now carries:
 - Raise `Temperature` for more variety, lower for more "always the best".
 - Adjust `half_life_days` per dish (or the `frequency_class` defaults) to make staples
   recur sooner and specials later.
+
+---
+
+## Exhaustive ingredients (inventory matching & shopping list)
+`key_ingredients` for all 535 dishes was expanded from 3–5 highlights to the **full
+home-recipe list** (avg ~13 items: mains + aromatics + enumerated spices + tempering +
+fats + garnish), using normalized lowercase grocery names that line up with inventory
+items and `data/ingredients.json`.
+
+This powers two things:
+1. **Inventory-aware suggestions** — the retrieval scorer already tokenizes
+   `key_ingredients` (`featureTokens` / inventory boost), so a fuller list automatically
+   means richer matching between a dish and what's in the pantry. It also makes the
+   dislike/allergy token-filters stricter, since hidden onion/ghee/peanut are now listed.
+2. **Shopping-list gap** — `MatchDishToInventory(dish, inventoryNames)`
+   (`ingredient_match.go`) splits a dish's ingredients into:
+   - `Have` — already in inventory,
+   - `Missing` — not in inventory and worth buying,
+   - `Staples` — assumed-present (salt/oil/turmeric/…), **not** shopping-worthy,
+   - `Coverage` — `Have / (Have+Missing)`; `1.0` = fully cookable now.
+
+   Use `Missing` to build the shopping list for a chosen dish; use `Coverage` to rank
+   dishes by "cookable right now".
+
+Recomputing `allergens` from the fuller lists is also more accurate (catches tempering
+ghee/peanut) and fixed a false-positive where "co**conut**" was flagged as a tree nut.
+
+### Roadmap (built on this data)
+- **Shopping list from a meal** — endpoint over `MatchDishToInventory` returning `Missing`
+  for a dish or a day's menu (feeds the commerce "order this list" flow).
+- **Continuous 7-day plan** — pick 7×(breakfast/lunch/dinner) via the sampler with
+  no-repeat + variety, aggregate `Missing` across the week into one shopping list, and
+  decrement inventory as meals are cooked/logged.
