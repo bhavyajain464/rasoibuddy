@@ -1,19 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput as RNTextInput,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
 import { Icon, Text } from 'react-native-paper';
+import { IngredientSearchOverlay } from './IngredientSearchOverlay';
 import { CatalogIngredient } from '../types';
+import { defaultUnitForCatalogItem } from '../utils/ingredientUnits';
+import {
+  MAX_INLINE_OPTIONS,
+  OPTION_MIN_HEIGHT,
+  filterCatalog,
+} from '../utils/ingredientSearch';
 import { normalizeUnit } from '../utils/units';
 import { palette } from '../theme';
 
 const COMPACT_HEIGHT = 40;
-const MAX_OPTIONS = 24;
+const FULLSCREEN_BREAKPOINT = 640;
 
 export type IngredientPick = {
   ingredient_id: string;
@@ -32,29 +41,12 @@ type Props = {
   placeholder?: string;
   compact?: boolean;
   style?: ViewStyle;
+  /** Opens keyboard / full-screen search when mounted (e.g. first row in add modal). */
+  autoFocus?: boolean;
 };
 
 function norm(s: string): string {
   return s.trim().toLowerCase();
-}
-
-function filterCatalog(catalog: CatalogIngredient[], query: string): CatalogIngredient[] {
-  const q = norm(query);
-  if (!q) return catalog.slice(0, MAX_OPTIONS);
-  const matches: CatalogIngredient[] = [];
-  for (const item of catalog) {
-    if (matches.length >= MAX_OPTIONS) break;
-    const name = norm(item.name);
-    const id = norm(item.ingredient_id);
-    if (name.includes(q) || id.includes(q)) {
-      matches.push(item);
-      continue;
-    }
-    if (item.synonyms?.some((syn) => norm(syn).includes(q))) {
-      matches.push(item);
-    }
-  }
-  return matches;
 }
 
 function BorderFieldLabel({ label }: { label: string }) {
@@ -67,6 +59,12 @@ function BorderFieldLabel({ label }: { label: string }) {
   );
 }
 
+function formatUnits(item: CatalogIngredient): string {
+  return (item.units?.length ? item.units : [item.default_unit])
+    .map((u) => normalizeUnit(u))
+    .join(' · ');
+}
+
 export function IngredientNamePicker({
   catalog,
   value,
@@ -77,10 +75,18 @@ export function IngredientNamePicker({
   placeholder = 'Search ingredients…',
   compact = false,
   style,
+  autoFocus = false,
 }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  const useFullScreenSearch =
+    Platform.OS !== 'web' || windowWidth < FULLSCREEN_BREAKPOINT;
+
   const [open, setOpen] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(false);
   const [query, setQuery] = useState(value);
+  const inputRef = useRef<RNTextInput>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const didAutoFocus = useRef(false);
 
   const selected = useMemo(() => {
     if (ingredientId) {
@@ -91,28 +97,61 @@ export function IngredientNamePicker({
     return catalog.find((c) => norm(c.name) === n);
   }, [catalog, ingredientId, value]);
 
+  const displayValue = selected?.name ?? value;
+
   useEffect(() => {
-    if (!open) setQuery(selected?.name ?? value ?? '');
-  }, [open, selected?.name, value]);
+    if (!open && !overlayVisible) setQuery(selected?.name ?? value ?? '');
+  }, [open, overlayVisible, selected?.name, value]);
 
   useEffect(() => () => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
   }, []);
 
-  const options = useMemo(() => filterCatalog(catalog, query), [catalog, query]);
+  useEffect(() => {
+    if (!autoFocus) {
+      didAutoFocus.current = false;
+      return;
+    }
+    if (didAutoFocus.current) return;
+    didAutoFocus.current = true;
+    const timer = setTimeout(() => {
+      if (useFullScreenSearch) {
+        setOverlayVisible(true);
+      } else {
+        inputRef.current?.focus();
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [autoFocus, useFullScreenSearch]);
 
-  const pick = (item: CatalogIngredient) => {
+  const options = useMemo(
+    () => filterCatalog(catalog, query, MAX_INLINE_OPTIONS),
+    [catalog, query],
+  );
+
+  const applyPick = (item: CatalogIngredient) => {
     if (blurTimer.current) clearTimeout(blurTimer.current);
-    const unit = normalizeUnit(item.default_unit);
+    const unit = defaultUnitForCatalogItem(item);
     setQuery(item.name);
     onChangeText(item.name);
     setOpen(false);
+    setOverlayVisible(false);
     onSelect({
       ingredient_id: item.ingredient_id,
       ingredient_name: item.name,
       unit,
       food_group: item.food_group,
     });
+  };
+
+  const openSearch = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    if (useFullScreenSearch) {
+      setOverlayVisible(true);
+      return;
+    }
+    inputRef.current?.focus();
+    setOpen(true);
   };
 
   const handleFocus = () => {
@@ -127,11 +166,25 @@ export function IngredientNamePicker({
     }, 180);
   };
 
-  return (
-    <View style={[styles.fieldRoot, compact && styles.fieldRootCompact, open && styles.fieldRootOpen, style]}>
-      <View style={[styles.nameBox, compact && styles.nameBoxCompact, open && styles.nameBoxOpen]}>
-        <BorderFieldLabel label={label} />
+  const fieldBox = (
+    <View style={[styles.nameBox, compact && styles.nameBoxCompact, (open || overlayVisible) && styles.nameBoxOpen]}>
+      <BorderFieldLabel label={label} />
+      {useFullScreenSearch ? (
+        <View style={[styles.namePressable, compact && styles.namePressableCompact]}>
+          <Text
+            style={[
+              styles.namePressableText,
+              compact && styles.namePressableTextCompact,
+              !displayValue && styles.namePlaceholder,
+            ]}
+            numberOfLines={1}
+          >
+            {displayValue || placeholder}
+          </Text>
+        </View>
+      ) : (
         <RNTextInput
+          ref={inputRef}
           value={query}
           onChangeText={(text) => {
             setQuery(text);
@@ -146,37 +199,78 @@ export function IngredientNamePicker({
           autoCapitalize="words"
           returnKeyType="next"
         />
-        <View style={styles.chevron} pointerEvents="none">
-          <Icon source={open ? 'chevron-up' : 'chevron-down'} size={18} color={palette.textMuted} />
-        </View>
+      )}
+      <View style={styles.chevron} pointerEvents="none">
+        <Icon
+          source={open || overlayVisible ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={palette.textMuted}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <>
+      <View
+        style={[
+          styles.fieldRoot,
+          compact && styles.fieldRootCompact,
+          open && !useFullScreenSearch && styles.fieldRootOpen,
+          style,
+        ]}
+      >
+        {useFullScreenSearch ? (
+          <Pressable
+            onPress={openSearch}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}, ${displayValue || placeholder}`}
+          >
+            {fieldBox}
+          </Pressable>
+        ) : (
+          fieldBox
+        )}
+
+        {open && !useFullScreenSearch && catalog.length > 0 ? (
+          <View style={styles.dropdown}>
+            <ScrollView style={styles.list} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+              {options.length === 0 ? (
+                <Text style={styles.empty}>No ingredients match</Text>
+              ) : (
+                options.map((item) => {
+                  const active = selected?.ingredient_id === item.ingredient_id;
+                  return (
+                    <Pressable
+                      key={item.ingredient_id}
+                      onPress={() => applyPick(item)}
+                      style={[styles.option, active && styles.optionActive]}
+                    >
+                      <Text style={styles.optionName} numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                      <Text style={styles.optionMeta}>{formatUnits(item)}</Text>
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        ) : null}
       </View>
 
-      {open && catalog.length > 0 ? (
-        <View style={styles.dropdown}>
-          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-            {options.length === 0 ? (
-              <Text style={styles.empty}>No ingredients match</Text>
-            ) : (
-              options.map((item) => {
-                const active = selected?.ingredient_id === item.ingredient_id;
-                return (
-                  <Pressable
-                    key={item.ingredient_id}
-                    onPress={() => pick(item)}
-                    style={[styles.option, active && styles.optionActive]}
-                  >
-                    <Text style={styles.optionName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.optionMeta}>{normalizeUnit(item.default_unit)}</Text>
-                  </Pressable>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
+      {useFullScreenSearch ? (
+        <IngredientSearchOverlay
+          visible={overlayVisible}
+          catalog={catalog}
+          initialQuery={query || displayValue}
+          selectedId={selected?.ingredient_id}
+          title="Search ingredients"
+          onClose={() => setOverlayVisible(false)}
+          onSelect={applyPick}
+        />
       ) : null}
-    </View>
+    </>
   );
 }
 
@@ -240,6 +334,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingRight: 30,
   },
+  namePressable: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingRight: 34,
+  },
+  namePressableCompact: {
+    paddingHorizontal: 10,
+    paddingRight: 30,
+  },
+  namePressableText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: palette.text,
+  },
+  namePressableTextCompact: {
+    fontSize: 14,
+  },
+  namePlaceholder: {
+    color: palette.textMuted,
+    fontWeight: '400',
+  },
   chevron: {
     position: 'absolute',
     right: 8,
@@ -254,25 +371,33 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     backgroundColor: '#fff',
     overflow: 'hidden',
-    maxHeight: 220,
+    maxHeight: 280,
     elevation: 6,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  list: { maxHeight: 220 },
+  list: { maxHeight: 280 },
   option: {
+    minHeight: OPTION_MIN_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.border,
   },
   optionActive: { backgroundColor: 'rgba(245, 158, 11, 0.12)' },
-  optionName: { color: palette.text, flex: 1, paddingRight: 8, fontWeight: '600', fontSize: 14 },
-  optionMeta: { color: palette.textMuted, fontSize: 12 },
-  empty: { color: palette.textMuted, fontSize: 12, padding: 12 },
+  optionName: {
+    color: palette.text,
+    flex: 1,
+    paddingRight: 8,
+    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  optionMeta: { color: palette.textMuted, fontSize: 13 },
+  empty: { color: palette.textMuted, fontSize: 13, padding: 16 },
 });

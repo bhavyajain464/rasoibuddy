@@ -16,6 +16,7 @@ type CatalogIngredient struct {
 	IngredientID string   `json:"ingredient_id"`
 	Name         string   `json:"name"`
 	DefaultUnit  string   `json:"default_unit"`
+	Units        []string `json:"units,omitempty"`
 	FoodGroup    string   `json:"food_group,omitempty"`
 	Synonyms     []string `json:"synonyms,omitempty"`
 }
@@ -24,6 +25,7 @@ type rawEntry struct {
 	ID        string   `json:"id"`
 	Canonical string   `json:"canonical"`
 	Category  string   `json:"category"`
+	Units     []string `json:"units"`
 	Synonyms  []string `json:"synonyms"`
 }
 
@@ -54,10 +56,16 @@ func loadCatalog() {
 			if id == "" || name == "" {
 				continue
 			}
+			unitList := normalizeUnitList(e.Units)
+			defaultUnit := defaultUnitForCategory(e.Category)
+			if len(unitList) > 0 {
+				defaultUnit = unitList[0]
+			}
 			out = append(out, CatalogIngredient{
 				IngredientID: id,
 				Name:         name,
-				DefaultUnit:  defaultUnitForCategory(e.Category),
+				DefaultUnit:  defaultUnit,
+				Units:        unitList,
 				FoodGroup:    foodGroupForCategory(e.Category),
 				Synonyms:     e.Synonyms,
 			})
@@ -157,4 +165,24 @@ func foodGroupForCategory(category string) string {
 // NormalizeUnit ensures API returns canonical unit ids.
 func NormalizeUnit(u string) string {
 	return units.Normalize(u)
+}
+
+func normalizeUnitList(raw []string) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, u := range raw {
+		n := units.Normalize(strings.TrimSpace(u))
+		if n == "" {
+			continue
+		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
+		out = append(out, n)
+	}
+	return out
 }

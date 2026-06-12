@@ -145,6 +145,8 @@ type UnitPillSelectorProps = {
   disabled?: boolean;
   style?: ViewStyle;
   compact?: boolean;
+  /** When set, only these units are shown (e.g. from ingredient catalog). */
+  allowedUnits?: readonly string[];
   /** Let the pill row grow to fill remaining horizontal space (e.g. stacked inventory row). */
   fillWidth?: boolean;
   /** Parent row supplies label gutter (paddingTop); use in multi-field rows. */
@@ -160,13 +162,17 @@ export function UnitPillSelector({
   disabled = false,
   style,
   compact = false,
+  allowedUnits,
   fillWidth = false,
   embedded = false,
   hugContent = false,
 }: UnitPillSelectorProps) {
-  const selected = value.trim() || DEFAULT_UNIT;
+  const options = allowedUnits?.length ? allowedUnits : UNIT_OPTIONS;
+  const selected = value.trim() || options[0] || DEFAULT_UNIT;
 
   const hug = hugContent || (compact && !fillWidth);
+  const hugWidth =
+    options.length * COMPACT_SEGMENT_MIN_WIDTH + (options.length - 1) + 8;
 
   const segmentLayoutStyle = !compact
     ? styles.segmentFlex
@@ -174,7 +180,7 @@ export function UnitPillSelector({
       ? styles.segmentCompact
       : styles.segmentDistributed;
 
-  const segments = UNIT_OPTIONS.map((unit) => {
+  const segments = options.map((unit) => {
     const active = selected === unit;
     return (
       <Pressable
@@ -225,6 +231,7 @@ export function UnitPillSelector({
         compact && styles.unitRootCompact,
         fillWidth && styles.unitRootFill,
         hug && styles.unitRootHug,
+        hug && { width: hugWidth, maxWidth: hugWidth },
         embedded && styles.unitRootEmbedded,
         style,
       ]}

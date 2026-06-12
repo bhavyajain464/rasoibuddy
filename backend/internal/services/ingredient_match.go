@@ -18,6 +18,16 @@ func normIngredient(s string) string {
 // ingredientInInventory reports whether a dish ingredient is covered by any inventory name.
 // Match is word-aware and bidirectional: "onion" matches inventory "Onion", and
 // "red chilli powder" matches inventory "chilli powder" (and vice-versa).
+// IngredientsMatch reports whether two grocery names refer to the same ingredient.
+func IngredientsMatch(a, b string) bool {
+	left := normIngredient(a)
+	right := normIngredient(b)
+	if left == "" || right == "" {
+		return false
+	}
+	return left == right || strings.Contains(left, right) || strings.Contains(right, left)
+}
+
 func ingredientInInventory(ingredient string, invTokens map[string]bool, invNames []string) bool {
 	ing := normIngredient(ingredient)
 	if ing == "" {
@@ -27,15 +37,35 @@ func ingredientInInventory(ingredient string, invTokens map[string]bool, invName
 		return true
 	}
 	for _, raw := range invNames {
-		inv := normIngredient(raw)
-		if inv == "" {
-			continue
-		}
-		if inv == ing || strings.Contains(inv, ing) || strings.Contains(ing, inv) {
+		if IngredientsMatch(ingredient, raw) {
 			return true
 		}
 	}
 	return false
+}
+
+// InventoryItemsUsedByDish returns pantry item names (from inventoryNames) that the dish
+// recipe can use, based on full key_ingredients matching.
+func InventoryItemsUsedByDish(dish CatalogDish, inventoryNames []string) []string {
+	if len(inventoryNames) == 0 {
+		return nil
+	}
+	seen := map[string]bool{}
+	var used []string
+	for _, inv := range inventoryNames {
+		name := strings.TrimSpace(inv)
+		if name == "" || seen[strings.ToLower(name)] {
+			continue
+		}
+		for _, ing := range dish.CatalogIngredients() {
+			if IngredientsMatch(name, ing) {
+				seen[strings.ToLower(name)] = true
+				used = append(used, name)
+				break
+			}
+		}
+	}
+	return used
 }
 
 // DishIngredientMatch is the inventory coverage of a dish's ingredient list.

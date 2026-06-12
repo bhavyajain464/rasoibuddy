@@ -46,6 +46,14 @@ func TestMatchDishToInventory(t *testing.T) {
 	}
 }
 
+func TestInventoryItemsUsedByDishMatchesPantryNames(t *testing.T) {
+	dish := CatalogDish{KeyIngredients: []string{"potato", "onion"}}
+	used := InventoryItemsUsedByDish(dish, []string{"Potato", "Carrot"})
+	if len(used) != 1 || used[0] != "Potato" {
+		t.Fatalf("expected Potato used, got %v", used)
+	}
+}
+
 func TestMatchDishToInventoryWordAware(t *testing.T) {
 	dish := CatalogDish{KeyIngredients: []string{"red chilli powder", "paneer"}}
 	// inventory has a looser name that should still match red chilli powder

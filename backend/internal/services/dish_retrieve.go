@@ -30,6 +30,8 @@ type DishRetrieveInput struct {
 	CookedDaysAgo    map[string]int // catalog key -> days since last eaten
 	SuggestedDaysAgo map[string]int // catalog key -> days since last AI suggestion
 	InventoryNames   []string
+	// ExpiringNames is a subset of inventory expiring soon (rescue meals weight these heavily).
+	ExpiringNames    []string
 	GlobalStarCounts map[string]int // dish_name (normalized) -> total stars from all users
 	TopK             int
 	Now              time.Time // zero = time.Now()
@@ -276,8 +278,18 @@ func buildUserFeatureVector(in DishRetrieveInput) map[string]float64 {
 	for _, m := range in.Memories {
 		addText(m, 1.8)
 	}
-	for _, n := range in.InventoryNames {
-		addText(n, 1.2)
+	if in.Category == "rescue_meal" {
+		expiring := map[string]bool{}
+		for _, n := range in.ExpiringNames {
+			expiring[normIngredient(n)] = true
+		}
+		for _, n := range in.InventoryNames {
+			w := 1.2
+			if expiring[normIngredient(n)] {
+				w = 3.5
+			}
+			addText(n, w)
+		}
 	}
 	for _, d := range in.Dislikes {
 		addText(d, -3.0)
@@ -297,7 +309,7 @@ func userSignalStrength(in DishRetrieveInput, userVec map[string]float64) int {
 	if len(in.Memories) > 0 {
 		n += len(in.Memories)
 	}
-	if len(in.InventoryNames) > 0 {
+	if in.Category == "rescue_meal" && len(in.InventoryNames) > 0 {
 		n += min(len(in.InventoryNames), 8)
 	}
 	if in.Category != "" && in.Category != "daily" {
@@ -346,13 +358,16 @@ func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInpu
 		dot += 3.0
 	}
 	dot += uiCategoryStyleBoost(dish, in.Category)
-	if in.Category == "rescue_meal" || in.Category == "meal_of_day" {
-		for _, inv := range in.InventoryNames {
-			for _, t := range tokenizeForDishes(inv) {
-				if _, ok := dishTokens[t]; ok {
-					dot += 1.5
-				}
-			}
+	if in.Category == "rescue_meal" && len(in.InventoryNames) > 0 {
+		match := MatchDishToInventory(dish, in.InventoryNames)
+		dot += match.Coverage * 3.0
+		dot += float64(len(match.Have)) * 0.35
+	}
+	if in.Category == "rescue_meal" && len(in.ExpiringNames) > 0 {
+		expUsed := InventoryItemsUsedByDish(dish, in.ExpiringNames)
+		dot += float64(len(expUsed)) * 3.5
+		if len(expUsed) > 0 {
+			dot += float64(len(expUsed)) / float64(len(in.ExpiringNames)) * 5.0
 		}
 	}
 	if len(in.FavCuisines) == 0 && strings.TrimSpace(in.UserPrompt) == "" && isIndianCuisine(dish.Cuisine) {
@@ -522,7 +537,7 @@ func dishBlockedForJain(d CatalogDish, dietaryTags []string) bool {
 	return !d.JainSafe
 }
 
-func FormatCandidateList(ranked []RankedDish, globalStars map[string]int) string {
+func FormatCandidateList(ranked []RankedDish, globalStars map[string]int, category string, inventoryNames, expiringNames []string) string {
 	if len(ranked) == 0 {
 		return ""
 	}
@@ -558,8 +573,27 @@ func FormatCandidateList(ranked []RankedDish, globalStars map[string]int) string
 		if len(r.Dish.PairsWith) > 0 {
 			meta = append(meta, "pairs: "+strings.Join(r.Dish.PairsWith, ", "))
 		}
-		if len(r.Dish.PairsWith) > 0 {
-			meta = append(meta, "pairs: "+strings.Join(r.Dish.PairsWith, ", "))
+		switch strings.ToLower(strings.TrimSpace(category)) {
+		case "most_healthy":
+			if r.Dish.HealthyScore > 0 {
+				meta = append(meta, fmt.Sprintf("healthy:%d", r.Dish.HealthyScore))
+			}
+		case "most_tasty":
+			if r.Dish.TastyScore > 0 {
+				meta = append(meta, fmt.Sprintf("tasty:%d", r.Dish.TastyScore))
+			}
+		case "rescue_meal":
+			if len(inventoryNames) > 0 {
+				match := MatchDishToInventory(r.Dish, inventoryNames)
+				if match.Coverage > 0 {
+					meta = append(meta, fmt.Sprintf("pantry:%.0f%%", match.Coverage*100))
+				}
+			}
+			if len(expiringNames) > 0 {
+				if used := InventoryItemsUsedByDish(r.Dish, expiringNames); len(used) > 0 {
+					meta = append(meta, "uses-expiring: "+strings.Join(used, ", "))
+				}
+			}
 		}
 		if r.Dish.HalfLifeDays > 0 {
 			meta = append(meta, fmt.Sprintf("half-life %dd", r.Dish.HalfLifeDays))

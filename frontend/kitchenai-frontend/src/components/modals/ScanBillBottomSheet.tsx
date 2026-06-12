@@ -337,8 +337,15 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
         {hasConfirmList && scanResult?.items && (
           <>
             <Text variant="bodyMedium" style={styles.desc}>
-              Found {scanResult.items.length} edible items. Uncheck any you don&apos;t want to add.
+              {scanResult.message ||
+                `Found ${scanResult.items.length} recognized ingredients. Uncheck any you don't want to add.`}
             </Text>
+            {scanResult.skipped && scanResult.skipped.length > 0 && (
+              <Text variant="bodySmall" style={styles.skippedNote}>
+                Skipped {scanResult.skipped.length} line
+                {scanResult.skipped.length === 1 ? '' : 's'} not in our ingredient list.
+              </Text>
+            )}
 
             <View style={styles.selectAllRow}>
               <Button mode="text" compact onPress={selectAll}>
@@ -375,7 +382,9 @@ export function ScanBillBottomSheet({ visible, onDismiss, onAdded, groupMeta }: 
         {scanResult && (!scanResult.items || scanResult.items.length === 0) && (
           <View style={styles.scanStatus}>
             <Text variant="bodyMedium" style={styles.emptyResult}>
-              No edible items found on this bill. Try a clearer photo.
+              {scanResult.skipped && scanResult.skipped.length > 0
+                ? 'No recognized ingredients on this bill. Try a clearer photo or add items manually.'
+                : 'No edible items found on this bill. Try a clearer photo.'}
             </Text>
             <Button
               mode="outlined"
@@ -399,6 +408,11 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     lineHeight: 22,
     marginBottom: 12,
+  },
+  skippedNote: {
+    color: palette.textSecondary,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   imageContainer: {
     borderRadius: 12,

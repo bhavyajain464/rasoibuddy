@@ -169,6 +169,7 @@ func main() {
 	admin.HandleFunc("/meal-of-day/refresh", handlers.AdminRefreshMealOfDay(sqlDB, cfg, cookedLogSvc, mealOfDayCache)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/meal-of-day/clear-cache", handlers.AdminClearMealOfDayCache(mealOfDayCache)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/inventory/backfill-food-groups", handlers.AdminBackfillInventoryFoodGroups(sqlDB, cfg)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/inventory/backfill-catalog", handlers.AdminBackfillInventoryCatalog(sqlDB)).Methods("POST", "OPTIONS")
 	if cfg.AdminAPIKey != "" {
 		log.Printf("Admin API enabled at /api/v1/admin/*")
 	} else {

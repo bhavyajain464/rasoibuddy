@@ -30,6 +30,8 @@ type UnitDropdownProps = {
   disabled?: boolean;
   compact?: boolean;
   style?: ViewStyle;
+  /** When set, only these units are shown (e.g. from ingredient catalog). */
+  allowedUnits?: readonly string[];
   /** Portals the menu as a floating overlay (use inside bottom sheets). */
   overlay?: boolean;
   open?: boolean;
@@ -38,16 +40,18 @@ type UnitDropdownProps = {
 
 function MenuOptions({
   display,
+  options,
   onSelect,
 }: {
   display: string;
+  options: readonly string[];
   onSelect: (unit: string) => void;
 }) {
   return (
     <>
-      {UNIT_OPTIONS.map((unit, index) => {
+      {options.map((unit, index) => {
         const selected = display === unit;
-        const isLast = index === UNIT_OPTIONS.length - 1;
+        const isLast = index === options.length - 1;
         return (
           <Pressable
             key={unit}
@@ -84,6 +88,7 @@ export function UnitDropdown({
   disabled = false,
   compact = false,
   style,
+  allowedUnits,
   overlay = false,
   open: controlledOpen,
   onOpenChange,
@@ -92,6 +97,7 @@ export function UnitDropdown({
   const [internalOpen, setInternalOpen] = useState(false);
   const [menuRect, setMenuRect] = useState<MenuRect | null>(null);
   const open = controlledOpen ?? internalOpen;
+  const options = allowedUnits?.length ? allowedUnits : UNIT_OPTIONS;
   const display = normalizeUnit(value);
 
   const setOpen = useCallback(
@@ -149,7 +155,7 @@ export function UnitDropdown({
         keyboardShouldPersistTaps="handled"
         bounces={false}
       >
-        <MenuOptions display={display} onSelect={selectUnit} />
+        <MenuOptions display={display} options={options} onSelect={selectUnit} />
       </ScrollView>
     </View>
   ) : null;
@@ -180,7 +186,7 @@ export function UnitDropdown({
               keyboardShouldPersistTaps="handled"
               bounces={false}
             >
-              <MenuOptions display={display} onSelect={selectUnit} />
+              <MenuOptions display={display} options={options} onSelect={selectUnit} />
             </ScrollView>
           </View>
         </View>

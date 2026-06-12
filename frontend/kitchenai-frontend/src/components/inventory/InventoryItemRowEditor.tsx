@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { ExpiryDateBox } from '../ExpiryDateBox';
@@ -10,6 +10,7 @@ import {
   UnitPillSelector,
 } from '../UnitPillSelector';
 import { CatalogIngredient } from '../../types';
+import { coerceUnit, resolveCatalogItem, unitsForCatalogItem } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
 export type InventoryDraftRow = {
@@ -90,6 +91,8 @@ export type InventoryItemRowEditorProps = {
   catalog?: CatalogIngredient[];
   /** When false, hides +/- row actions (edit single item). */
   showRowActions?: boolean;
+  /** Focus / open ingredient search when the row mounts (first row in add modal). */
+  autoFocusName?: boolean;
   canAdd?: boolean;
   onUpdate: (patch: Partial<Omit<InventoryDraftRow, 'key'>>) => void;
   onAddRow?: () => void;
@@ -100,11 +103,13 @@ function NameField({
   catalog,
   row,
   onUpdate,
+  autoFocus,
   style,
 }: {
   catalog?: CatalogIngredient[];
   row: InventoryDraftRow;
   onUpdate: (patch: Partial<Omit<InventoryDraftRow, 'key'>>) => void;
+  autoFocus?: boolean;
   style?: object;
 }) {
   if (catalog?.length) {
@@ -125,6 +130,7 @@ function NameField({
         label="Name"
         placeholder="Search ingredients…"
         compact
+        autoFocus={autoFocus}
         style={style}
       />
     );
@@ -149,11 +155,23 @@ export function InventoryItemRowEditor({
   stacked,
   catalog,
   showRowActions = true,
+  autoFocusName = false,
   canAdd = false,
   onUpdate,
   onAddRow = () => {},
   onRemoveRow = () => {},
 }: InventoryItemRowEditorProps) {
+  const catalogItem = useMemo(
+    () => resolveCatalogItem(catalog ?? [], row.ingredientId, row.name),
+    [catalog, row.ingredientId, row.name],
+  );
+  const allowedUnits = useMemo(() => unitsForCatalogItem(catalogItem), [catalogItem]);
+
+  useEffect(() => {
+    const next = coerceUnit(row.unit, allowedUnits);
+    if (next !== row.unit) onUpdate({ unit: next });
+  }, [allowedUnits, row.unit, onUpdate]);
+
   const action = showRowActions ? (
     <RowActionButton
       isLastRow={isLastRow}
@@ -174,7 +192,13 @@ export function InventoryItemRowEditor({
           <View style={styles.stackedMain}>
             <View style={stackedFieldsStyle}>
               <View style={styles.identityRow}>
-                <NameField catalog={catalog} row={row} onUpdate={onUpdate} style={styles.nameField} />
+                <NameField
+                  catalog={catalog}
+                  row={row}
+                  onUpdate={onUpdate}
+                  autoFocus={autoFocusName}
+                  style={styles.nameField}
+                />
                 <View style={styles.expirySlot}>
                   <ExpiryDateBox
                     value={row.expiry}
@@ -196,6 +220,7 @@ export function InventoryItemRowEditor({
                   <UnitPillSelector
                     value={row.unit}
                     onChange={(unit) => onUpdate({ unit })}
+                    allowedUnits={allowedUnits}
                     compact
                     fillWidth
                     embedded
@@ -219,7 +244,13 @@ export function InventoryItemRowEditor({
     <View style={[styles.entryCard, isLastInList && styles.entryCardLast]}>
       <View style={styles.inlineRow}>
         <View style={styles.inlineNameSlot}>
-          <NameField catalog={catalog} row={row} onUpdate={onUpdate} style={styles.nameField} />
+          <NameField
+            catalog={catalog}
+            row={row}
+            onUpdate={onUpdate}
+            autoFocus={autoFocusName}
+            style={styles.nameField}
+          />
         </View>
 
         <View style={styles.inlineQtyUnitStrip}>
@@ -234,6 +265,7 @@ export function InventoryItemRowEditor({
             <UnitPillSelector
               value={row.unit}
               onChange={(unit) => onUpdate({ unit })}
+              allowedUnits={allowedUnits}
               compact
               hugContent
               embedded

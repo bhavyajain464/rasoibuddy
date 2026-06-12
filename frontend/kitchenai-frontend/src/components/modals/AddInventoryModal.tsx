@@ -154,6 +154,7 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
           isLastInList={index === draftRows.length - 1}
           stacked={stackedRows}
           showRowActions
+          autoFocusName={index === 0}
           canAdd={isRowAddable(row)}
           onUpdate={(patch) => updateDraftRow(row.key, patch)}
           onAddRow={addDraftRow}

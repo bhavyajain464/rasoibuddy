@@ -67,6 +67,9 @@ const (
 	maxRecentDishesInPrompt  = 12
 	maxCookDishesInPrompt    = 12
 	maxMemoriesInPrompt      = 5
+	expiringSoonDaysForMeals = 7
+	maxIngredientsInMeal     = 12
+	maxItemsToOrder          = 8
 )
 
 type smartMealsGenerateInput struct {
@@ -198,15 +201,19 @@ func generateSmartMeals(
 	if planNow.IsZero() {
 		planNow = time.Now()
 	}
+	expiringNames := expiringInventoryNames(inventory, planNow)
 	retrieveIn := services.DishRetrieveInput{
 		Category:         category,
 		UserPrompt:       userPrompt,
 		MealTypeFilter:   mealType,
 		CookedDaysAgo:    cookedDays,
 		SuggestedDaysAgo: suggestedDays,
-		InventoryNames:   invNames,
 		TopK:             services.CatalogRetrieveTopK,
 		Now:              planNow,
+	}
+	if category == "rescue_meal" {
+		retrieveIn.InventoryNames = invNames
+		retrieveIn.ExpiringNames = expiringNames
 	}
 	if userPrefs != nil {
 		retrieveIn.DietaryTags = userPrefs.DietaryTags
@@ -253,17 +260,17 @@ func generateSmartMeals(
 		source = "fallback"
 		meals = fallbackMeals(inventory)
 	} else {
-		prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, effectiveMeal, recentDishes, candidates, in.Exclude, retrieveIn.GlobalStarCounts)
+		prompt := buildGroqFilterPrompt(inventory, userPrefs, userPrompt, category, effectiveMeal, recentDishes, candidates, in.Exclude, retrieveIn.GlobalStarCounts, expiringNames)
 		prompt += mealVarietySuffix(candidates, userPrompt, in.Exclude)
 		meals, err = callLLMFilterMeals(cfg, prompt)
 		if err == nil {
-			meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, in.Exclude, globalStars, userStarred)
+			meals = finalizeMealCategories(meals, category, userPrompt, candidates, inventory, expiringNames, in.Exclude, globalStars, userStarred)
 		}
 	}
 	if err != nil {
 		source = "fallback"
 		if len(candidates) > 0 {
-			meals = fallbackMealsFromCandidates(candidates, category, inventory, userPrompt, in.Exclude, globalStars, userStarred)
+			meals = fallbackMealsFromCandidates(candidates, category, inventory, expiringNames, userPrompt, in.Exclude, globalStars, userStarred)
 		} else {
 			meals = fallbackMeals(inventory)
 		}
@@ -487,7 +494,7 @@ func parseExcludeDishes(raw string) []string {
 }
 
 // buildGroqFilterPrompt is stage 2 only: prefs/memories/prompt were already used in word-match retrieval.
-func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsData, userPrompt string, category string, mealTypeFilter string, recentDishes []string, candidates []services.RankedDish, exclude []string, globalStars map[string]int) string {
+func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsData, userPrompt string, category string, mealTypeFilter string, recentDishes []string, candidates []services.RankedDish, exclude []string, globalStars map[string]int, expiringNames []string) string {
 	var sb strings.Builder
 
 	if category != "" {
@@ -501,8 +508,20 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 		sb.WriteString("Stage 2 — filter shortlist into 6 categories. Use only candidate dish names.\n")
 	}
 
-	sb.WriteString(services.FormatCandidateList(candidates, globalStars))
+	shortlistInv := []string(nil)
+	shortlistExpiring := []string(nil)
+	if category == "rescue_meal" {
+		shortlistInv = inventoryNames(inventory)
+		shortlistExpiring = expiringNames
+	}
+	sb.WriteString(services.FormatCandidateList(candidates, globalStars, category, shortlistInv, shortlistExpiring))
 	sb.WriteString(fmt.Sprintf("Meal slot: prefer %s.\n", services.MealTypeFilterLabel(mealTypeFilter)))
+	if category == "most_healthy" {
+		sb.WriteString("Prefer higher healthy: scores in the shortlist.\n")
+	}
+	if category == "most_tasty" {
+		sb.WriteString("Prefer higher tasty: scores in the shortlist.\n")
+	}
 	ctx := services.DeriveSuggestionContext(time.Now(), category)
 	if ctx.WeekdayMode {
 		sb.WriteString(fmt.Sprintf("Context: weekday home cooking — prefer weekday-friendly dishes under ~%d minutes, low/medium effort.\n", ctx.MaxCookMins))
@@ -517,22 +536,26 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 		sb.WriteString("Avoid repeating: " + strings.Join(recentDishes, ", ") + "\n")
 	}
 
-	if category == "rescue_meal" || category == "meal_of_day" || category == "" {
-		sb.WriteString("Pantry (for ingredients / rescue rules):\n")
-		now := time.Now()
+	now := time.Now()
+	if category == "rescue_meal" && len(expiringNames) > 0 {
+		sb.WriteString("URGENT — expiring inventory (MUST use these first):\n")
+		for _, item := range inventory {
+			if !isExpiringInventoryItem(item, now) {
+				continue
+			}
+			tag := expiryTag(item, now)
+			sb.WriteString(fmt.Sprintf("- %s %.0f %s%s\n", item.Name, item.Qty, item.Unit, tag))
+		}
+		sb.WriteString("Pick a shortlist dish whose recipe ingredients use as many expiring items as possible. items_to_order MUST be [].\n")
+	}
+	if category == "rescue_meal" && len(inventory) > 0 {
+		sb.WriteString("Pantry (inventory context):\n")
 		n := 0
 		for _, item := range inventory {
 			if n >= maxInventoryInGroqPrompt {
 				break
 			}
-			tag := ""
-			if item.Expiry != nil {
-				days := int(item.Expiry.Sub(now).Hours() / 24)
-				if days <= 3 {
-					tag = fmt.Sprintf(" exp%d", days)
-				}
-			}
-			sb.WriteString(fmt.Sprintf("- %s %.0f %s%s\n", item.Name, item.Qty, item.Unit, tag))
+			sb.WriteString(fmt.Sprintf("- %s %.0f %s%s\n", item.Name, item.Qty, item.Unit, expiryTag(item, now)))
 			n++
 		}
 	}
@@ -771,7 +794,7 @@ func filterInventoryByDiet(inventory []inventoryRow, dietaryTags []string) []inv
 const maxMealsPerCategory = 1
 
 // finalizeMealCategories keeps one meal per category; randomizes within the prompt-matched shortlist.
-func finalizeMealCategories(categories []MealCategory, category, userPrompt string, candidates []services.RankedDish, inventory []inventoryRow, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
+func finalizeMealCategories(categories []MealCategory, category, userPrompt string, candidates []services.RankedDish, inventory []inventoryRow, expiringNames []string, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
 	invNames := inventoryNames(inventory)
 	out := make([]MealCategory, 0, len(categories))
 	for _, cat := range categories {
@@ -781,7 +804,7 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 		}
 		var meals []SmartMeal
 		if pick, ok := services.RandomCandidateForPrompt(candidates, userPrompt, exclude); ok {
-			meal := smartMealFromCatalog(pick.Dish, invNames, catID, globalStars, userStarred)
+			meal := smartMealFromCatalog(pick.Dish, invNames, expiringNames, catID, globalStars, userStarred)
 			if groq := firstGroqMealMatching(cat.Meals, userPrompt, pick.Dish.Name); groq != nil {
 				meal = mergeGroqMeal(meal, *groq)
 			}
@@ -821,7 +844,7 @@ func mergeGroqMeal(base, groq SmartMeal) SmartMeal {
 	if len(groq.Ingredients) > 0 && len(base.Ingredients) == 0 {
 		base.Ingredients = groq.Ingredients
 	}
-	if len(groq.ItemsToOrder) > 0 {
+	if len(base.ItemsToOrder) == 0 && len(groq.ItemsToOrder) > 0 {
 		base.ItemsToOrder = groq.ItemsToOrder
 	}
 	if groq.CookingTime > 0 {
@@ -866,7 +889,7 @@ func mealNameMatchesPrompt(name string, tokens []string) bool {
 }
 
 // fallbackMealsFromCandidates picks one random dish from the stage-1 shortlist.
-func fallbackMealsFromCandidates(candidates []services.RankedDish, category string, inventory []inventoryRow, userPrompt string, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
+func fallbackMealsFromCandidates(candidates []services.RankedDish, category string, inventory []inventoryRow, expiringNames []string, userPrompt string, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
 	if len(candidates) == 0 {
 		return fallbackMeals(inventory)
 	}
@@ -886,7 +909,7 @@ func fallbackMealsFromCandidates(candidates []services.RankedDish, category stri
 		ID:          category,
 		Title:       meta.Title,
 		Description: meta.Desc,
-		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, invNames, category, globalStars, userStarred)},
+		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, invNames, expiringNames, category, globalStars, userStarred)},
 	}}
 }
 
@@ -898,14 +921,36 @@ func inventoryNames(inventory []inventoryRow) []string {
 	return names
 }
 
-func smartMealFromCatalog(d services.CatalogDish, invNames []string, category string, globalStars map[string]int, userStarred map[string]bool) SmartMeal {
-	ing := catalogIngredientHints(d, invNames, category)
+func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []string, category string, globalStars map[string]int, userStarred map[string]bool) SmartMeal {
+	ing, itemsToOrder := catalogIngredientsForMeal(d, invNames, expiringNames, category)
 	why := "Picked from your personalized dish shortlist."
-	if c := strings.TrimSpace(d.Cuisine); c != "" {
-		why = fmt.Sprintf("From your %s shortlist.", strings.ReplaceAll(c, "-", " "))
+	switch category {
+	case "most_healthy":
+		if d.HealthyScore > 0 {
+			why = fmt.Sprintf("High healthy score (%d/100) from your shortlist.", d.HealthyScore)
+		}
+	case "most_tasty":
+		if d.TastyScore > 0 {
+			why = fmt.Sprintf("High tasty score (%d/100) from your shortlist.", d.TastyScore)
+		}
+	case "rescue_meal":
+		if len(expiringNames) > 0 {
+			if used := services.InventoryItemsUsedByDish(d, expiringNames); len(used) > 0 {
+				why = fmt.Sprintf("Uses %d expiring item(s): %s.", len(used), strings.Join(used, ", "))
+			}
+		}
+	default:
+		if d.WeekdayFriendly && d.CookTimeMinutes > 0 {
+			why = fmt.Sprintf("Practical weeknight option (~%d min).", d.CookTimeMinutes)
+		} else if c := strings.TrimSpace(d.Cuisine); c != "" {
+			why = fmt.Sprintf("From your %s shortlist.", strings.ReplaceAll(c, "-", " "))
+		}
 	}
-	if d.WeekdayFriendly && d.CookTimeMinutes > 0 {
-		why = fmt.Sprintf("Practical weeknight option (~%d min).", d.CookTimeMinutes)
+	if category == "rescue_meal" && len(invNames) > 0 {
+		match := services.MatchDishToInventory(d, invNames)
+		if match.Coverage > 0 {
+			why = fmt.Sprintf("%s %.0f%% pantry match.", why, match.Coverage*100)
+		}
 	}
 	key := services.NormalizeDishName(d.Name)
 	cookMins := d.CookTimeMinutes
@@ -921,6 +966,7 @@ func smartMealFromCatalog(d services.CatalogDish, invNames []string, category st
 		Name:        d.DisplayLabel(),
 		Description: "",
 		Ingredients: ing,
+		ItemsToOrder: itemsToOrder,
 		PairsWith:   pairs,
 		CookingTime: cookMins,
 		Difficulty:  difficulty,
@@ -941,28 +987,125 @@ func catalogDifficulty(effort string) string {
 	}
 }
 
-func catalogIngredientHints(d services.CatalogDish, invNames []string, category string) []string {
-	ings := d.CatalogIngredients()
-	if len(ings) > 0 {
-		n := len(ings)
-		if n > 8 {
-			n = 8
+func catalogIngredientsForMeal(d services.CatalogDish, invNames, expiringNames []string, category string) ([]string, []string) {
+	full := d.CatalogIngredients()
+	if len(full) == 0 {
+		if category == "rescue_meal" && len(invNames) > 0 {
+			n := 6
+			if len(invNames) < n {
+				n = len(invNames)
+			}
+			return invNames[:n], nil
 		}
-		out := make([]string, n)
-		for i, ing := range ings[:n] {
-			out[i] = titleIngredientToken(ing)
-		}
-		return out
+		return nil, nil
 	}
-	// No catalog ingredients: rescue flow may list pantry staples only.
-	if category == "rescue_meal" && len(invNames) > 0 {
-		n := 6
-		if len(invNames) < n {
-			n = len(invNames)
-		}
-		return invNames[:n]
+
+	ordered := full
+	if category == "rescue_meal" {
+		ordered = orderRecipeIngredients(full, invNames, expiringNames, true)
 	}
-	return nil
+	n := len(ordered)
+	if n > maxIngredientsInMeal {
+		n = maxIngredientsInMeal
+	}
+	ingredients := make([]string, n)
+	for i, ing := range ordered[:n] {
+		ingredients[i] = titleIngredientToken(ing)
+	}
+
+	if category == "rescue_meal" || len(invNames) == 0 {
+		return ingredients, nil
+	}
+	match := services.MatchDishToInventory(d, invNames)
+	itemsToOrder := make([]string, 0, min(len(match.Missing), maxItemsToOrder))
+	for _, missing := range match.Missing {
+		itemsToOrder = append(itemsToOrder, titleIngredientToken(missing))
+		if len(itemsToOrder) >= maxItemsToOrder {
+			break
+		}
+	}
+	return ingredients, itemsToOrder
+}
+
+func orderRecipeIngredients(full, invNames, expiringNames []string, rescue bool) []string {
+	if !rescue || len(invNames) == 0 {
+		return full
+	}
+	dish := services.CatalogDish{KeyIngredients: full}
+	expUsed := services.InventoryItemsUsedByDish(dish, expiringNames)
+	pantryUsed := services.InventoryItemsUsedByDish(dish, invNames)
+
+	ingMatchesAny := func(ing string, names []string) bool {
+		for _, n := range names {
+			if services.IngredientsMatch(ing, n) {
+				return true
+			}
+		}
+		return false
+	}
+
+	var expiringFirst, inPantry, rest []string
+	seen := map[string]bool{}
+	appendUnique := func(dst *[]string, ing string) {
+		key := strings.ToLower(strings.TrimSpace(ing))
+		if key == "" || seen[key] {
+			return
+		}
+		seen[key] = true
+		*dst = append(*dst, ing)
+	}
+	for _, ing := range full {
+		switch {
+		case ingMatchesAny(ing, expUsed):
+			appendUnique(&expiringFirst, ing)
+		case ingMatchesAny(ing, pantryUsed):
+			appendUnique(&inPantry, ing)
+		default:
+			appendUnique(&rest, ing)
+		}
+	}
+	out := make([]string, 0, len(full))
+	out = append(out, expiringFirst...)
+	out = append(out, inPantry...)
+	out = append(out, rest...)
+	return out
+}
+
+func expiringInventoryNames(inventory []inventoryRow, now time.Time) []string {
+	var names []string
+	seen := map[string]bool{}
+	for _, item := range inventory {
+		if !isExpiringInventoryItem(item, now) {
+			continue
+		}
+		name := strings.TrimSpace(item.Name)
+		key := strings.ToLower(name)
+		if name == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		names = append(names, name)
+	}
+	return names
+}
+
+func isExpiringInventoryItem(item inventoryRow, now time.Time) bool {
+	if item.Expiry == nil {
+		return false
+	}
+	days := int(item.Expiry.Sub(now).Hours() / 24)
+	return days <= expiringSoonDaysForMeals
+}
+
+func expiryTag(item inventoryRow, now time.Time) string {
+	if item.Expiry == nil {
+		return ""
+	}
+	days := int(item.Expiry.Sub(now).Hours() / 24)
+	if days <= 3 {
+		return fmt.Sprintf(" exp%d", days)
+	}
+	return ""
 }
 
 func titleIngredientToken(s string) string {

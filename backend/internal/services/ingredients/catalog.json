@@ -366,7 +366,8 @@
         "green pepper",
         "sweet pepper",
         "capsicum bell",
-        "paprika pepper"
+        "paprika pepper",
+        "bell peppers"
       ]
     },
     {
@@ -406,7 +407,8 @@
         "vendakai",
         "bende kai",
         "bendekayi",
-        "okhra"
+        "okhra",
+        "ladyfinger"
       ]
     },
     {
@@ -1113,6 +1115,7 @@
         "chilli powder",
         "chili powder",
         "kashmiri chilli powder",
+        "kashmiri chilli",
         "degi mirch"
       ]
     },
@@ -1165,7 +1168,9 @@
         "jeeragam",
         "jilakarra",
         "cumin",
-        "whole cumin"
+        "whole cumin",
+        "jeera whole",
+        "catch jeera whole"
       ]
     },
     {
@@ -2055,7 +2060,9 @@
         "godhuma pindi",
         "chapati flour",
         "whole wheat flour",
-        "wheat flour atta"
+        "wheat flour atta",
+        "aashirvaad superior mp atta",
+        "aashirvaad atta"
       ]
     },
     {

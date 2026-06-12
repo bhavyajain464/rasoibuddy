@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { coerceUnit, resolveCatalogItem, unitsForCatalogItem } from '../../utils/ingredientUnits';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, Icon } from 'react-native-paper';
 import * as api from '../../services/api';
@@ -146,6 +147,8 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
       {draftRows.map((row, index) => {
         const isLastRow = index === draftRows.length - 1;
         const canAdd = isRowAddable(row);
+        const catalogItem = resolveCatalogItem(catalog, row.ingredientId, row.name);
+        const allowedUnits = unitsForCatalogItem(catalogItem);
 
         return (
           <View key={row.key} style={styles.draftRow}>
@@ -188,8 +191,9 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
               />
 
               <UnitPillSelector
-                value={row.unit}
+                value={coerceUnit(row.unit, allowedUnits)}
                 onChange={(unit) => updateDraftRow(row.key, { unit })}
+                allowedUnits={allowedUnits}
                 compact
                 hugContent
                 embedded

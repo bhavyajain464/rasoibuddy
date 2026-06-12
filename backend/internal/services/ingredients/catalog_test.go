@@ -26,6 +26,20 @@ func TestSearchBySynonym(t *testing.T) {
 	}
 }
 
+func TestCatalogIngredientUnits(t *testing.T) {
+	items := Search("potato")
+	if len(items) == 0 {
+		t.Fatal("expected potato in catalog")
+	}
+	potato := items[0]
+	if potato.DefaultUnit != "kg" {
+		t.Fatalf("potato default_unit = %q, want kg", potato.DefaultUnit)
+	}
+	if len(potato.Units) != 2 || potato.Units[0] != "kg" || potato.Units[1] != "g" {
+		t.Fatalf("potato units = %v, want [kg g]", potato.Units)
+	}
+}
+
 func TestDefaultUnitForCategory(t *testing.T) {
 	if got := defaultUnitForCategory("vegetables"); got != "kg" {
 		t.Fatalf("vegetables -> kg, got %s", got)
