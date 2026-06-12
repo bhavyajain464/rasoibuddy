@@ -16,6 +16,8 @@ export interface MealOfDayMeal {
   cooking_time_mins?: number;
   difficulty?: string;
   ingredients?: string[];
+  items_to_order?: string[];
+  pairs_with?: string[];
 }
 
 const SLOT_ORDER = ['breakfast', 'lunch', 'dinner'] as const;
@@ -198,10 +200,6 @@ export function MealOfDayCard({
             <View style={styles.columnsRow}>{columns}</View>
           )}
         </View>
-
-        <Text variant="labelLarge" style={styles.cta}>
-          View all details
-        </Text>
       </Surface>
     </Pressable>
   );
@@ -324,11 +322,5 @@ const styles = StyleSheet.create({
   timeText: {
     color: '#888',
     fontSize: 11,
-  },
-  cta: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    color: '#2E7D32',
-    fontWeight: '600',
   },
 });

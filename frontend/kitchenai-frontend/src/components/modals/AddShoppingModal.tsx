@@ -1,17 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Button, Icon } from 'react-native-paper';
+import { useWindowDimensions, View } from 'react-native';
+import { Button } from 'react-native-paper';
 import * as api from '../../services/api';
+import { DEFAULT_UNIT } from '../UnitPillSelector';
 import {
-  DEFAULT_UNIT,
-  ItemNameBox,
-  QuantityBox,
-  UnitPillSelector,
-} from '../UnitPillSelector';
+  InventoryItemRowEditor,
+  inventoryRowListStyles,
+  STACKED_ROW_BREAKPOINT,
+  type InventoryDraftRow,
+} from '../inventory/InventoryItemRowEditor';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../BottomSheet';
 import { showAppError, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 type DraftRow = {
@@ -19,6 +21,7 @@ type DraftRow = {
   name: string;
   qty: string;
   unit: string;
+  ingredientId?: string;
 };
 
 let draftRowCounter = 0;
@@ -38,6 +41,17 @@ function isRowAddable(row: DraftRow): boolean {
   return name.length > 0 && qty > 0;
 }
 
+function toEditorRow(row: DraftRow): InventoryDraftRow {
+  return {
+    key: row.key,
+    name: row.name,
+    qty: row.qty,
+    unit: row.unit,
+    expiry: '',
+    ingredientId: row.ingredientId,
+  };
+}
+
 type Props = {
   visible: boolean;
   onDismiss: () => void;
@@ -45,9 +59,12 @@ type Props = {
 };
 
 export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  const stackedRows = windowWidth < STACKED_ROW_BREAKPOINT;
   const [draftRows, setDraftRows] = useState<DraftRow[]>(initialDraftRows);
   const [saving, setSaving] = useState(false);
   const { bump } = useAppRefresh();
+  const { catalog } = useIngredientCatalog();
 
   useEffect(() => {
     if (!visible) return;
@@ -137,127 +154,28 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
         </Button>
       )}
     >
-      <View style={styles.listDivider} />
+      <View style={inventoryRowListStyles.listDivider} />
 
-      {draftRows.map((row, index) => {
-        const isLastRow = index === draftRows.length - 1;
-        const canAdd = isRowAddable(row);
-
-        return (
-          <View key={row.key} style={styles.draftRow}>
-            <ItemNameBox
-              label="Name"
-              value={row.name}
-              onChangeText={(name) => updateDraftRow(row.key, { name })}
-              placeholder="Item name"
-              compact
-              style={styles.nameField}
-            />
-
-            <View style={styles.qtyUnitStrip}>
-              <QuantityBox
-                label="Qty"
-                value={row.qty}
-                onChangeText={(qty) => updateDraftRow(row.key, { qty })}
-                compact
-                embedded
-              />
-
-              <UnitPillSelector
-                value={row.unit}
-                onChange={(unit) => updateDraftRow(row.key, { unit })}
-                compact
-                hugContent
-                embedded
-              />
-            </View>
-
-            {isLastRow ? (
-              <Pressable
-                onPress={addDraftRow}
-                disabled={!canAdd}
-                style={({ pressed }) => [
-                  styles.rowActionBtn,
-                  !canAdd && styles.rowActionBtnDisabled,
-                  pressed && canAdd && styles.rowActionBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Add another row"
-                accessibilityState={{ disabled: !canAdd }}
-              >
-                <Icon
-                  source="plus"
-                  size={20}
-                  color={canAdd ? palette.primary : palette.textMuted}
-                />
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => removeDraftRow(row.key)}
-                style={({ pressed }) => [
-                  styles.rowActionBtn,
-                  styles.rowActionBtnRemove,
-                  pressed && styles.rowActionBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Remove row"
-              >
-                <Icon source="minus" size={20} color={palette.textSecondary} />
-              </Pressable>
-            )}
-          </View>
-        );
-      })}
+      {draftRows.map((row, index) => (
+        <InventoryItemRowEditor
+          key={row.key}
+          row={toEditorRow(row)}
+          catalog={catalog}
+          isLastRow={index === draftRows.length - 1}
+          isLastInList={index === draftRows.length - 1}
+          stacked={stackedRows}
+          hideExpiry
+          showRowActions
+          autoFocusName={index === 0}
+          canAdd={isRowAddable(row)}
+          onUpdate={(patch) => {
+            const { expiry: _expiry, foodGroup: _foodGroup, ...shoppingPatch } = patch;
+            updateDraftRow(row.key, shoppingPatch);
+          }}
+          onAddRow={addDraftRow}
+          onRemoveRow={() => removeDraftRow(row.key)}
+        />
+      ))}
     </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  listDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: palette.border,
-    marginBottom: 12,
-    marginTop: -4,
-  },
-  draftRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-    marginBottom: 10,
-    paddingTop: 4,
-  },
-  nameField: {
-    flex: 1,
-    minWidth: 0,
-  },
-  qtyUnitStrip: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-    flexGrow: 0,
-    flexShrink: 0,
-    paddingTop: 6,
-  },
-  rowActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: palette.primary,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    flexShrink: 0,
-  },
-  rowActionBtnRemove: {
-    borderColor: palette.border,
-  },
-  rowActionBtnDisabled: {
-    borderColor: palette.borderLight,
-    backgroundColor: '#FAFAFA',
-  },
-  rowActionBtnPressed: {
-    opacity: 0.75,
-  },
-});

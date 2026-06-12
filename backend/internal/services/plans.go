@@ -36,10 +36,9 @@ func PlanCatalog() []PlanProduct {
 		{
 			Tier: TierPro, Interval: IntervalMonthly, AmountPaise: 9900, Currency: CurrencyINR,
 			DisplayName: "Pro", PriceLabel: "₹99/month",
-			Description: "Unlimited bill scans and all smart meal categories",
+			Description: "Unlimited bill scans",
 			Features: []string{
 				"Unlimited bill scans",
-				"Rescue, Meal of Day, Healthy, Tasty, Meal Prep",
 			},
 			AvailableForPurchase: true,
 		},

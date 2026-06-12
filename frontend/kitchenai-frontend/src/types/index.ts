@@ -4,6 +4,15 @@ export interface InventoryFoodGroup {
   sort: number;
 }
 
+export interface CatalogIngredient {
+  ingredient_id: string;
+  name: string;
+  default_unit: string;
+  units?: string[];
+  food_group?: string;
+  synonyms?: string[];
+}
+
 export interface InventoryItem {
   item_id: string;
   canonical_name: string;
@@ -178,12 +187,14 @@ export interface AuthSession {
 export interface ScanResult {
   success?: boolean;
   message?: string;
+  skipped?: string[];
   items?: Array<{
     name: string;
     quantity: number;
     unit: string;
     shelf_life_days?: number;
     food_group?: string;
+    ingredient_id?: string;
     price_per_unit?: number;
     total_price?: number;
   }>;

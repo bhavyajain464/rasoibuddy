@@ -62,7 +62,7 @@ INCLUDE: food, beverages, cooking ingredients, spices, grains, dairy, produce, s
 EXCLUDE: non-food items like toilet paper, baby wipes, detergent, soap, shampoo, cleaning supplies, plastic bags, batteries, tissues, toothpaste, diapers, pet food, stationery, or any non-edible household product.
 
 For each edible item provide:
-- name: standardized common Indian grocery name
+- name: simple grocery ingredient name only (e.g. "Jeera", "Tomato", "Basmati Rice") — not brand pack titles like "Catch Jeera Whole 100g"
 - quantity: numeric quantity
 - unit: kg, L, ml, g, pcs (count items), etc.
 - price_per_unit: price per unit if visible (0 if not)
@@ -131,7 +131,7 @@ For each edible item provide:
 		return nil, fmt.Errorf("failed to parse bill items: %w", err)
 	}
 
-	return SanitizeBillItems(items), nil
+	return items, nil
 }
 
 // ScanBillFromBase64 processes a base64-encoded image
@@ -165,6 +165,7 @@ type BillItem struct {
 	TotalPrice    float64 `json:"total_price,omitempty"`
 	ShelfLifeDays int     `json:"shelf_life_days,omitempty"`
 	FoodGroup     string  `json:"food_group,omitempty"`
+	IngredientID  string  `json:"ingredient_id,omitempty"`
 }
 
 // ShelfLifeEstimate holds an item name and its estimated shelf life
