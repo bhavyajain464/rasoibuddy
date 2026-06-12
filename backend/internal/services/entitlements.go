@@ -13,16 +13,19 @@ const (
 	FreeMealOfDayCategory = "meal_of_day"
 )
 
-// FreeMealCategories are available on the free plan (meal_of_day is served from global Redis cache).
-var FreeMealCategories = []string{FreeMealCategory, FreeMealOfDayCategory}
-
-// ProMealCategories are smart-meal category ids beyond the free tier.
-var ProMealCategories = []string{
+// FreeMealCategories are all smart-meal category ids (no plan gate).
+var FreeMealCategories = []string{
+	FreeMealCategory,
+	FreeMealOfDayCategory,
+	"today_plan",
 	"rescue_meal",
 	"most_healthy",
 	"most_tasty",
 	"long_lasting",
 }
+
+// ProMealCategories is kept for API compatibility; meal suggestions are not tier-gated.
+var ProMealCategories = []string{}
 
 // Entitlements describes what the user can access on their current plan.
 type Entitlements struct {
@@ -158,18 +161,11 @@ func CanBillScan(ent Entitlements) (bool, string) {
 }
 
 // CanUseMealCategory reports whether the smart-meals category is allowed.
-func CanUseMealCategory(ent Entitlements, category string) (bool, string) {
-	cat := strings.ToLower(strings.TrimSpace(category))
-	if cat == "" {
-		cat = FreeMealCategory
-	}
-	if ent.IsPro {
+func CanUseMealCategory(_ Entitlements, category string) (bool, string) {
+	if strings.TrimSpace(category) == "" {
 		return true, ""
 	}
-	if cat == FreeMealCategory || cat == FreeMealOfDayCategory {
-		return true, ""
-	}
-	return false, "Daily and Meal of the Day are free. Rescue, Healthy, Tasty, and Meal Prep require Pro."
+	return true, ""
 }
 
 // CanUseDietAnalysis gates the upcoming elite feature.

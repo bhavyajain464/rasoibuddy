@@ -105,6 +105,12 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 			req.Qty = 0
 		}
 		req.Unit = units.Normalize(req.Unit)
+		if req.Qty > 0 {
+			if err := units.ValidateQty(req.Qty); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
 
 		var item ShoppingItem
 		err = db.QueryRow(`
@@ -152,6 +158,12 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 				req.Qty = 0
 			}
 			req.Unit = units.Normalize(req.Unit)
+			if req.Qty > 0 {
+				if err := units.ValidateQty(req.Qty); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+			}
 			var item ShoppingItem
 			err := db.QueryRow(`
 				INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)

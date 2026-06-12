@@ -7,6 +7,8 @@ export type MainTabParamList = {
     openLog?: boolean;
     generateCategory?: string;
     mealType?: string;
+    /** Opens the week-plan day sheet for this date (YYYY-MM-DD). */
+    openWeekPlanDate?: string;
     /** When set, in-category Back returns to this tab (e.g. Home → Meal of Day → Back). */
     returnToTab?: 'Home';
   } | undefined;

@@ -82,7 +82,7 @@ export function ProfilePlanSettingsSection({
               })}
             </Text>
           ) : !isPro ? (
-            <Text style={styles.muted}>Upgrade for unlimited scans & meal modes</Text>
+            <Text style={styles.muted}>Upgrade for unlimited bill scans</Text>
           ) : null}
         </View>
       </View>

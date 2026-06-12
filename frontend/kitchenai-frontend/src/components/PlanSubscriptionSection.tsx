@@ -16,10 +16,12 @@ type TierKey = 'free' | 'pro' | 'elite';
 
 const PRO_FEATURES = [
   'Unlimited bill scans',
-  'Rescue & Meal of the Day',
-  'Healthy, Tasty & Meal Prep modes',
 ];
-const FREE_FEATURES = ['Daily meal ideas', 'Meal of the Day', '2 bill scans per day'];
+const FREE_FEATURES = [
+  'All smart meal suggestions',
+  'Week meal planning',
+  '2 bill scans per day',
+];
 const ELITE_FEATURES = [
   'Everything in Pro',
   'Nightly diet email from your meal log',
@@ -36,13 +38,13 @@ const TIER_META: Record<
     label: 'Free',
     icon: 'account',
     features: FREE_FEATURES,
-    tagline: 'Get started with daily meal ideas and limited scans.',
+    tagline: 'Full meal planning with limited bill scans.',
   },
   pro: {
     label: 'Pro',
     icon: 'star',
     features: PRO_FEATURES,
-    tagline: 'Unlimited scans and every smart meal mode.',
+    tagline: 'Unlimited bill scans.',
   },
   elite: {
     label: 'Elite',

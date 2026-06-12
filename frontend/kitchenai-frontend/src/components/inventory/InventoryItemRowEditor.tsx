@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { ExpiryDateBox } from '../ExpiryDateBox';
-import {
-  DEFAULT_UNIT,
-  ItemNameBox,
-  QuantityBox,
-  UnitPillSelector,
-} from '../UnitPillSelector';
+import { IngredientNamePicker } from '../IngredientNamePicker';
+import { ItemNameBox } from '../UnitPillSelector';
+import { QtyUnitStrip } from '../QtyUnitStrip';
+import { CatalogIngredient } from '../../types';
+import { coerceUnit, resolveCatalogItem, unitsForCatalogItem } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
 export type InventoryDraftRow = {
@@ -16,6 +15,8 @@ export type InventoryDraftRow = {
   qty: string;
   unit: string;
   expiry: string;
+  ingredientId?: string;
+  foodGroup?: string;
 };
 
 export const STACKED_ROW_BREAKPOINT = 560;
@@ -83,25 +84,93 @@ export type InventoryItemRowEditorProps = {
   isLastRow: boolean;
   isLastInList: boolean;
   stacked: boolean;
+  catalog?: CatalogIngredient[];
   /** When false, hides +/- row actions (edit single item). */
   showRowActions?: boolean;
+  /** Shopping rows omit expiry; keeps name + qty/unit layout only. */
+  hideExpiry?: boolean;
+  /** Focus / open ingredient search when the row mounts (first row in add modal). */
+  autoFocusName?: boolean;
   canAdd?: boolean;
   onUpdate: (patch: Partial<Omit<InventoryDraftRow, 'key'>>) => void;
   onAddRow?: () => void;
   onRemoveRow?: () => void;
 };
 
+function NameField({
+  catalog,
+  row,
+  onUpdate,
+  autoFocus,
+  style,
+}: {
+  catalog?: CatalogIngredient[];
+  row: InventoryDraftRow;
+  onUpdate: (patch: Partial<Omit<InventoryDraftRow, 'key'>>) => void;
+  autoFocus?: boolean;
+  style?: object;
+}) {
+  if (catalog?.length) {
+    return (
+      <IngredientNamePicker
+        catalog={catalog}
+        value={row.name}
+        ingredientId={row.ingredientId}
+        onChangeText={(name) => onUpdate({ name, ingredientId: undefined, foodGroup: undefined })}
+        onSelect={(pick) =>
+          onUpdate({
+            name: pick.ingredient_name,
+            unit: pick.unit,
+            ingredientId: pick.ingredient_id,
+            foodGroup: pick.food_group,
+          })
+        }
+        label="Name"
+        placeholder="Search ingredients…"
+        compact
+        autoFocus={autoFocus}
+        style={style}
+      />
+    );
+  }
+
+  return (
+    <ItemNameBox
+      label="Name"
+      value={row.name}
+      onChangeText={(name) => onUpdate({ name })}
+      placeholder="Item name"
+      compact
+      style={style}
+    />
+  );
+}
+
 export function InventoryItemRowEditor({
   row,
   isLastRow,
   isLastInList,
   stacked,
+  catalog,
   showRowActions = true,
+  hideExpiry = false,
+  autoFocusName = false,
   canAdd = false,
   onUpdate,
   onAddRow = () => {},
   onRemoveRow = () => {},
 }: InventoryItemRowEditorProps) {
+  const catalogItem = useMemo(
+    () => resolveCatalogItem(catalog ?? [], row.ingredientId, row.name),
+    [catalog, row.ingredientId, row.name],
+  );
+  const allowedUnits = useMemo(() => unitsForCatalogItem(catalogItem), [catalogItem]);
+
+  useEffect(() => {
+    const next = coerceUnit(row.unit, allowedUnits);
+    if (next !== row.unit) onUpdate({ unit: next });
+  }, [allowedUnits, row.unit, onUpdate]);
+
   const action = showRowActions ? (
     <RowActionButton
       isLastRow={isLastRow}
@@ -121,42 +190,40 @@ export function InventoryItemRowEditor({
         <View style={styles.stackedRow}>
           <View style={styles.stackedMain}>
             <View style={stackedFieldsStyle}>
-              <View style={styles.identityRow}>
-                <ItemNameBox
-                  label="Name"
-                  value={row.name}
-                  onChangeText={(name) => onUpdate({ name })}
-                  placeholder="Item name"
-                  compact
+              {hideExpiry ? (
+                <NameField
+                  catalog={catalog}
+                  row={row}
+                  onUpdate={onUpdate}
+                  autoFocus={autoFocusName}
                   style={styles.nameField}
                 />
-                <View style={styles.expirySlot}>
-                  <ExpiryDateBox
-                    value={row.expiry}
-                    onChange={(expiry) => onUpdate({ expiry })}
-                    compact
+              ) : (
+                <View style={styles.identityRow}>
+                  <NameField
+                    catalog={catalog}
+                    row={row}
+                    onUpdate={onUpdate}
+                    autoFocus={autoFocusName}
+                    style={styles.nameField}
                   />
+                  <View style={styles.expirySlot}>
+                    <ExpiryDateBox
+                      value={row.expiry}
+                      onChange={(expiry) => onUpdate({ expiry })}
+                      compact
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
 
-              <View style={styles.measurementRow}>
-                <QuantityBox
-                  label="Qty"
-                  value={row.qty}
-                  onChangeText={(qty) => onUpdate({ qty })}
-                  compact
-                  embedded
-                />
-                <View style={styles.unitSlot}>
-                  <UnitPillSelector
-                    value={row.unit}
-                    onChange={(unit) => onUpdate({ unit })}
-                    compact
-                    fillWidth
-                    embedded
-                  />
-                </View>
-              </View>
+              <QtyUnitStrip
+                qty={row.qty}
+                unit={row.unit}
+                onQtyChange={(qty) => onUpdate({ qty })}
+                onUnitChange={(unit) => onUpdate({ unit })}
+                allowedUnits={allowedUnits}
+              />
             </View>
 
             {showRowActions ? (
@@ -174,43 +241,34 @@ export function InventoryItemRowEditor({
     <View style={[styles.entryCard, isLastInList && styles.entryCardLast]}>
       <View style={styles.inlineRow}>
         <View style={styles.inlineNameSlot}>
-          <ItemNameBox
-            label="Name"
-            value={row.name}
-            onChangeText={(name) => onUpdate({ name })}
-            placeholder="Item name"
-            compact
+          <NameField
+            catalog={catalog}
+            row={row}
+            onUpdate={onUpdate}
+            autoFocus={autoFocusName}
             style={styles.nameField}
           />
         </View>
 
-        <View style={styles.inlineQtyUnitStrip}>
-          <QuantityBox
-            label="Qty"
-            value={row.qty}
-            onChangeText={(qty) => onUpdate({ qty })}
-            compact
-            embedded
-          />
-          <View style={styles.inlineUnitSlot}>
-            <UnitPillSelector
-              value={row.unit}
-              onChange={(unit) => onUpdate({ unit })}
+        <QtyUnitStrip
+          qty={row.qty}
+          unit={row.unit}
+          onQtyChange={(qty) => onUpdate({ qty })}
+          onUnitChange={(unit) => onUpdate({ unit })}
+          allowedUnits={allowedUnits}
+          flexGrow
+        />
+
+        {!hideExpiry ? (
+          <View style={styles.inlineExpirySlot}>
+            <ExpiryDateBox
+              value={row.expiry}
+              onChange={(expiry) => onUpdate({ expiry })}
               compact
-              hugContent
-              embedded
+              style={styles.expiryFieldInline}
             />
           </View>
-        </View>
-
-        <View style={styles.inlineExpirySlot}>
-          <ExpiryDateBox
-            value={row.expiry}
-            onChange={(expiry) => onUpdate({ expiry })}
-            compact
-            style={styles.expiryFieldInline}
-          />
-        </View>
+        ) : null}
 
         {showRowActions ? (
           <View style={styles.inlineActionCell}>{action}</View>
@@ -262,19 +320,6 @@ const styles = StyleSheet.create({
     width: EXPIRY_COLUMN,
     flexShrink: 0,
   },
-  measurementRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SP.sm,
-    width: '100%',
-    alignSelf: 'stretch',
-    paddingTop: 6,
-  },
-  unitSlot: {
-    flex: 1,
-    minWidth: 0,
-    alignSelf: 'stretch',
-  },
   stackedActionColumn: {
     position: 'absolute',
     right: 0,
@@ -294,18 +339,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     minWidth: 88,
-  },
-  inlineQtyUnitStrip: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SP.sm,
-    flexGrow: 0,
-    flexShrink: 0,
-    paddingTop: 6,
-  },
-  inlineUnitSlot: {
-    flexGrow: 0,
-    flexShrink: 0,
   },
   inlineExpirySlot: {
     width: EXPIRY_COLUMN,

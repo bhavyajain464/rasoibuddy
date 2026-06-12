@@ -287,7 +287,7 @@ var (
 Extract ONLY edible/kitchen items. EXCLUDE: handling fees, delivery charges, bags, discounts summary rows, tax annexures, and any non-food product.
 
 Rules:
-- Use the product description as name (normalize spacing; keep brand + variant).
+- name: simple grocery ingredient only (e.g. "Jeera", "Tomato") — strip brand/pack size from product descriptions.
 - quantity: numeric quantity sold (often 1 on delivery apps).
 - unit: use pcs for count/NOS items; use kg, g, L, ml when visible in the name or UQC.
 - total_price: line item total in rupees (last amount column for that row); 0 if unclear.

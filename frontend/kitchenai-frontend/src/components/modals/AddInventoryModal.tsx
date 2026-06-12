@@ -13,6 +13,7 @@ import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../BottomSheet';
 import { showAppError, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 let draftRowCounter = 0;
@@ -44,6 +45,7 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
   const [draftRows, setDraftRows] = useState<InventoryDraftRow[]>(initialDraftRows);
   const [saving, setSaving] = useState(false);
   const { bump } = useAppRefresh();
+  const { catalog } = useIngredientCatalog();
 
   useEffect(() => {
     if (!visible) return;
@@ -58,6 +60,7 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
           qty: parseShoppingQtyInput(row.qty),
           unit: row.unit || DEFAULT_UNIT,
           expiry: row.expiry.trim(),
+          foodGroup: row.foodGroup,
         }))
         .filter((row) => row.name.length > 0 && row.qty > 0),
     [draftRows],
@@ -97,6 +100,7 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
           qty: row.qty,
           unit: row.unit,
           estimated_expiry: row.expiry || undefined,
+          food_group: row.foodGroup,
         });
       }
       const count = filledRows.length;
@@ -145,10 +149,12 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
         <InventoryItemRowEditor
           key={row.key}
           row={row}
+          catalog={catalog}
           isLastRow={index === draftRows.length - 1}
           isLastInList={index === draftRows.length - 1}
           stacked={stackedRows}
           showRowActions
+          autoFocusName={index === 0}
           canAdd={isRowAddable(row)}
           onUpdate={(patch) => updateDraftRow(row.key, patch)}
           onAddRow={addDraftRow}
