@@ -1,4 +1,4 @@
-export const UNIT_OPTIONS = ['pcs', 'kg', 'g', 'L', 'ml', 'bunch'] as const;
+export const UNIT_OPTIONS = ['pcs', 'kg', 'g', 'L', 'ml'] as const;
 
 export const DEFAULT_UNIT = 'pcs';
 
@@ -28,10 +28,11 @@ const UNIT_ALIASES: Record<string, string> = {
   milliliter: 'ml',
   milliliters: 'ml',
   ml: 'ml',
-  bunches: 'bunch',
-  bundle: 'bunch',
-  gucha: 'bunch',
-  guchcha: 'bunch',
+  bunch: 'pcs',
+  bunches: 'pcs',
+  bundle: 'pcs',
+  gucha: 'pcs',
+  guchcha: 'pcs',
 };
 
 export function normalizeUnit(raw: string | undefined | null): string {

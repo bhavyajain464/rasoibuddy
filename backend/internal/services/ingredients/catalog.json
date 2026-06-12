@@ -795,8 +795,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "palak",
@@ -812,8 +812,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "methi",
@@ -829,8 +829,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "chaulai",
@@ -847,8 +847,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "sarson",
@@ -862,8 +862,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "sua",
@@ -879,8 +879,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "arbi leaves",
@@ -895,8 +895,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "drumstick leaves",
@@ -910,8 +910,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "iceberg",
@@ -926,8 +926,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "gongura",
@@ -943,8 +943,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "kadi patta",
@@ -962,8 +962,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "cilantro",
@@ -985,8 +985,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pudina",
@@ -1003,8 +1003,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "sweet basil",
@@ -1017,8 +1017,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "ajmoda leaves",
@@ -1032,8 +1032,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "origano",
@@ -1047,8 +1047,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "thaim"
@@ -1060,8 +1060,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "rosmary"
@@ -5048,8 +5048,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pak choi",
@@ -5065,8 +5065,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "karam saag",
@@ -5737,8 +5737,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "poi saag",
@@ -5756,8 +5756,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "kalmi saag",
@@ -5774,8 +5774,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "kulfa",
@@ -5793,8 +5793,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "chard",
@@ -5809,8 +5809,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "rocket",
@@ -5826,8 +5826,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "mooli ke patte",
@@ -5842,8 +5842,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "imli ke patte",
@@ -5859,8 +5859,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "agathi keerai",
@@ -5877,8 +5877,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "ponnanganni keerai",
@@ -5894,8 +5894,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "kaddu ke patte",
@@ -5911,8 +5911,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "gavati chaha",
@@ -5931,8 +5931,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "makrut lime leaf",
@@ -5947,8 +5947,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "ajmoda patta",
@@ -5963,8 +5963,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "salvia",
@@ -5979,8 +5979,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "sweet marjoram",
@@ -5995,8 +5995,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "onion chives",
@@ -6012,8 +6012,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "estragon",
@@ -6028,8 +6028,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "horapha",
@@ -6044,8 +6044,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "tulsi",
@@ -6061,8 +6061,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "culantro",
@@ -6079,8 +6079,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "savory",
@@ -6094,8 +6094,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "gaozaban",
@@ -6110,8 +6110,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "mexican tea",
@@ -6126,8 +6126,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "rau ram",
@@ -6142,8 +6142,8 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "perilla",
@@ -12545,8 +12545,8 @@
       "category": "leafy_greens",
       "veg": true,
       "units": [
-        "bunch",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "bathua leaves",

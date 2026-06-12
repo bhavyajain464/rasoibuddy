@@ -4,12 +4,11 @@ import "strings"
 
 // Canonical units stored in inventory and shopping_items.
 var canonical = map[string]struct{}{
-	"pcs":   {},
-	"kg":    {},
-	"g":     {},
-	"L":     {},
-	"ml":    {},
-	"bunch": {}, // leafy greens & fresh herbs (coriander, mint, spinach, methi, curry leaves)
+	"pcs": {},
+	"kg":  {},
+	"g":   {},
+	"L":   {},
+	"ml":  {},
 }
 
 var aliases = map[string]string{
@@ -22,10 +21,11 @@ var aliases = map[string]string{
 	"units":       "pcs",
 	"pack":        "pcs",
 	"packs":       "pcs",
-	"bunches":     "bunch",
-	"bundle":      "bunch",
-	"gucha":       "bunch",
-	"guchcha":     "bunch",
+	"bunch":       "pcs",
+	"bunches":     "pcs",
+	"bundle":      "pcs",
+	"gucha":       "pcs",
+	"guchcha":     "pcs",
 	"gram":        "g",
 	"grams":       "g",
 	"gm":          "g",

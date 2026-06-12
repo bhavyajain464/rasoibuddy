@@ -125,14 +125,13 @@ non-purchasable token.
 
 ### Purchase/storage units per ingredient
 Each catalog ingredient carries a `units` list — the unit(s) you actually buy/keep it in at
-home, primary first (e.g. `Potato → [kg, g]`, `Coriander Leaves → [bunch, g]`,
+home, primary first (e.g. `Potato → [kg, g]`, `Coriander Leaves → [g, pcs]`,
 `Milk → [L, ml]`, `Egg → [pcs]`, `Banana → [kg, g, pcs]`, `Honey → [ml, g]`). The shopping
 list / order flow uses `units[0]` as the default and offers the rest as alternatives.
 
-**Unit set:** the system's canonical units were `pcs, kg, g, L, ml`. We added **`bunch`**
-(leafy greens & fresh herbs — coriander/mint/spinach/methi/curry leaves), since `pcs` is
-semantically wrong for those. `pack` remains an alias of `pcs`. Registered in both
-`backend/pkg/units` and `frontend/.../utils/units.ts`.
+**Unit set:** unchanged — `pcs, kg, g, L, ml`. Greens & herbs use `[g, pcs]` (sold by weight
+or as a pack on quick-commerce; we do **not** model "bunch" as a unit). `pack`/`bunch` and
+similar words remain input aliases that normalize to `pcs`.
 
 ## Files
 - `backend/internal/services/dish_catalog.go` — new dish fields
