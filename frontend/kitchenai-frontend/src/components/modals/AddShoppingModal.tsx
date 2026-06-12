@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, Icon } from 'react-native-paper';
 import * as api from '../../services/api';
+import { IngredientNamePicker } from '../IngredientNamePicker';
 import {
   DEFAULT_UNIT,
   ItemNameBox,
@@ -12,6 +13,7 @@ import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../BottomSheet';
 import { showAppError, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 type DraftRow = {
@@ -19,6 +21,7 @@ type DraftRow = {
   name: string;
   qty: string;
   unit: string;
+  ingredientId?: string;
 };
 
 let draftRowCounter = 0;
@@ -48,6 +51,7 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
   const [draftRows, setDraftRows] = useState<DraftRow[]>(initialDraftRows);
   const [saving, setSaving] = useState(false);
   const { bump } = useAppRefresh();
+  const { catalog } = useIngredientCatalog();
 
   useEffect(() => {
     if (!visible) return;
@@ -145,14 +149,34 @@ export function AddShoppingModal({ visible, onDismiss, onAdded }: Props) {
 
         return (
           <View key={row.key} style={styles.draftRow}>
-            <ItemNameBox
-              label="Name"
-              value={row.name}
-              onChangeText={(name) => updateDraftRow(row.key, { name })}
-              placeholder="Item name"
-              compact
-              style={styles.nameField}
-            />
+            {catalog.length > 0 ? (
+              <IngredientNamePicker
+                catalog={catalog}
+                value={row.name}
+                ingredientId={row.ingredientId}
+                onChangeText={(name) => updateDraftRow(row.key, { name, ingredientId: undefined })}
+                onSelect={(pick) =>
+                  updateDraftRow(row.key, {
+                    name: pick.ingredient_name,
+                    unit: pick.unit,
+                    ingredientId: pick.ingredient_id,
+                  })
+                }
+                label="Name"
+                placeholder="Search ingredients…"
+                compact
+                style={styles.nameField}
+              />
+            ) : (
+              <ItemNameBox
+                label="Name"
+                value={row.name}
+                onChangeText={(name) => updateDraftRow(row.key, { name })}
+                placeholder="Item name"
+                compact
+                style={styles.nameField}
+              />
+            )}
 
             <View style={styles.qtyUnitStrip}>
               <QuantityBox

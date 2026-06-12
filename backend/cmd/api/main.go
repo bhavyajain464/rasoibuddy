@@ -82,9 +82,11 @@ func main() {
 	defer redisClient.Close()
 	cookedLogSvc := services.NewCookedLogService(sqlDB, redisClient)
 	mealOfDayCache := services.NewMealOfDayCache(redisClient)
+	mealPlanCache := services.NewMealPlanCache(redisClient)
 	dietDigestSvc := services.NewDietDigestService(sqlDB, cookedLogSvc, cfg)
 	services.StartNightlyDigestScheduler(dietDigestSvc)
 	handlers.StartMealOfDayScheduler(sqlDB, cfg, cookedLogSvc, mealOfDayCache)
+	handlers.StartWeekPlanScheduler(sqlDB, cfg, cookedLogSvc, mealPlanCache)
 
 	authService := services.NewAuthService(sqlDB, cfg)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -113,6 +115,7 @@ func main() {
 	api.Handle("/kitchen/create", middleware.RequireAuth(http.HandlerFunc(handlers.CreateKitchen(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/kitchen/join", middleware.RequireAuth(http.HandlerFunc(handlers.JoinKitchenByInviteCode(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/kitchen/leave", middleware.RequireAuth(http.HandlerFunc(handlers.LeaveKitchen(sqlDB)))).Methods("POST", "OPTIONS")
+	api.Handle("/ingredients", middleware.RequireAuth(http.HandlerFunc(handlers.GetIngredientsCatalog()))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")
@@ -189,6 +192,8 @@ func main() {
 	// Smart Meals & cooked history
 	api.Handle("/meals/smart", middleware.RequireAuth(http.HandlerFunc(handlers.GetSmartMeals(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/meal-of-day", middleware.RequireAuth(http.HandlerFunc(handlers.GetMealOfDay(mealOfDayCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/week-plan", middleware.RequireAuth(http.HandlerFunc(handlers.GetWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/week-plan/refresh", middleware.RequireAuth(http.HandlerFunc(handlers.PostRefreshWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/cooked-history", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookedHistory(cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked", middleware.RequireAuth(http.HandlerFunc(handlers.LogCookedDish(cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.GetDietAnalysisSettings(dietDigestSvc)))).Methods("GET", "OPTIONS")

@@ -4,6 +4,14 @@ export interface InventoryFoodGroup {
   sort: number;
 }
 
+export interface CatalogIngredient {
+  ingredient_id: string;
+  name: string;
+  default_unit: string;
+  food_group?: string;
+  synonyms?: string[];
+}
+
 export interface InventoryItem {
   item_id: string;
   canonical_name: string;

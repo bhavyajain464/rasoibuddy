@@ -2,12 +2,14 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { ExpiryDateBox } from '../ExpiryDateBox';
+import { IngredientNamePicker } from '../IngredientNamePicker';
 import {
   DEFAULT_UNIT,
   ItemNameBox,
   QuantityBox,
   UnitPillSelector,
 } from '../UnitPillSelector';
+import { CatalogIngredient } from '../../types';
 import { palette } from '../../theme';
 
 export type InventoryDraftRow = {
@@ -16,6 +18,8 @@ export type InventoryDraftRow = {
   qty: string;
   unit: string;
   expiry: string;
+  ingredientId?: string;
+  foodGroup?: string;
 };
 
 export const STACKED_ROW_BREAKPOINT = 560;
@@ -83,6 +87,7 @@ export type InventoryItemRowEditorProps = {
   isLastRow: boolean;
   isLastInList: boolean;
   stacked: boolean;
+  catalog?: CatalogIngredient[];
   /** When false, hides +/- row actions (edit single item). */
   showRowActions?: boolean;
   canAdd?: boolean;
@@ -91,11 +96,58 @@ export type InventoryItemRowEditorProps = {
   onRemoveRow?: () => void;
 };
 
+function NameField({
+  catalog,
+  row,
+  onUpdate,
+  style,
+}: {
+  catalog?: CatalogIngredient[];
+  row: InventoryDraftRow;
+  onUpdate: (patch: Partial<Omit<InventoryDraftRow, 'key'>>) => void;
+  style?: object;
+}) {
+  if (catalog?.length) {
+    return (
+      <IngredientNamePicker
+        catalog={catalog}
+        value={row.name}
+        ingredientId={row.ingredientId}
+        onChangeText={(name) => onUpdate({ name, ingredientId: undefined, foodGroup: undefined })}
+        onSelect={(pick) =>
+          onUpdate({
+            name: pick.ingredient_name,
+            unit: pick.unit,
+            ingredientId: pick.ingredient_id,
+            foodGroup: pick.food_group,
+          })
+        }
+        label="Name"
+        placeholder="Search ingredients…"
+        compact
+        style={style}
+      />
+    );
+  }
+
+  return (
+    <ItemNameBox
+      label="Name"
+      value={row.name}
+      onChangeText={(name) => onUpdate({ name })}
+      placeholder="Item name"
+      compact
+      style={style}
+    />
+  );
+}
+
 export function InventoryItemRowEditor({
   row,
   isLastRow,
   isLastInList,
   stacked,
+  catalog,
   showRowActions = true,
   canAdd = false,
   onUpdate,
@@ -122,14 +174,7 @@ export function InventoryItemRowEditor({
           <View style={styles.stackedMain}>
             <View style={stackedFieldsStyle}>
               <View style={styles.identityRow}>
-                <ItemNameBox
-                  label="Name"
-                  value={row.name}
-                  onChangeText={(name) => onUpdate({ name })}
-                  placeholder="Item name"
-                  compact
-                  style={styles.nameField}
-                />
+                <NameField catalog={catalog} row={row} onUpdate={onUpdate} style={styles.nameField} />
                 <View style={styles.expirySlot}>
                   <ExpiryDateBox
                     value={row.expiry}
@@ -174,14 +219,7 @@ export function InventoryItemRowEditor({
     <View style={[styles.entryCard, isLastInList && styles.entryCardLast]}>
       <View style={styles.inlineRow}>
         <View style={styles.inlineNameSlot}>
-          <ItemNameBox
-            label="Name"
-            value={row.name}
-            onChangeText={(name) => onUpdate({ name })}
-            placeholder="Item name"
-            compact
-            style={styles.nameField}
-          />
+          <NameField catalog={catalog} row={row} onUpdate={onUpdate} style={styles.nameField} />
         </View>
 
         <View style={styles.inlineQtyUnitStrip}>

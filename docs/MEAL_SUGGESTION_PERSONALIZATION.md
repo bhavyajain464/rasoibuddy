@@ -92,7 +92,7 @@ Every dish in `catalog.json` now carries:
 ---
 
 ## Also in this change
-`data/ingredients.json` — a 770-item ingredient catalog with India-focused synonyms
+`backend/internal/services/ingredients/catalog.json` — a 770-item ingredient catalog with India-focused synonyms
 (English + Hindi + regional names) for name normalization and bill-scan matching, plus an
 `ambiguous_aliases` map for cross-language collisions (e.g. *kanda* = onion vs yam).
 
@@ -114,7 +114,7 @@ non-purchasable token.
 - `backend/internal/handlers/meals.go` — passes spice pref, seeds the sampler
 - `backend/internal/services/dish_retrieve_prefs_test.go` — filter/score/sampler tests
 - `backend/internal/services/dishes/catalog.json` — enriched (535 dishes)
-- `data/ingredients.json` — ingredient + synonym catalog
+- `backend/internal/services/ingredients/catalog.json` — ingredient + synonym catalog (embedded in API)
 
 ## Tuning notes
 - Raise `Temperature` for more variety, lower for more "always the best".
@@ -127,7 +127,7 @@ non-purchasable token.
 `key_ingredients` for all 535 dishes was expanded from 3–5 highlights to the **full
 home-recipe list** (avg ~13 items: mains + aromatics + enumerated spices + tempering +
 fats + garnish), using normalized lowercase grocery names that line up with inventory
-items and `data/ingredients.json`.
+items and `backend/internal/services/ingredients/catalog.json`.
 
 This powers two things:
 1. **Inventory-aware suggestions** — the retrieval scorer already tokenizes

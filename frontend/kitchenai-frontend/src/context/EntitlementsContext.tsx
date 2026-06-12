@@ -63,7 +63,7 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
   const isMealCategoryFree = useCallback(
     (categoryId: string) => {
       if (isPro) return true;
-      return categoryId === 'daily' || categoryId === 'meal_of_day';
+      return categoryId === 'daily' || categoryId === 'meal_of_day' || categoryId === 'today_plan';
     },
     [isPro],
   );

@@ -12,6 +12,7 @@ import {
 import { InventoryItem, ExpiringItem } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { buildInventoryItemPatch } from '../../utils/inventoryPatch';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 type PantryItem = InventoryItem | ExpiringItem;
@@ -50,6 +51,7 @@ export function EditInventoryItemSheet({
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const stackedRows = windowWidth < STACKED_ROW_BREAKPOINT;
+  const { catalog } = useIngredientCatalog();
   const [draftRow, setDraftRow] = useState<InventoryDraftRow>({
     key: EDIT_ROW_KEY,
     name: '',
@@ -115,6 +117,7 @@ export function EditInventoryItemSheet({
 
       <InventoryItemRowEditor
         row={draftRow}
+        catalog={catalog}
         isLastRow
         isLastInList
         stacked={stackedRows}

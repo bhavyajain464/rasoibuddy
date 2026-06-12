@@ -21,10 +21,12 @@ import {
   SegmentedButtons,
 } from 'react-native-paper';
 import { MealsHistoryDietTab } from '../components/meals/MealsHistoryDietTab';
+import { WeekPlanCarousel, todayDateKey, type WeekPlanDay } from '../components/meals/WeekPlanCarousel';
+import { WeekPlanDaySheet } from '../components/meals/WeekPlanDaySheet';
+import { parseWeekPlanDays } from '../utils/weekPlan';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import type { MainTabParamList } from '../navigation/types';
 import * as api from '../services/api';
-import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { showAppError, showAppInfo } from '../utils/alertMessage';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
@@ -33,7 +35,7 @@ import { navigateToUpgradePlan } from '../utils/upgrade';
 import { UpgradeRequiredError } from '../services/api';
 
 const MEALS_TABS = [
-  { value: 'suggest', label: 'Suggest meals', icon: 'lightbulb-on-outline' },
+  { value: 'suggest', label: 'Meal planning', icon: 'calendar-week' },
   { value: 'history', label: 'History & diet', icon: 'history' },
 ] as const;
 
@@ -67,7 +69,7 @@ interface MealCategory {
 const CATEGORIES = [
   { id: 'daily', title: 'Daily', subtitle: 'Just a dish idea', icon: 'calendar-today' },
   { id: 'rescue_meal', title: 'Rescue', subtitle: 'Use expiring items', icon: 'alert-circle-outline' },
-  { id: 'meal_of_day', title: 'Meal of Day', subtitle: 'Your breakfast, lunch & dinner', icon: 'star-circle' },
+  { id: 'today_plan', title: 'Meal of Day', subtitle: 'Your breakfast, lunch & dinner', icon: 'star-circle' },
   { id: 'most_healthy', title: 'Healthy', subtitle: 'Nutrient-rich picks', icon: 'heart-pulse' },
   { id: 'most_tasty', title: 'Tasty', subtitle: 'Crowd pleasers', icon: 'fire' },
   { id: 'long_lasting', title: 'Meal Prep', subtitle: 'Cook now, eat later', icon: 'clock-outline' },
@@ -78,18 +80,6 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   medium: '#689F38',
   hard: '#1B5E20',
 };
-
-function mealOfDayToSmartMeal(meal: MealOfDayMeal): SmartMeal {
-  return {
-    meal_slot: meal.meal_slot,
-    name: meal.name,
-    description: meal.description ?? '',
-    ingredients: meal.ingredients ?? [],
-    cooking_time_mins: meal.cooking_time_mins ?? 30,
-    difficulty: meal.difficulty ?? 'easy',
-    why_this_meal: meal.why_this_meal ?? '',
-  };
-}
 
 const MEAL_TYPE_FILTERS = [
   { id: 'lunch_dinner', label: 'Lunch / Dinner' },
@@ -180,6 +170,7 @@ type MealsRouteParams = {
   openLog?: boolean;
   generateCategory?: string;
   mealType?: MealTypeFilterId;
+  openWeekPlanDate?: string;
   returnToTab?: keyof MainTabParamList;
 };
 
@@ -198,7 +189,36 @@ export function MealsScreen() {
   const [cookProfileReady, setCookProfileReady] = useState(false);
   const [selectedPairsByMeal, setSelectedPairsByMeal] = useState<Record<number, string[]>>({});
   const [starringDish, setStarringDish] = useState<string | null>(null);
+  const [weekPlanDays, setWeekPlanDays] = useState<WeekPlanDay[]>([]);
+  const [weekPlanLoading, setWeekPlanLoading] = useState(false);
+  const [weekPlanAnchor, setWeekPlanAnchor] = useState(todayDateKey());
+  const [selectedPlanDate, setSelectedPlanDate] = useState(todayDateKey());
+  const [sheetDate, setSheetDate] = useState<string | null>(null);
   const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
+
+  const loadWeekPlan = useCallback(async () => {
+    setWeekPlanLoading(true);
+    try {
+      const res = await api.getWeekPlan();
+      const today = todayDateKey();
+      if (!res?.days?.length) {
+        setWeekPlanDays([]);
+        setSelectedPlanDate(today);
+        return;
+      }
+      const days = parseWeekPlanDays(res.days);
+      setWeekPlanDays(days);
+      setWeekPlanAnchor(res.anchor_date || today);
+      setSelectedPlanDate((prev) => {
+        if (days.some((day) => day.date === prev)) return prev;
+        return days.find((day) => day.date === today)?.date ?? days[0]?.date ?? today;
+      });
+    } catch {
+      setWeekPlanDays([]);
+    } finally {
+      setWeekPlanLoading(false);
+    }
+  }, []);
 
   const refreshCookProfileReady = useCallback(() => {
     void api.fetchCookProfile()
@@ -268,54 +288,20 @@ export function MealsScreen() {
     navigation.navigate('Cook', { dishItems: [meal.name, ...pairs] });
   };
 
-  const loadMealOfDayFromCache = useCallback(async () => {
-    setSelectedCategory('meal_of_day');
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    refreshCookProfileReady();
-    try {
-      const res = await api.getMealOfDay();
-      const match = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0] ?? null;
-      if (!match?.meals?.length) {
-        setError("Today's meal is prepared at midnight (12:00 AM). Check back after it refreshes.");
-        setResult(null);
-      } else {
-        setResult({
-          id: match.id,
-          title: match.title,
-          description: match.description,
-          meals: match.meals.map(mealOfDayToSmartMeal),
-        });
-      }
-    } catch (e: unknown) {
-      if (e instanceof UpgradeRequiredError) {
-        navigateToUpgradePlan(navigation, {
-          source: 'locked_meal',
-          mealCategoryId: 'meal_of_day',
-          preferredTier: 'pro',
-          preferredInterval: 'monthly',
-        });
-        setError(null);
-        setSelectedCategory(null);
-        void refreshEntitlements();
-      } else {
-        setError((e as Error).message || 'Failed to load meal of the day.');
-      }
-    } finally {
-      setLoading(false);
+  const openWeekPlanDay = useCallback(async (date: string) => {
+    setMealsTab('suggest');
+    setSelectedPlanDate(date);
+    if (!weekPlanDays.length) {
+      await loadWeekPlan();
     }
-  }, [navigation, refreshEntitlements, refreshCookProfileReady]);
+    setSheetDate(date);
+  }, [weekPlanDays.length, loadWeekPlan]);
 
   const generateForCategory = useCallback(async (
     catId: string,
     excludeDish?: string,
     mealTypeOverride?: MealTypeFilterId,
   ) => {
-    if (catId === 'meal_of_day') {
-      void loadMealOfDayFromCache();
-      return;
-    }
     const activeMealType = mealTypeOverride ?? mealTypeFilter;
     setSelectedCategory(catId);
     setLoading(true);
@@ -351,10 +337,14 @@ export function MealsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, loadMealOfDayFromCache, refreshCookProfileReady]);
+  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, refreshCookProfileReady]);
 
   const onCategoryPress = useCallback(
     (catId: string) => {
+      if (catId === 'today_plan') {
+        void openWeekPlanDay(todayDateKey());
+        return;
+      }
       if (!isMealCategoryFree(catId)) {
         navigateToUpgradePlan(navigation, {
           source: 'locked_meal',
@@ -366,12 +356,25 @@ export function MealsScreen() {
       }
       void generateForCategory(catId);
     },
-    [isMealCategoryFree, generateForCategory, navigation],
+    [isMealCategoryFree, generateForCategory, navigation, openWeekPlanDay],
   );
 
   useEffect(() => {
+    const planDate = route.params?.openWeekPlanDate;
+    if (planDate) {
+      navigation.setParams({ openWeekPlanDate: undefined });
+      void openWeekPlanDay(planDate);
+      return;
+    }
+
     const catId = route.params?.generateCategory;
     if (!catId) return;
+
+    if (catId === 'meal_of_day' || catId === 'today_plan') {
+      navigation.setParams({ generateCategory: undefined, mealType: undefined });
+      void openWeekPlanDay(todayDateKey());
+      return;
+    }
 
     const mealType = route.params?.mealType ?? 'lunch_dinner';
     setMealsTab('suggest');
@@ -389,7 +392,15 @@ export function MealsScreen() {
     }
 
     void generateForCategory(catId, undefined, mealType);
-  }, [route.params?.generateCategory, route.params?.mealType, navigation, isMealCategoryFree, generateForCategory]);
+  }, [
+    route.params?.openWeekPlanDate,
+    route.params?.generateCategory,
+    route.params?.mealType,
+    navigation,
+    isMealCategoryFree,
+    generateForCategory,
+    openWeekPlanDay,
+  ]);
 
   const goBack = useCallback(() => {
     const returnTo = route.params?.returnToTab;
@@ -417,6 +428,26 @@ export function MealsScreen() {
     }, [navigation, route.params?.returnToTab, selectedCategory]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (mealsTab !== 'suggest' || selectedCategory) return undefined;
+      void loadWeekPlan();
+      return undefined;
+    }, [mealsTab, selectedCategory, loadWeekPlan]),
+  );
+
+  const sheetDay = weekPlanDays.find((d) => d.date === sheetDate) ?? null;
+
+  const handleDayPress = useCallback((date: string) => {
+    setSheetDate(date);
+  }, []);
+
+  const handleSheetDayUpdated = useCallback((updated: WeekPlanDay) => {
+    setWeekPlanDays((prev) =>
+      prev.map((d) => (d.date === updated.date ? updated : d)),
+    );
+  }, []);
+
   const activeCat = CATEGORIES.find((c) => c.id === selectedCategory);
 
   return (
@@ -439,16 +470,16 @@ export function MealsScreen() {
             ? activeCat.title
             : mealsTab === 'history'
               ? 'History & diet'
-              : 'Smart Meals'
+              : 'Meal planning'
         }
         subtitle={
-          activeCat?.id === 'meal_of_day'
-            ? 'Personalized for you · refreshes at midnight'
+          activeCat?.id === 'today_plan'
+            ? 'Shared kitchen plan · refreshes at midnight'
             : activeCat
               ? activeCat.subtitle
               : mealsTab === 'history'
                 ? 'Log what you ate · nightly diet email'
-                : 'AI-powered meal ideas from your kitchen'
+                : '7-day plan for your kitchen · plus on-demand ideas'
         }
       />
 
@@ -477,10 +508,31 @@ export function MealsScreen() {
 
       {mealsTab === 'suggest' && !selectedCategory && !loading && (
         <>
+          <WeekPlanCarousel
+            days={weekPlanDays}
+            selectedDate={selectedPlanDate}
+            onSelectDate={setSelectedPlanDate}
+            onDayPress={handleDayPress}
+            loading={weekPlanLoading}
+            anchorDate={weekPlanAnchor}
+          />
+
+          <WeekPlanDaySheet
+            visible={sheetDate !== null}
+            day={sheetDay}
+            anchorDate={weekPlanAnchor}
+            cookProfileReady={cookProfileReady}
+            onDismiss={() => setSheetDate(null)}
+            onDayUpdated={handleSheetDayUpdated}
+            navigation={navigation}
+          />
+
+          <Text variant="titleMedium" style={styles.sectionLabel}>More ideas</Text>
+
           <View style={styles.promptWrap}>
             <TextInput
               mode="outlined"
-              placeholder="Any preference? e.g. italian, something light..."
+              placeholder="Any preference? e.g. italian, light..."
               value={userPrompt}
               onChangeText={setUserPrompt}
               style={styles.promptInput}
@@ -490,11 +542,8 @@ export function MealsScreen() {
               dense
               left={<TextInput.Icon icon="message-text-outline" color="#bbb" />}
             />
-            <Text variant="labelMedium" style={styles.mealTypeLabel}>Meal type</Text>
             <MealTypeDropdown value={mealTypeFilter} onChange={setMealTypeFilter} />
           </View>
-
-          <Text variant="titleMedium" style={styles.sectionLabel}>What are you looking for?</Text>
 
           <View style={styles.grid}>
             {CATEGORIES.map((cat) => (
@@ -535,9 +584,7 @@ export function MealsScreen() {
               mode="contained"
               compact
               onPress={() =>
-                selectedCategory === 'meal_of_day'
-                  ? loadMealOfDayFromCache()
-                  : selectedCategory &&
+                selectedCategory &&
                     generateForCategory(selectedCategory, result?.meals?.[0]?.name)
               }
               buttonColor="#C62828"
@@ -551,7 +598,7 @@ export function MealsScreen() {
 
       {mealsTab === 'suggest' && result && !loading && (
         <View style={styles.resultWrap}>
-          {selectedCategory !== 'meal_of_day' ? (
+          {selectedCategory ? (
             <>
               <View style={styles.regenRow}>
                 <TextInput
@@ -581,18 +628,12 @@ export function MealsScreen() {
                 </Pressable>
               </View>
             </>
-          ) : (
-            <Surface style={styles.mealOfDayNote} elevation={0}>
-              <Text variant="bodySmall" style={styles.mealOfDayNoteText}>
-                This suggestion updates once per day at 12:00 AM.
-              </Text>
-            </Surface>
-          )}
+          ) : null}
 
           {result.meals?.map((meal, idx) => (
             <Card key={idx} style={styles.mealCard} mode="elevated">
               <Card.Content>
-                {meal.meal_slot && selectedCategory === 'meal_of_day' ? (
+                {meal.meal_slot ? (
                   <Text variant="labelLarge" style={styles.mealSlotLabel}>
                     {meal.meal_slot === 'breakfast' ? 'Breakfast' : meal.meal_slot === 'lunch' ? 'Lunch' : meal.meal_slot === 'dinner' ? 'Dinner' : meal.meal_slot}
                   </Text>
@@ -732,17 +773,22 @@ const styles = StyleSheet.create({
   tabBtn: { backgroundColor: '#fff' },
   tabBtnActive: { backgroundColor: '#E8F5E9' },
 
-  promptWrap: { paddingHorizontal: GRID_PAD, paddingTop: 16, gap: 10 },
-  promptInput: { backgroundColor: '#fff' },
-  mealTypeLabel: { color: '#666', marginTop: 4 },
-  mealTypeBtn: { alignSelf: 'flex-start', backgroundColor: '#fff', borderColor: '#E0E0E0' },
+  promptWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: GRID_PAD,
+    paddingTop: 16,
+    gap: 8,
+  },
+  promptInput: { flex: 1, backgroundColor: '#fff', minWidth: 0 },
+  mealTypeBtn: { flexShrink: 0, backgroundColor: '#fff', borderColor: '#E0E0E0' },
   mealTypeBtnContent: { flexDirection: 'row-reverse' },
 
   sectionLabel: {
     fontWeight: '700',
     color: '#1A1A1A',
     paddingHorizontal: GRID_PAD,
-    marginTop: 20,
+    marginTop: 16,
     marginBottom: 10,
   },
 

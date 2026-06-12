@@ -79,6 +79,12 @@ type smartMealsGenerateInput struct {
 	Global bool
 	// MealOfDayForUser: personalized breakfast/lunch/dinner using prefs, allergies, and optional pantry.
 	MealOfDayForUser bool
+	// PlanDate sets the calendar day for deterministic sampling (week plan).
+	PlanDate time.Time
+	// SeedKey overrides userID in suggestionSeed (kitchen_id for shared plans).
+	SeedKey string
+	// RefreshNonce makes regeneration pick a different dish (week-plan refresh).
+	RefreshNonce string
 }
 
 // suggestionSeed derives a deterministic seed from user + calendar day + meal slot.
@@ -188,6 +194,10 @@ func generateSmartMeals(
 		}
 	}
 
+	planNow := in.PlanDate
+	if planNow.IsZero() {
+		planNow = time.Now()
+	}
 	retrieveIn := services.DishRetrieveInput{
 		Category:         category,
 		UserPrompt:       userPrompt,
@@ -196,7 +206,7 @@ func generateSmartMeals(
 		SuggestedDaysAgo: suggestedDays,
 		InventoryNames:   invNames,
 		TopK:             services.CatalogRetrieveTopK,
-		Now:              time.Now(),
+		Now:              planNow,
 	}
 	if userPrefs != nil {
 		retrieveIn.DietaryTags = userPrefs.DietaryTags
@@ -210,7 +220,14 @@ func generateSmartMeals(
 	// don't repeat. Global (shared) meal-of-day stays deterministic for caching.
 	if !in.Global {
 		retrieveIn.Temperature = 0.7
-		retrieveIn.RandSeed = suggestionSeed(userID, effectiveMeal, retrieveIn.Now)
+		seedScope := userID
+		if sk := strings.TrimSpace(in.SeedKey); sk != "" {
+			seedScope = sk
+		}
+		if rn := strings.TrimSpace(in.RefreshNonce); rn != "" {
+			seedScope += "|" + rn
+		}
+		retrieveIn.RandSeed = suggestionSeed(seedScope, effectiveMeal, planNow)
 	}
 	globalStars, _ := services.LoadGlobalStarCounts(db)
 	var userStarred map[string]bool
