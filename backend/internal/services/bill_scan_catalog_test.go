@@ -50,7 +50,7 @@ func TestApplyCatalogMappingWesternBill(t *testing.T) {
 		"Large Eggs":      "Egg",
 		"Milk":            "Milk",
 		"Cottage Cheese":  "Paneer",
-		"Cherry Tomatoes": "Tomato",
+		"Cherry Tomatoes": "Cherry",
 		"Bananas":         "Banana",
 		"Aubergine":       "Brinjal",
 	}

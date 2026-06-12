@@ -9,7 +9,7 @@ import {
   STACKED_ROW_BREAKPOINT,
   type InventoryDraftRow,
 } from './InventoryItemRowEditor';
-import { InventoryItem, ExpiringItem } from '../../types';
+import { CatalogIngredient, InventoryItem, ExpiringItem } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { buildInventoryItemPatch } from '../../utils/inventoryPatch';
 import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
@@ -33,7 +33,7 @@ function expiryToInput(expiry?: string): string {
   return expiry.slice(0, 10);
 }
 
-function itemToDraftRow(item: PantryItem, catalog: { ingredient_id: string; name: string }[]): InventoryDraftRow {
+function itemToDraftRow(item: PantryItem, catalog: CatalogIngredient[]): InventoryDraftRow {
   const match = resolveCatalogItem(catalog, undefined, item.canonical_name);
   return {
     key: EDIT_ROW_KEY,

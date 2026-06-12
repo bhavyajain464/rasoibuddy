@@ -27,11 +27,16 @@ func TestSearchBySynonym(t *testing.T) {
 }
 
 func TestCatalogIngredientUnits(t *testing.T) {
-	items := Search("potato")
-	if len(items) == 0 {
+	var potato CatalogIngredient
+	for _, item := range Search("potato") {
+		if item.IngredientID == "potato" {
+			potato = item
+			break
+		}
+	}
+	if potato.IngredientID == "" {
 		t.Fatal("expected potato in catalog")
 	}
-	potato := items[0]
 	if potato.DefaultUnit != "kg" {
 		t.Fatalf("potato default_unit = %q, want kg", potato.DefaultUnit)
 	}
