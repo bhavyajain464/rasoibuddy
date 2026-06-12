@@ -9480,32 +9480,6 @@
       ]
     },
     {
-      "id": "mixed_vegetables",
-      "canonical": "Mixed Vegetables",
-      "category": "vegetables",
-      "veg": true,
-      "synonyms": [
-        "mix veg",
-        "mixed veg",
-        "mixed veggies",
-        "veg mix",
-        "assorted vegetables"
-      ]
-    },
-    {
-      "id": "mixed_herbs",
-      "canonical": "Mixed Herbs",
-      "category": "herbs",
-      "veg": true,
-      "synonyms": [
-        "herbs",
-        "mixed herbs",
-        "italian herbs",
-        "dried herbs",
-        "mixed dried herbs"
-      ]
-    },
-    {
       "id": "bathua",
       "canonical": "Bathua",
       "category": "leafy_greens",
@@ -9591,18 +9565,6 @@
       "synonyms": [
         "bread croutons",
         "toasted bread cubes"
-      ]
-    },
-    {
-      "id": "vegetable_patty",
-      "canonical": "Vegetable Patty",
-      "category": "staples_packaged",
-      "veg": true,
-      "synonyms": [
-        "veg patty",
-        "veg cutlet patty",
-        "burger patty veg",
-        "aloo patty"
       ]
     }
   ]
