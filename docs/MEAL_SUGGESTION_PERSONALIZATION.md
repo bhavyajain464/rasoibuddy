@@ -124,10 +124,12 @@ This guarantees inventory-matching and shopping-list mapping never hit an unknow
 non-purchasable token.
 
 ### Purchase/storage units per ingredient
-Each catalog ingredient carries a `units` list — the unit(s) you actually buy/keep it in at
-home, primary first (e.g. `Potato → [kg, g]`, `Coriander Leaves → [g, pcs]`,
-`Milk → [L, ml]`, `Egg → [pcs]`, `Banana → [kg, g, pcs]`, `Honey → [ml, g]`). The shopping
-list / order flow uses `units[0]` as the default and offers the rest as alternatives.
+Each catalog ingredient carries a `units` list — the unit(s) a household uses when **buying**
+it, most-common first (per-ingredient judged, constrained to the 5 canonical units). Examples:
+`Potato/Rice/Dal → [kg, g]`, `Ginger/Garlic/Green Chilli/Coriander → [g, kg]`,
+`Milk/Cooking Oil → [L, ml]`, `Ketchup/Soy Sauce → [ml, L]`, `Honey → [ml, g]`,
+`Egg/Lemon/Coconut/Bread → [pcs]`, `Banana → [pcs, kg]`, `Saffron → [g]`. The shopping list /
+order flow uses `units[0]` as the default and offers the rest as alternatives.
 
 **Unit set:** unchanged — `pcs, kg, g, L, ml`. Greens & herbs use `[g, pcs]` (sold by weight
 or as a pack on quick-commerce; we do **not** model "bunch" as a unit). `pack`/`bunch` and

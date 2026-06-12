@@ -141,8 +141,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "scallion",
@@ -159,8 +159,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sambar onion",
@@ -197,8 +197,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "lehsun",
@@ -217,8 +217,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "adrak",
@@ -236,8 +236,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "hari mirch",
@@ -307,9 +307,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "phool gobi",
@@ -326,9 +325,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "patta gobi",
@@ -344,7 +342,7 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
+        "pcs",
         "g"
       ],
       "synonyms": [
@@ -359,8 +357,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "bell pepper",
@@ -397,8 +395,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "lady finger",
@@ -418,8 +416,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "lauki",
@@ -457,8 +454,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "karela",
@@ -491,8 +488,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "petha",
@@ -510,8 +506,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "kaddu",
@@ -547,8 +542,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "courgette",
@@ -561,8 +556,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "apple gourd",
@@ -577,8 +572,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "tindora",
@@ -596,8 +591,7 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "pcs"
       ],
       "synonyms": [
         "moringa",
@@ -614,9 +608,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "green banana",
@@ -634,9 +627,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "green papaya",
@@ -668,8 +660,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "matar",
@@ -688,8 +680,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "green beans",
@@ -706,8 +698,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "gawar",
@@ -723,8 +715,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "fava beans",
@@ -741,8 +733,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "double beans",
@@ -757,8 +749,6 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -778,8 +768,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "khumbi",
@@ -796,7 +786,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "palak",
@@ -813,7 +803,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "methi",
@@ -830,7 +820,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "chaulai",
@@ -848,7 +838,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "sarson",
@@ -863,7 +853,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "sua",
@@ -880,7 +870,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "arbi leaves",
@@ -896,7 +886,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "drumstick leaves",
@@ -927,7 +917,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "gongura",
@@ -944,7 +934,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "kadi patta",
@@ -963,7 +953,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "cilantro",
@@ -986,7 +976,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "pudina",
@@ -1004,7 +994,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "sweet basil",
@@ -1018,7 +1008,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "ajmoda leaves",
@@ -1033,7 +1023,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "origano",
@@ -1048,7 +1038,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "thaim"
@@ -1061,7 +1051,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "rosmary"
@@ -1277,8 +1267,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "hing",
@@ -1403,8 +1392,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "jaiphal",
@@ -1419,8 +1407,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "javitri",
@@ -1435,8 +1422,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "chakra phool",
@@ -1555,8 +1541,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "dagad phool",
@@ -1571,8 +1556,7 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "kesar",
@@ -1879,8 +1863,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "seviyan",
@@ -1896,8 +1880,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "jai",
@@ -1927,8 +1911,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "keenwa",
@@ -2042,8 +2026,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sabudana",
@@ -2132,8 +2116,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "cornflour"
@@ -2487,8 +2471,8 @@
       "category": "pulses_legumes",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "soya nuggets",
@@ -2525,8 +2509,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "dahi",
@@ -2564,8 +2548,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "cottage cheese",
@@ -2580,8 +2564,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "chiz",
@@ -2594,8 +2578,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "makkhan",
@@ -2615,8 +2599,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "L"
       ],
       "synonyms": [
         "clarified butter",
@@ -2634,8 +2618,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "malai",
@@ -2664,8 +2648,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "mawa",
@@ -2680,8 +2664,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "dried milk",
@@ -3170,8 +3154,7 @@
       "category": "nuts",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "nariyal",
@@ -3397,9 +3380,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "kela",
@@ -3452,8 +3434,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "santra",
@@ -3470,8 +3451,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "mosambi",
@@ -3486,8 +3466,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3525,8 +3503,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "anar",
@@ -3543,8 +3520,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3560,8 +3535,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3577,8 +3550,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3596,8 +3567,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "amrood",
@@ -3613,8 +3583,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3645,8 +3613,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "sitaphal",
@@ -3663,8 +3630,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "chikoo",
@@ -3680,8 +3646,6 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
         "pcs"
       ],
       "synonyms": [
@@ -3698,8 +3662,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "strawberries"
@@ -3711,8 +3675,7 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "kiwi fruit"
@@ -3724,8 +3687,7 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "butter fruit",
@@ -3827,8 +3789,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "icing sugar",
@@ -3843,8 +3805,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "panangkarkandu",
@@ -3858,8 +3820,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "mishri",
@@ -3877,7 +3839,7 @@
       "veg": true,
       "units": [
         "ml",
-        "g"
+        "L"
       ],
       "synonyms": [
         "maple"
@@ -3889,8 +3851,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "kg",
+        "g"
       ],
       "synonyms": [
         "namak",
@@ -3909,7 +3871,7 @@
       "veg": true,
       "units": [
         "g",
-        "ml"
+        "kg"
       ],
       "synonyms": [
         "sendha namak",
@@ -3926,7 +3888,7 @@
       "veg": true,
       "units": [
         "g",
-        "ml"
+        "kg"
       ],
       "synonyms": [
         "kala namak",
@@ -4085,7 +4047,7 @@
       "veg": true,
       "units": [
         "g",
-        "ml"
+        "kg"
       ],
       "synonyms": [
         "achar",
@@ -4103,8 +4065,7 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "papadum",
@@ -4137,7 +4098,7 @@
       "veg": true,
       "units": [
         "g",
-        "ml"
+        "kg"
       ],
       "synonyms": [
         "adrak lehsun paste",
@@ -4151,8 +4112,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "tomato paste",
@@ -4337,8 +4298,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "meetha soda",
@@ -4400,8 +4361,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "choco",
@@ -4433,8 +4394,7 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "g"
       ],
       "synonyms": [
         "china grass",
@@ -4462,8 +4422,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "food coloring",
@@ -4517,8 +4477,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "bournvita",
@@ -4534,8 +4494,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "soda water",
@@ -4566,8 +4526,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "nariyal pani",
@@ -4582,8 +4542,7 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "double roti",
@@ -4601,8 +4560,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "macaroni",
@@ -4654,8 +4613,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "corn flakes",
@@ -4670,8 +4629,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "soya paneer",
@@ -4701,8 +4660,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "dosa batter",
@@ -4716,8 +4675,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "curry paste",
@@ -4731,7 +4690,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "pcs"
+        "L",
+        "ml"
       ],
       "synonyms": [
         "pani",
@@ -4747,7 +4707,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "pcs"
+        "kg",
+        "g"
       ],
       "synonyms": [
         "ice cubes",
@@ -4761,8 +4722,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "gulab jal",
@@ -4776,8 +4737,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "kewra essence",
@@ -4883,8 +4844,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "val papdi",
@@ -4900,8 +4861,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "jack beans",
@@ -4919,8 +4880,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "goa beans",
@@ -4936,8 +4897,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "yardlong beans",
@@ -4955,8 +4916,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "green soybeans",
@@ -4970,8 +4931,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "shatavari",
@@ -4985,8 +4946,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "ajmoda",
@@ -5001,8 +4962,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "leeks",
@@ -5017,8 +4978,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "globe artichoke",
@@ -5032,8 +4993,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "finocchio",
@@ -5049,7 +5010,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "pak choi",
@@ -5066,7 +5027,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "karam saag",
@@ -5082,8 +5043,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "purple cabbage",
@@ -5097,8 +5057,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chota bhutta",
@@ -5113,8 +5073,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "singhara",
@@ -5130,8 +5090,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kamal kakdi",
@@ -5149,8 +5109,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "bans",
@@ -5262,8 +5222,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "kathal",
@@ -5282,8 +5241,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "kele ka phool",
@@ -5301,8 +5260,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "kele ka tana",
@@ -5374,8 +5333,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "white carrot",
@@ -5403,8 +5362,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sundried tomato",
@@ -5418,8 +5377,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "jaitun",
@@ -5435,8 +5394,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "kakdi achar",
@@ -5452,8 +5411,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "jalapeno pepper",
@@ -5468,8 +5427,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "celery root",
@@ -5498,8 +5457,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chote patta gobi",
@@ -5514,8 +5473,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chinese peas",
@@ -5530,8 +5489,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "snap peas",
@@ -5544,8 +5503,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "mexican husk tomato",
@@ -5559,8 +5518,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "lal shimla mirch",
@@ -5575,8 +5534,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "peeli shimla mirch",
@@ -5591,8 +5550,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chinese ginger",
@@ -5607,8 +5566,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kulanjan",
@@ -5624,8 +5583,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kachi haldi",
@@ -5640,8 +5599,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "amba haldi",
@@ -5688,8 +5647,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sunchoke",
@@ -5704,8 +5663,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "horse radish",
@@ -5719,8 +5678,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "gular",
@@ -5738,7 +5697,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "poi saag",
@@ -5757,7 +5716,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "kalmi saag",
@@ -5775,7 +5734,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "kulfa",
@@ -5794,7 +5753,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "chard",
@@ -5810,7 +5769,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "rocket",
@@ -5827,7 +5786,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "mooli ke patte",
@@ -5843,7 +5802,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "imli ke patte",
@@ -5860,7 +5819,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "agathi keerai",
@@ -5878,7 +5837,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "ponnanganni keerai",
@@ -5895,7 +5854,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "kaddu ke patte",
@@ -5912,7 +5871,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "gavati chaha",
@@ -5931,8 +5890,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "makrut lime leaf",
@@ -5948,7 +5906,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "ajmoda patta",
@@ -5963,8 +5921,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "salvia",
@@ -5979,8 +5936,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "sweet marjoram",
@@ -5995,8 +5951,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "onion chives",
@@ -6012,8 +5967,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "estragon",
@@ -6028,8 +5982,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "horapha",
@@ -6044,8 +5997,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "tulsi",
@@ -6061,8 +6013,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "culantro",
@@ -6079,8 +6030,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "savory",
@@ -6094,8 +6044,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "gaozaban",
@@ -6110,8 +6059,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "mexican tea",
@@ -6126,8 +6074,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "rau ram",
@@ -6142,8 +6089,7 @@
       "category": "herbs",
       "veg": true,
       "units": [
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "perilla",
@@ -6226,9 +6172,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "kaitha",
@@ -6246,9 +6191,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "bel",
@@ -6269,8 +6213,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chinch",
@@ -6286,8 +6230,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "meethi imli",
@@ -6303,8 +6247,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "carambola",
@@ -6357,8 +6301,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "pitaya",
@@ -6375,8 +6319,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "passionfruit",
@@ -6410,8 +6354,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "falsa",
@@ -6428,8 +6372,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "shahtoot",
@@ -6449,8 +6393,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "anjeer fresh",
@@ -6520,8 +6464,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "cheri",
@@ -6536,8 +6480,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "black berry",
@@ -6552,8 +6496,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "blue berry",
@@ -6568,8 +6512,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "rasberry",
@@ -6585,8 +6529,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "cran berry",
@@ -6599,8 +6543,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "carissa",
@@ -6619,8 +6563,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "ganna",
@@ -6640,8 +6584,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "tadgola",
@@ -6662,8 +6606,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "bread fruit",
@@ -6680,8 +6624,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "grape fruit",
@@ -6696,8 +6640,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "sweet lime large",
@@ -6715,8 +6659,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "mandarin",
@@ -6749,8 +6692,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "malta",
@@ -6765,9 +6707,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g",
-        "pcs"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "honey dew",
@@ -6819,8 +6760,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "bullock heart",
@@ -6837,8 +6778,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "lakshman phal",
@@ -6855,8 +6796,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "canistel",
@@ -6892,8 +6833,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "ker",
@@ -6910,8 +6851,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "lasoda",
@@ -6929,8 +6870,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "lakoocha",
@@ -6948,8 +6889,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "pcs",
+        "kg"
       ],
       "synonyms": [
         "sentul",
@@ -6966,8 +6907,7 @@
       "veg": true,
       "units": [
         "kg",
-        "g",
-        "pcs"
+        "g"
       ],
       "synonyms": [
         "pink guava",
@@ -6982,8 +6922,8 @@
       "category": "fruits",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "fresh khajoor",
@@ -7706,8 +7646,8 @@
       "category": "spices",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "pcs",
+        "g"
       ],
       "synonyms": [
         "vanilla pod",
@@ -8232,8 +8172,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "siracha",
@@ -8249,7 +8189,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "hoisin",
@@ -8341,8 +8281,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "nutella",
@@ -8511,8 +8451,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "arrabbiata",
@@ -8527,8 +8467,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "marinara",
@@ -8543,8 +8483,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "ml"
       ],
       "synonyms": [
         "pizza base sauce",
@@ -8558,7 +8498,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "white sauce",
@@ -8668,7 +8608,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "ranch",
@@ -8683,7 +8623,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "thousand island",
@@ -8698,7 +8638,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "bbq sauce",
@@ -8712,8 +8652,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "honey mustard sauce",
@@ -8741,8 +8681,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "hot mustard",
@@ -8755,8 +8695,8 @@
       "category": "condiments_sauces",
       "veg": true,
       "units": [
-        "g",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "schezwan paste",
@@ -8771,7 +8711,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "manchurian gravy base",
@@ -8785,7 +8725,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "chili garlic sauce",
@@ -8800,7 +8740,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "tartare sauce",
@@ -8892,7 +8832,7 @@
       "veg": true,
       "units": [
         "g",
-        "ml"
+        "kg"
       ],
       "synonyms": [
         "avakaya",
@@ -8944,8 +8884,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "kg",
+        "g"
       ],
       "synonyms": [
         "sela rice",
@@ -9189,8 +9129,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chokar",
@@ -9205,8 +9145,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "gehu ankur",
@@ -9265,8 +9205,8 @@
       "category": "grains_cereals",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "jowar poha",
@@ -9637,8 +9577,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "badam atta",
@@ -9670,8 +9610,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "nariyal atta",
@@ -9769,8 +9709,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "wheat gluten",
@@ -9816,8 +9756,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "makhana powder",
@@ -9832,8 +9772,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kele ka atta",
@@ -9849,8 +9789,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "shakarkandi atta",
@@ -9914,8 +9854,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "quinoa atta",
@@ -9929,8 +9869,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "cornflour fine",
@@ -9945,8 +9885,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "aloo starch",
@@ -9960,8 +9900,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "ararot",
@@ -9976,8 +9916,8 @@
       "category": "flours",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kathal atta",
@@ -10054,8 +9994,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "flavored milk",
@@ -10071,7 +10011,7 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
+        "g",
         "ml"
       ],
       "synonyms": [
@@ -10085,8 +10025,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "heavy cream",
@@ -10100,8 +10040,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "light cream",
@@ -10115,8 +10055,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "mozarella",
@@ -10130,8 +10070,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "cheddar cheese",
@@ -10144,8 +10084,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "parmesan cheese",
@@ -10159,8 +10099,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "cheese slice",
@@ -10174,8 +10114,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "creamy cheese spread"
@@ -10187,8 +10127,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "feta cheese",
@@ -10201,8 +10141,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "ricotta cheese",
@@ -10215,8 +10155,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "philadelphia cheese"
@@ -10228,8 +10168,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "burrata cheese",
@@ -10242,8 +10182,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "gouda cheese",
@@ -10256,8 +10196,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "greek yoghurt",
@@ -10271,8 +10211,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "hung yogurt",
@@ -10287,8 +10227,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "flavored yoghurt",
@@ -10319,8 +10259,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "srikhand",
@@ -10333,8 +10273,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "unsweetened condensed milk",
@@ -10347,8 +10287,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "whey water",
@@ -10362,8 +10302,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "chena",
@@ -10376,8 +10316,8 @@
       "category": "dairy",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "rabdi",
@@ -10433,7 +10373,8 @@
       "category": "eggs",
       "veg": false,
       "units": [
-        "pcs"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "egg white",
@@ -10492,8 +10433,8 @@
       "category": "poultry",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "murgi sausage",
@@ -10506,8 +10447,8 @@
       "category": "poultry",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "murgi salami"
@@ -10576,8 +10517,8 @@
       "category": "poultry",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "murgi ham"
@@ -10604,8 +10545,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "bheja",
@@ -10662,8 +10603,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pork bacon",
@@ -10676,8 +10617,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pork ham"
@@ -10689,8 +10630,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pork salami",
@@ -10703,8 +10644,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pork sausage",
@@ -10747,8 +10688,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "deli meat",
@@ -10761,8 +10702,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "kaleji",
@@ -10775,8 +10716,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "gurda",
@@ -10803,8 +10744,8 @@
       "category": "meat",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "zabaan",
@@ -10895,8 +10836,8 @@
       "category": "seafood",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "nethili",
@@ -11004,8 +10945,8 @@
       "category": "seafood",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sea scallop"
@@ -11017,8 +10958,8 @@
       "category": "seafood",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "karuvadu",
@@ -11034,8 +10975,8 @@
       "category": "seafood",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sode",
@@ -11050,8 +10991,8 @@
       "category": "seafood",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "gaboli",
@@ -11410,8 +11351,8 @@
       "category": "oils_fats",
       "veg": false,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "pig fat",
@@ -11424,8 +11365,8 @@
       "category": "oils_fats",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "margerine",
@@ -11439,8 +11380,8 @@
       "category": "oils_fats",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "pcs"
       ],
       "synonyms": [
         "oil spray",
@@ -11454,8 +11395,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "stevia leaf",
@@ -11470,7 +11411,7 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
+        "pcs",
         "g"
       ],
       "synonyms": [
@@ -11519,8 +11460,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "glucose powder",
@@ -11536,8 +11477,8 @@
       "category": "sweeteners",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "fruit sugar",
@@ -11646,8 +11587,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "white choco",
@@ -11662,7 +11603,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "hundreds and thousands",
@@ -11678,7 +11619,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "whip cream powder",
@@ -11692,8 +11633,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "g",
-        "kg"
+        "kg",
+        "g"
       ],
       "synonyms": [
         "self rising flour",
@@ -11723,7 +11664,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "jelly powder",
@@ -11737,8 +11678,8 @@
       "category": "baking",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "breadcrumbs",
@@ -11753,8 +11694,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "cold drink",
@@ -11770,8 +11711,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "pcs"
       ],
       "synonyms": [
         "energy drinks",
@@ -11785,8 +11726,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "nimbu pani mix",
@@ -11801,8 +11742,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "rooh afza",
@@ -11818,8 +11759,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "sharbat",
@@ -11834,8 +11775,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "kambucha",
@@ -11893,7 +11834,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "herbal chai",
@@ -11908,7 +11849,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "nimbu chai",
@@ -11922,8 +11863,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "iced tea",
@@ -11938,8 +11879,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "lager",
@@ -11954,8 +11895,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "red wine",
@@ -11970,8 +11911,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "dark rum",
@@ -11985,8 +11926,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "vodca",
@@ -12000,8 +11941,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "whiskey",
@@ -12016,8 +11957,8 @@
       "category": "beverages",
       "veg": true,
       "units": [
-        "L",
-        "ml"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "rice wine",
@@ -12049,8 +11990,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "mixture",
@@ -12066,8 +12007,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "sev namkeen",
@@ -12082,8 +12023,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "bhujiya",
@@ -12097,8 +12038,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "pop corn",
@@ -12145,8 +12086,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "frozen veg",
@@ -12175,8 +12116,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "french fries",
@@ -12190,8 +12131,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "ready gravy",
@@ -12206,8 +12147,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "pcs",
+        "g"
       ],
       "synonyms": [
         "bouillon",
@@ -12222,8 +12163,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "ml",
-        "L"
+        "pcs",
+        "g"
       ],
       "synonyms": [
         "veg stock",
@@ -12237,8 +12178,8 @@
       "category": "staples_packaged",
       "veg": false,
       "units": [
-        "ml",
-        "L"
+        "pcs",
+        "g"
       ],
       "synonyms": [
         "chicken broth",
@@ -12267,8 +12208,7 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "burger buns",
@@ -12282,8 +12222,7 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "pizza crust",
@@ -12297,8 +12236,7 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "pcs"
       ],
       "synonyms": [
         "wrap",
@@ -12312,8 +12250,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "nacho chips",
@@ -12327,8 +12265,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "idli mix",
@@ -12342,8 +12280,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "instant dosa mix",
@@ -12357,8 +12295,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "gulab jamun ready mix",
@@ -12372,8 +12310,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "jelly dessert",
@@ -12387,8 +12325,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "ml",
+        "L"
       ],
       "synonyms": [
         "icecream",
@@ -12402,8 +12340,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "frozen momo",
@@ -12417,7 +12355,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "pcs"
+        "ml",
+        "g"
       ],
       "synonyms": [
         "meetha ittar",
@@ -12433,7 +12372,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "pcs"
+        "pcs",
+        "g"
       ],
       "synonyms": [
         "camphor",
@@ -12466,6 +12406,7 @@
       "category": "other",
       "veg": true,
       "units": [
+        "g",
         "pcs"
       ],
       "synonyms": [
@@ -12481,6 +12422,7 @@
       "category": "other",
       "veg": true,
       "units": [
+        "g",
         "pcs"
       ],
       "synonyms": [
@@ -12497,6 +12439,7 @@
       "category": "other",
       "veg": true,
       "units": [
+        "g",
         "pcs"
       ],
       "synonyms": [
@@ -12514,7 +12457,8 @@
       "category": "other",
       "veg": true,
       "units": [
-        "pcs"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "atta dough",
@@ -12546,7 +12490,7 @@
       "veg": true,
       "units": [
         "g",
-        "pcs"
+        "kg"
       ],
       "synonyms": [
         "bathua leaves",
@@ -12562,8 +12506,8 @@
       "category": "vegetables",
       "veg": true,
       "units": [
-        "kg",
-        "g"
+        "g",
+        "kg"
       ],
       "synonyms": [
         "sundakkai",
@@ -12579,8 +12523,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "besan boondi",
@@ -12623,7 +12567,7 @@
       "veg": true,
       "units": [
         "g",
-        "kg"
+        "pcs"
       ],
       "synonyms": [
         "vangi bath masala",
@@ -12638,7 +12582,7 @@
       "veg": true,
       "units": [
         "ml",
-        "L"
+        "g"
       ],
       "synonyms": [
         "caesar sauce",
@@ -12651,8 +12595,8 @@
       "category": "staples_packaged",
       "veg": true,
       "units": [
-        "pcs",
-        "g"
+        "g",
+        "pcs"
       ],
       "synonyms": [
         "bread croutons",
