@@ -18,21 +18,21 @@ const (
 
 // DishRetrieveInput carries user context for sparse vector / keyword retrieval.
 type DishRetrieveInput struct {
-	Category       string
-	UserPrompt     string
-	MealTypeFilter string // lunch_dinner (default), breakfast, snack, dessert, all
-	DietaryTags    []string
-	Allergies      []string
-	Dislikes       []string
-	FavCuisines    []string
-	SpiceLevel     string // mild | medium | spicy (profile preference; "" = no preference)
-	Memories       []string
-	CookedDaysAgo      map[string]int // catalog key -> days since last eaten
+	Category         string
+	UserPrompt       string
+	MealTypeFilter   string // lunch_dinner (default), breakfast, snack, dessert, all
+	DietaryTags      []string
+	Allergies        []string
+	Dislikes         []string
+	FavCuisines      []string
+	SpiceLevel       string // mild | medium | spicy (profile preference; "" = no preference)
+	Memories         []string
+	CookedDaysAgo    map[string]int // catalog key -> days since last eaten
 	SuggestedDaysAgo map[string]int // catalog key -> days since last AI suggestion
-	InventoryNames     []string
-	GlobalStarCounts   map[string]int // dish_name (normalized) -> total stars from all users
-	TopK               int
-	Now                time.Time // zero = time.Now()
+	InventoryNames   []string
+	GlobalStarCounts map[string]int // dish_name (normalized) -> total stars from all users
+	TopK             int
+	Now              time.Time // zero = time.Now()
 
 	// Temperature controls suggestion variance. 0 (default) = deterministic argmax
 	// (highest-scored first, stable ordering). >0 enables weighted softmax sampling
@@ -398,6 +398,11 @@ func uiCategoryStyleBoost(dish CatalogDish, uiCategory string) float64 {
 	effort := strings.ToLower(strings.TrimSpace(dish.Effort))
 	switch strings.ToLower(strings.TrimSpace(uiCategory)) {
 	case "most_tasty":
+		// Rank primarily by the per-dish tasty_score (0-100 -> 0-4 boost).
+		if dish.TastyScore > 0 {
+			return float64(dish.TastyScore) / 25.0
+		}
+		// Fallback heuristic if a dish has no score yet.
 		if effort == "medium" || effort == "high" {
 			return 1.5
 		}
@@ -406,6 +411,11 @@ func uiCategoryStyleBoost(dish CatalogDish, uiCategory string) float64 {
 			return 1.2
 		}
 	case "most_healthy":
+		// Rank primarily by the per-dish healthy_score (0-100 -> 0-4 boost).
+		if dish.HealthyScore > 0 {
+			return float64(dish.HealthyScore) / 25.0
+		}
+		// Fallback heuristic if a dish has no score yet.
 		if strings.Contains(name, "dal") || strings.Contains(name, "sabzi") ||
 			strings.Contains(name, "rasam") || strings.Contains(name, "khichdi") {
 			return 2.0

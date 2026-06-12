@@ -71,6 +71,21 @@ Every dish in `catalog.json` now carries:
 | `allergens` | `dairy,gluten,nuts,peanut,sesame,soy,egg` | allergen hard-filter |
 | `onion_garlic` | bool | Jain logic |
 | `jain_safe` | bool | Jain hard-filter |
+| `healthy_score` | 0–100 | ranks the **Healthy** category |
+| `tasty_score` | 0–100 | ranks the **Tasty** category |
+
+### Category scores (Healthy / Tasty)
+The six meal-suggestion categories: `daily`, `rescue`, `meal_of_day` need no extra data;
+**`most_healthy`** and **`most_tasty`** are driven by per-dish scores from a general-public
+point of view (0–100, AI-scored against a fixed rubric):
+- `healthy_score` — perceived healthiness (salads/dals/steamed high; fried/cream/sweets low).
+- `tasty_score` — crowd-pleasing/indulgence (rich gravies/biryani/chaat/desserts high;
+  bitter-gourd/plain dishes low).
+
+These are **independent** (a barfi is low-healthy/high-tasty; karela is the reverse).
+`uiCategoryStyleBoost` adds `score/25` (0–4) to a dish's rank when the user opens the
+Healthy or Tasty category, so ranking is data-driven (legacy name heuristic kept only as a
+fallback for unscored dishes).
 
 > These flags are **heuristic** — derived from each dish's listed `key_ingredients` + name,
 > so hidden tempering (peanut/ghee not in the 3–5 listed) can be under-flagged. They

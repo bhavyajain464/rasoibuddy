@@ -45,7 +45,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 50
   },
   {
     "id": "masala-khichdi",
@@ -96,7 +98,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 55
   },
   {
     "id": "palak-khichdi",
@@ -145,7 +149,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 52
   },
   {
     "id": "veg-pulao",
@@ -196,7 +202,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 68
   },
   {
     "id": "veg-tehri",
@@ -249,7 +257,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 64
   },
   {
     "id": "lemon-rice",
@@ -300,7 +310,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 62
   },
   {
     "id": "tomato-rice",
@@ -346,7 +358,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 63
   },
   {
     "id": "curd-rice",
@@ -396,7 +410,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 55
   },
   {
     "id": "bisi-bele-bath",
@@ -451,7 +467,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 68
   },
   {
     "id": "dal-tadka",
@@ -502,7 +520,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 75,
+    "tasty_score": 60
   },
   {
     "id": "toor-dal-fry",
@@ -554,7 +574,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 62
   },
   {
     "id": "panchmel-dal",
@@ -607,7 +629,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 60
   },
   {
     "id": "chana-masala",
@@ -658,7 +682,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 78
   },
   {
     "id": "rajma-masala",
@@ -708,7 +734,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 76
   },
   {
     "id": "lobia-masala",
@@ -754,7 +782,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "aloo-gobi-dry",
@@ -801,7 +831,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 65
   },
   {
     "id": "aloo-matar-gravy",
@@ -847,7 +879,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 60
   },
   {
     "id": "aloo-methi",
@@ -892,7 +926,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 52
   },
   {
     "id": "aloo-shimla-mirch",
@@ -936,7 +972,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 56
   },
   {
     "id": "aloo-patta-gobi",
@@ -982,7 +1020,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 50
   },
   {
     "id": "bhindi-masala",
@@ -1027,7 +1067,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 60
   },
   {
     "id": "bhindi-fry",
@@ -1070,7 +1112,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 42,
+    "tasty_score": 66
   },
   {
     "id": "lauki-sabzi",
@@ -1115,7 +1159,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 85,
+    "tasty_score": 32
   },
   {
     "id": "jeera-aloo",
@@ -1162,7 +1208,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "baingan-bharta",
@@ -1210,7 +1258,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "baingan-aloo-sabzi",
@@ -1258,7 +1308,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "turai-sabzi",
@@ -1303,7 +1355,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 36
   },
   {
     "id": "veg-kolhapuri",
@@ -1355,7 +1409,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 70
   },
   {
     "id": "veg-kurma",
@@ -1411,7 +1467,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 66
   },
   {
     "id": "mixed-veg-sambar",
@@ -1462,7 +1520,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 58
   },
   {
     "id": "tomato-rasam",
@@ -1511,7 +1571,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 50
   },
   {
     "id": "kadai-paneer",
@@ -1563,7 +1625,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 80
   },
   {
     "id": "palak-paneer",
@@ -1614,7 +1678,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 78
   },
   {
     "id": "matar-paneer",
@@ -1666,7 +1732,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 76
   },
   {
     "id": "paneer-bhurji",
@@ -1715,7 +1783,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 70
   },
   {
     "id": "paneer-butter-masala",
@@ -1770,7 +1840,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 32,
+    "tasty_score": 90
   },
   {
     "id": "kadai-tofu",
@@ -1818,7 +1890,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 60
   },
   {
     "id": "dum-aloo",
@@ -1870,7 +1944,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 72
   },
   {
     "id": "home-style-chicken-curry",
@@ -1920,7 +1996,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 78
   },
   {
     "id": "egg-curry",
@@ -1969,7 +2047,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 72
   },
   {
     "id": "egg-bhurji",
@@ -2017,7 +2097,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 68
   },
   {
     "id": "plain-yellow-moong-dal",
@@ -2065,7 +2147,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 48
   },
   {
     "id": "punjabi-kadhi",
@@ -2118,7 +2202,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 64
   },
   {
     "id": "tariwale-aloo",
@@ -2164,7 +2250,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 56
   },
   {
     "id": "dahi-aloo",
@@ -2211,7 +2299,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "besan-chilla",
@@ -2259,7 +2349,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 56
   },
   {
     "id": "oats-chilla",
@@ -2305,7 +2397,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 52
   },
   {
     "id": "jeera-ajwain-paratha",
@@ -2349,7 +2443,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 50,
+    "tasty_score": 60
   },
   {
     "id": "egg-bhurji-sandwich",
@@ -2400,7 +2496,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 70
   },
   {
     "id": "sukhi-moong-dal",
@@ -2443,7 +2541,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 52
   },
   {
     "id": "sabudana-khichdi-dinner",
@@ -2488,7 +2588,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 64
   },
   {
     "id": "dal-makhani",
@@ -2540,7 +2642,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 34,
+    "tasty_score": 88
   },
   {
     "id": "chicken-biryani",
@@ -2598,7 +2702,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 95
   },
   {
     "id": "veg-biryani",
@@ -2657,7 +2763,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 85
   },
   {
     "id": "malai-kofta",
@@ -2714,7 +2822,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 88
   },
   {
     "id": "chicken-fried-rice",
@@ -2765,7 +2875,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 46,
+    "tasty_score": 76
   },
   {
     "id": "veg-fried-rice",
@@ -2813,7 +2925,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 70
   },
   {
     "id": "veg-hakka-noodles",
@@ -2864,7 +2978,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 42,
+    "tasty_score": 74
   },
   {
     "id": "white-sauce-pasta",
@@ -2912,7 +3028,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 36,
+    "tasty_score": 76
   },
   {
     "id": "red-sauce-pasta",
@@ -2959,7 +3077,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 72
   },
   {
     "id": "veg-grilled-sandwich",
@@ -3011,7 +3131,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 68
   },
   {
     "id": "veg-cheese-burger",
@@ -3061,7 +3183,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 82
   },
   {
     "id": "chilli-paneer",
@@ -3111,7 +3235,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 85
   },
   {
     "id": "poha",
@@ -3159,7 +3285,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 56
   },
   {
     "id": "rava-upma",
@@ -3210,7 +3338,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 48
   },
   {
     "id": "semiya-upma",
@@ -3257,7 +3387,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 50
   },
   {
     "id": "plain-idli",
@@ -3297,7 +3429,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 90,
+    "tasty_score": 52
   },
   {
     "id": "plain-dosa",
@@ -3341,7 +3475,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 60
   },
   {
     "id": "masala-dosa",
@@ -3389,7 +3525,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 78
   },
   {
     "id": "uttapam",
@@ -3431,7 +3569,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "methi-thepla",
@@ -3480,7 +3620,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 55
   },
   {
     "id": "aloo-paratha",
@@ -3530,7 +3672,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 76
   },
   {
     "id": "paneer-paratha",
@@ -3578,7 +3722,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 74
   },
   {
     "id": "sabudana-khichdi",
@@ -3624,7 +3770,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 58
   },
   {
     "id": "bread-omelette",
@@ -3671,7 +3819,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 66
   },
   {
     "id": "khaman-dhokla",
@@ -3717,7 +3867,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "pav-bhaji",
@@ -3769,7 +3921,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 86
   },
   {
     "id": "veg-cutlet",
@@ -3816,7 +3970,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 66
   },
   {
     "id": "gajar-halwa",
@@ -3859,7 +4015,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 16,
+    "tasty_score": 88
   },
   {
     "id": "rice-kheer",
@@ -3900,7 +4058,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 18,
+    "tasty_score": 82
   },
   {
     "id": "shrikhand",
@@ -3942,7 +4102,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 22,
+    "tasty_score": 80
   },
   {
     "id": "gulab-jamun",
@@ -3987,7 +4149,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 10,
+    "tasty_score": 92
   },
   {
     "id": "aloo-beans-sabzi",
@@ -4034,7 +4198,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 50
   },
   {
     "id": "aloo-palak-sabzi",
@@ -4081,7 +4247,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 52
   },
   {
     "id": "aloo-soya-sabzi",
@@ -4128,7 +4296,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 52
   },
   {
     "id": "aloo-gajar-matar",
@@ -4175,7 +4345,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 52
   },
   {
     "id": "gobi-matar",
@@ -4221,7 +4393,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 55
   },
   {
     "id": "gobi-masala",
@@ -4266,7 +4440,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 60
   },
   {
     "id": "baingan-curry",
@@ -4314,7 +4490,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 54
   },
   {
     "id": "bharli-vangi",
@@ -4364,7 +4542,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "ennegai",
@@ -4414,7 +4594,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 58
   },
   {
     "id": "bharwa-baingan",
@@ -4461,7 +4643,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 54
   },
   {
     "id": "lauki-chana-dal",
@@ -4508,7 +4692,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 46
   },
   {
     "id": "lauki-kofta",
@@ -4558,7 +4744,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 64
   },
   {
     "id": "tinda-sabzi",
@@ -4604,7 +4792,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 36
   },
   {
     "id": "parwal-sabzi",
@@ -4651,7 +4841,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 40
   },
   {
     "id": "bharwa-parwal",
@@ -4694,7 +4886,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 64,
+    "tasty_score": 44
   },
   {
     "id": "tindora-sabzi",
@@ -4739,7 +4933,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 40
   },
   {
     "id": "karela-sabzi",
@@ -4783,7 +4979,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 28
   },
   {
     "id": "karela-pyaz",
@@ -4826,7 +5024,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 30
   },
   {
     "id": "bharwa-karela",
@@ -4868,7 +5068,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 34
   },
   {
     "id": "khatta-meetha-kaddu",
@@ -4913,7 +5115,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 68,
+    "tasty_score": 50
   },
   {
     "id": "petha-sabzi",
@@ -4958,7 +5162,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 38
   },
   {
     "id": "cabbage-peas-sabzi",
@@ -5004,7 +5210,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 48
   },
   {
     "id": "cabbage-carrot-sabzi",
@@ -5050,7 +5258,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 46
   },
   {
     "id": "carrot-beans-poriyal",
@@ -5097,7 +5307,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 48
   },
   {
     "id": "beans-aloo-sabzi",
@@ -5143,7 +5355,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 48
   },
   {
     "id": "french-beans-dry",
@@ -5188,7 +5402,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 44
   },
   {
     "id": "cluster-beans-sabzi",
@@ -5233,7 +5449,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 38
   },
   {
     "id": "green-peas-masala",
@@ -5278,7 +5496,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "besan-capsicum",
@@ -5323,7 +5543,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 70,
+    "tasty_score": 46
   },
   {
     "id": "bharwa-shimla-mirch",
@@ -5367,7 +5589,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 50
   },
   {
     "id": "methi-matar-malai",
@@ -5415,7 +5639,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 46,
+    "tasty_score": 70
   },
   {
     "id": "methi-mutter",
@@ -5461,7 +5687,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 50
   },
   {
     "id": "mushroom-masala",
@@ -5506,7 +5734,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 58
   },
   {
     "id": "mushroom-matar",
@@ -5552,7 +5782,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 58
   },
   {
     "id": "kadai-mushroom",
@@ -5598,7 +5830,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 62
   },
   {
     "id": "palak-corn",
@@ -5645,7 +5879,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 62
   },
   {
     "id": "sarson-ka-saag",
@@ -5691,7 +5927,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 64
   },
   {
     "id": "mixed-greens-saag",
@@ -5739,7 +5977,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "mooli-sabzi",
@@ -5786,7 +6026,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 48
   },
   {
     "id": "mooli-mutter",
@@ -5833,7 +6075,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 52
   },
   {
     "id": "arbi-masala",
@@ -5879,7 +6123,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "arbi-fry",
@@ -5924,7 +6170,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 62
   },
   {
     "id": "sukhi-arbi",
@@ -5971,7 +6219,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 55
   },
   {
     "id": "suran-sabzi",
@@ -6017,7 +6267,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 54
   },
   {
     "id": "jimikand-masala",
@@ -6061,7 +6313,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 56
   },
   {
     "id": "kacche-kele-ki-sabzi",
@@ -6107,7 +6361,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 50
   },
   {
     "id": "raw-banana-kofta",
@@ -6158,7 +6414,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 42,
+    "tasty_score": 74
   },
   {
     "id": "shakarkandi-sabzi",
@@ -6202,7 +6460,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "kathal-masala",
@@ -6247,7 +6507,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 66
   },
   {
     "id": "tamatar-ki-sabzi",
@@ -6295,7 +6557,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 50
   },
   {
     "id": "tomato-curry",
@@ -6342,7 +6606,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "pyaz-ki-sabzi",
@@ -6388,7 +6654,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 54
   },
   {
     "id": "bharwa-bhindi",
@@ -6433,7 +6701,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 58,
+    "tasty_score": 66
   },
   {
     "id": "cabbage-kofta",
@@ -6484,7 +6754,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 72
   },
   {
     "id": "mixed-veg-kofta",
@@ -6539,7 +6811,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 74
   },
   {
     "id": "mix-veg-sabzi",
@@ -6589,7 +6863,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 58
   },
   {
     "id": "sukhi-mixed-veg",
@@ -6639,7 +6915,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 52
   },
   {
     "id": "veg-jalfrezi",
@@ -6686,7 +6964,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 60
   },
   {
     "id": "veg-handi",
@@ -6740,7 +7020,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 72
   },
   {
     "id": "hyderabadi-veg",
@@ -6794,7 +7076,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 68
   },
   {
     "id": "navratan-korma",
@@ -6849,7 +7133,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 42,
+    "tasty_score": 80
   },
   {
     "id": "undhiyu",
@@ -6897,7 +7183,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 70
   },
   {
     "id": "sev-tameta",
@@ -6944,7 +7232,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 62
   },
   {
     "id": "ringan-bateta",
@@ -6991,7 +7281,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 54
   },
   {
     "id": "batata-bhaji",
@@ -7037,7 +7329,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 58
   },
   {
     "id": "kobi-batata",
@@ -7084,7 +7378,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "sai-bhaji",
@@ -7131,7 +7427,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 54
   },
   {
     "id": "aloo-baingan-tamatar",
@@ -7177,7 +7475,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "gobi-aloo-matar",
@@ -7226,7 +7526,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 62
   },
   {
     "id": "palak-aloo-matar",
@@ -7273,7 +7575,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "gobi-capsicum",
@@ -7320,7 +7624,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 58
   },
   {
     "id": "matar-mushroom-masala",
@@ -7371,7 +7677,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 70
   },
   {
     "id": "corn-capsicum-sabzi",
@@ -7417,7 +7725,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 60
   },
   {
     "id": "baby-corn-masala",
@@ -7462,7 +7772,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 62
   },
   {
     "id": "aloo-simla-matar",
@@ -7510,7 +7822,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "turai-chana-dal",
@@ -7555,7 +7869,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 50
   },
   {
     "id": "capsicum-besan-masala",
@@ -7601,7 +7917,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 58
   },
   {
     "id": "chana-aloo-rasedar",
@@ -7647,7 +7965,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "sem-ki-sabzi",
@@ -7694,7 +8014,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 48
   },
   {
     "id": "chana-saag",
@@ -7741,7 +8063,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 58
   },
   {
     "id": "kaddu-chana-dal",
@@ -7787,7 +8111,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 54
   },
   {
     "id": "paneer-jalfrezi",
@@ -7836,7 +8162,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 70
   },
   {
     "id": "gajar-matar-aloo",
@@ -7884,7 +8212,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 58
   },
   {
     "id": "surti-papdi-nu-shaak",
@@ -7930,7 +8260,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 50
   },
   {
     "id": "bhindi-do-pyaza",
@@ -7976,7 +8308,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 64
   },
   {
     "id": "aloo-gobi-gravy",
@@ -8022,7 +8356,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 66
   },
   {
     "id": "matar-paneer-dry",
@@ -8070,7 +8406,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 72
   },
   {
     "id": "aloo-tinda",
@@ -8117,7 +8455,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 48
   },
   {
     "id": "vendakkai-poriyal",
@@ -8163,7 +8503,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 54
   },
   {
     "id": "cabbage-poriyal",
@@ -8209,7 +8551,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 76,
+    "tasty_score": 50
   },
   {
     "id": "beetroot-poriyal",
@@ -8255,7 +8599,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 52
   },
   {
     "id": "avial",
@@ -8302,7 +8648,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "vegetable-stew",
@@ -8349,7 +8697,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 62
   },
   {
     "id": "beetroot-sabzi",
@@ -8396,7 +8746,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 50
   },
   {
     "id": "lauki-tamatar",
@@ -8444,7 +8796,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 38
   },
   {
     "id": "baingan-tamatar",
@@ -8491,7 +8845,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 54
   },
   {
     "id": "chana-dal-lauki-koftas",
@@ -8541,7 +8897,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 70
   },
   {
     "id": "methi-aloo-matar",
@@ -8589,7 +8947,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "kathal-dry-fry",
@@ -8633,7 +8993,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 62
   },
   {
     "id": "mushroom-do-pyaza",
@@ -8679,7 +9041,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 68
   },
   {
     "id": "aloo-arbi",
@@ -8723,7 +9087,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 55
   },
   {
     "id": "kachumber-aloo-rasa",
@@ -8769,7 +9135,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 56
   },
   {
     "id": "matar-aloo-rasedar",
@@ -8816,7 +9184,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 58
   },
   {
     "id": "vegetable-makhanwala",
@@ -8870,7 +9240,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 80
   },
   {
     "id": "capsicum-aloo-besan",
@@ -8914,7 +9286,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 54
   },
   {
     "id": "vatana-bateta",
@@ -8961,7 +9335,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 55
   },
   {
     "id": "flower-bateta",
@@ -9005,7 +9381,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 55
   },
   {
     "id": "masala-karela-pyaz",
@@ -9049,7 +9427,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 32
   },
   {
     "id": "corn-palak",
@@ -9097,7 +9477,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 68
   },
   {
     "id": "soya-matar",
@@ -9145,7 +9527,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 58
   },
   {
     "id": "bharwa-tinda",
@@ -9188,7 +9572,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 42
   },
   {
     "id": "dahi-bhindi",
@@ -9234,7 +9620,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 60
   },
   {
     "id": "achari-aloo",
@@ -9279,7 +9667,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 56
   },
   {
     "id": "zucchini-sabzi",
@@ -9324,7 +9714,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 48
   },
   {
     "id": "drumstick-sambar",
@@ -9370,7 +9762,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 75,
+    "tasty_score": 62
   },
   {
     "id": "arachuvitta-sambar",
@@ -9417,7 +9811,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "udupi-sambar",
@@ -9462,7 +9858,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 70,
+    "tasty_score": 63
   },
   {
     "id": "vengaya-sambar",
@@ -9507,7 +9905,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 73,
+    "tasty_score": 60
   },
   {
     "id": "radish-sambar",
@@ -9551,7 +9951,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 75,
+    "tasty_score": 58
   },
   {
     "id": "brinjal-sambar",
@@ -9597,7 +9999,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 73,
+    "tasty_score": 60
   },
   {
     "id": "ladies-finger-sambar",
@@ -9641,7 +10045,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 73,
+    "tasty_score": 60
   },
   {
     "id": "milagu-rasam",
@@ -9687,7 +10093,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 50
   },
   {
     "id": "poondu-rasam",
@@ -9733,7 +10141,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 50
   },
   {
     "id": "lemon-rasam",
@@ -9779,7 +10189,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 52
   },
   {
     "id": "jeera-rasam",
@@ -9825,7 +10237,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 48
   },
   {
     "id": "paruppu-rasam",
@@ -9871,7 +10285,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 54
   },
   {
     "id": "mysore-rasam",
@@ -9917,7 +10333,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 56
   },
   {
     "id": "vatha-kuzhambu",
@@ -9965,7 +10383,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "puli-kuzhambu",
@@ -10012,7 +10432,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 50
   },
   {
     "id": "kara-kuzhambu",
@@ -10062,7 +10484,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 54
   },
   {
     "id": "mor-kuzhambu",
@@ -10110,7 +10534,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 52
   },
   {
     "id": "vendakai-puli-kuzhambu",
@@ -10157,7 +10583,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "ennai-kathirikai-kuzhambu",
@@ -10206,7 +10634,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 62
   },
   {
     "id": "beans-poriyal",
@@ -10249,7 +10679,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 48
   },
   {
     "id": "carrot-poriyal",
@@ -10292,7 +10724,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 50
   },
   {
     "id": "snake-gourd-poriyal",
@@ -10335,7 +10769,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 38
   },
   {
     "id": "cluster-beans-poriyal",
@@ -10378,7 +10814,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 40
   },
   {
     "id": "raw-banana-poriyal",
@@ -10421,7 +10859,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 74,
+    "tasty_score": 46
   },
   {
     "id": "chow-chow-poriyal",
@@ -10464,7 +10904,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 40
   },
   {
     "id": "ridge-gourd-poriyal",
@@ -10507,7 +10949,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 40
   },
   {
     "id": "plantain-poriyal",
@@ -10550,7 +10994,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 46
   },
   {
     "id": "chow-chow-kootu",
@@ -10595,7 +11041,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 76,
+    "tasty_score": 42
   },
   {
     "id": "cabbage-kootu",
@@ -10640,7 +11088,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 76,
+    "tasty_score": 44
   },
   {
     "id": "snake-gourd-kootu",
@@ -10685,7 +11135,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 38
   },
   {
     "id": "bottle-gourd-kootu",
@@ -10730,7 +11182,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 36
   },
   {
     "id": "keerai-kootu",
@@ -10775,7 +11229,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 46
   },
   {
     "id": "ash-gourd-kootu",
@@ -10820,7 +11276,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 38
   },
   {
     "id": "mixed-veg-kootu",
@@ -10868,7 +11326,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 48
   },
   {
     "id": "cabbage-thoran",
@@ -10912,7 +11372,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 48
   },
   {
     "id": "beans-thoran",
@@ -10956,7 +11418,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 50
   },
   {
     "id": "carrot-thoran",
@@ -11000,7 +11464,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 50
   },
   {
     "id": "beetroot-thoran",
@@ -11044,7 +11510,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 50
   },
   {
     "id": "olan",
@@ -11083,7 +11551,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 70,
+    "tasty_score": 50
   },
   {
     "id": "erissery",
@@ -11125,7 +11595,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "kalan",
@@ -11172,7 +11644,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 52
   },
   {
     "id": "pulissery",
@@ -11218,7 +11692,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "dosakaya-pappu",
@@ -11265,7 +11741,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 54
   },
   {
     "id": "gongura-pappu",
@@ -11311,7 +11789,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "tomato-pulusu",
@@ -11359,7 +11839,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 58
   },
   {
     "id": "bendakaya-vepudu",
@@ -11404,7 +11886,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 60
   },
   {
     "id": "aratikaya-vepudu",
@@ -11448,7 +11932,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 55
   },
   {
     "id": "gutti-vankaya",
@@ -11498,7 +11984,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 72
   },
   {
     "id": "tomato-pachadi",
@@ -11544,7 +12032,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 54
   },
   {
     "id": "vankaya-pachadi",
@@ -11591,7 +12081,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 54
   },
   {
     "id": "vegetable-huli",
@@ -11641,7 +12133,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 60
   },
   {
     "id": "cabbage-palya",
@@ -11686,7 +12180,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 48
   },
   {
     "id": "beans-palya",
@@ -11730,7 +12226,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 48
   },
   {
     "id": "tomato-gojju",
@@ -11776,7 +12274,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 58,
+    "tasty_score": 60
   },
   {
     "id": "majjige-huli",
@@ -11824,7 +12324,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 70,
+    "tasty_score": 56
   },
   {
     "id": "badanekai-ennegai",
@@ -11874,7 +12376,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 72
   },
   {
     "id": "rava-idli",
@@ -11923,7 +12427,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 66
   },
   {
     "id": "kanchipuram-idli",
@@ -11968,7 +12474,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 64
   },
   {
     "id": "rava-dosa",
@@ -12014,7 +12522,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 70
   },
   {
     "id": "set-dosa",
@@ -12054,7 +12564,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 66
   },
   {
     "id": "onion-dosa",
@@ -12094,7 +12606,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 70
   },
   {
     "id": "neer-dosa",
@@ -12130,7 +12644,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 70,
+    "tasty_score": 58
   },
   {
     "id": "pesarattu",
@@ -12170,7 +12686,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 62
   },
   {
     "id": "adai",
@@ -12213,7 +12731,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 60
   },
   {
     "id": "onion-uttapam",
@@ -12254,7 +12774,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 66
   },
   {
     "id": "ven-pongal",
@@ -12299,7 +12821,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 64
   },
   {
     "id": "khara-pongal",
@@ -12348,7 +12872,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 64
   },
   {
     "id": "khara-bath",
@@ -12401,7 +12927,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 64
   },
   {
     "id": "kesari-bath",
@@ -12444,7 +12972,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 14,
+    "tasty_score": 80
   },
   {
     "id": "kara-paniyaram",
@@ -12487,7 +13017,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 64
   },
   {
     "id": "appam",
@@ -12525,7 +13057,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 64
   },
   {
     "id": "idiyappam",
@@ -12562,7 +13096,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 58
   },
   {
     "id": "puttu",
@@ -12598,7 +13134,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "medu-vada",
@@ -12639,7 +13177,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 34,
+    "tasty_score": 80
   },
   {
     "id": "masala-vada",
@@ -12679,7 +13219,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 34,
+    "tasty_score": 78
   },
   {
     "id": "lemon-sevai",
@@ -12727,7 +13269,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "rava-kichadi",
@@ -12779,7 +13323,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 62
   },
   {
     "id": "puliyogare",
@@ -12828,7 +13374,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 52,
+    "tasty_score": 68
   },
   {
     "id": "mint-rice",
@@ -12873,7 +13421,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 62
   },
   {
     "id": "ellu-sadam",
@@ -12917,7 +13467,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 58,
+    "tasty_score": 56
   },
   {
     "id": "idli-podi-rice",
@@ -12957,7 +13509,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 56,
+    "tasty_score": 58
   },
   {
     "id": "chettinad-chicken",
@@ -13005,7 +13559,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 84
   },
   {
     "id": "kongunad-chicken",
@@ -13052,7 +13608,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 82
   },
   {
     "id": "meen-kuzhambu",
@@ -13099,7 +13657,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 72
   },
   {
     "id": "eral-varuval",
@@ -13144,7 +13704,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 78
   },
   {
     "id": "nadan-egg-roast",
@@ -13193,7 +13755,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 76
   },
   {
     "id": "nattu-kozhi-kuzhambu",
@@ -13239,7 +13803,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 76
   },
   {
     "id": "mutton-chukka",
@@ -13284,7 +13850,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 82
   },
   {
     "id": "meen-varuval",
@@ -13327,7 +13895,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 76
   },
   {
     "id": "bassaru",
@@ -13372,7 +13942,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "keerai-masiyal",
@@ -13414,7 +13986,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 86,
+    "tasty_score": 42
   },
   {
     "id": "kadala-curry",
@@ -13460,7 +14034,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 68
   },
   {
     "id": "more-rasam",
@@ -13508,7 +14084,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 52
   },
   {
     "id": "masoor-dal",
@@ -13555,7 +14133,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "masoor-dal-palak",
@@ -13602,7 +14182,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 58
   },
   {
     "id": "dal-palak",
@@ -13649,7 +14231,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 58
   },
   {
     "id": "dhaba-dal",
@@ -13699,7 +14283,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 68
   },
   {
     "id": "dal-fry-restaurant-style",
@@ -13748,7 +14334,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 70
   },
   {
     "id": "urad-dal-maa-ki-dal",
@@ -13799,7 +14387,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 82
   },
   {
     "id": "sookhi-urad-dal",
@@ -13843,7 +14433,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 56
   },
   {
     "id": "chana-dal",
@@ -13890,7 +14482,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "chana-dal-lauki",
@@ -13938,7 +14532,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 54
   },
   {
     "id": "moong-masoor-dal",
@@ -13985,7 +14581,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 56
   },
   {
     "id": "dal-dhokli",
@@ -14036,7 +14634,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 56,
+    "tasty_score": 64
   },
   {
     "id": "gujarati-dal",
@@ -14087,7 +14687,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 60
   },
   {
     "id": "sambhar-style-dal",
@@ -14136,7 +14738,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "varan",
@@ -14180,7 +14784,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 50
   },
   {
     "id": "amti",
@@ -14225,7 +14831,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 68,
+    "tasty_score": 58
   },
   {
     "id": "khatti-dal",
@@ -14270,7 +14878,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 55
   },
   {
     "id": "pithla",
@@ -14315,7 +14925,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 52
   },
   {
     "id": "zunka",
@@ -14360,7 +14972,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 50
   },
   {
     "id": "green-moong-sprouts-curry",
@@ -14407,7 +15021,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 88,
+    "tasty_score": 48
   },
   {
     "id": "mixed-sprouts-usal",
@@ -14456,7 +15072,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 85,
+    "tasty_score": 55
   },
   {
     "id": "kala-chana-curry",
@@ -14502,7 +15120,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 60
   },
   {
     "id": "pindi-chole",
@@ -14550,7 +15170,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 80
   },
   {
     "id": "amritsari-chole",
@@ -14598,7 +15220,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 82
   },
   {
     "id": "chole-palak",
@@ -14643,7 +15267,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 66
   },
   {
     "id": "rajma-chawal-plate",
@@ -14689,7 +15315,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 78
   },
   {
     "id": "kala-chana-sundal",
@@ -14733,7 +15361,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 50
   },
   {
     "id": "vatana-usal",
@@ -14780,7 +15410,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "matki-usal",
@@ -14828,7 +15460,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 56
   },
   {
     "id": "moth-bean-curry",
@@ -14873,7 +15507,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 58
   },
   {
     "id": "kulith-saaru",
@@ -14917,7 +15553,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 46
   },
   {
     "id": "dal-baati",
@@ -14966,7 +15604,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 45,
+    "tasty_score": 74
   },
   {
     "id": "langar-wali-dal",
@@ -15015,7 +15655,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 78
   },
   {
     "id": "gujarati-kadhi",
@@ -15064,7 +15706,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 60
   },
   {
     "id": "pakora-kadhi",
@@ -15113,7 +15757,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 72
   },
   {
     "id": "sindhi-kadhi",
@@ -15160,7 +15806,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 64,
+    "tasty_score": 58
   },
   {
     "id": "boondi-kadhi",
@@ -15207,7 +15855,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 48,
+    "tasty_score": 62
   },
   {
     "id": "dahi-kadhi",
@@ -15253,7 +15903,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 56
   },
   {
     "id": "jeera-rice",
@@ -15294,7 +15946,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 54
   },
   {
     "id": "ghee-rice",
@@ -15344,7 +15998,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 68
   },
   {
     "id": "matar-pulao",
@@ -15390,7 +16046,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 64
   },
   {
     "id": "paneer-pulao",
@@ -15440,7 +16098,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 72
   },
   {
     "id": "mushroom-pulao",
@@ -15487,7 +16147,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 66
   },
   {
     "id": "kashmiri-pulao",
@@ -15539,7 +16201,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 46,
+    "tasty_score": 76
   },
   {
     "id": "hyderabadi-veg-biryani",
@@ -15596,7 +16260,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 88
   },
   {
     "id": "bagara-rice",
@@ -15645,7 +16311,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 62
   },
   {
     "id": "methi-rice",
@@ -15690,7 +16358,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 54
   },
   {
     "id": "palak-rice",
@@ -15738,7 +16408,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 56
   },
   {
     "id": "coconut-rice",
@@ -15786,7 +16458,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 56,
+    "tasty_score": 58
   },
   {
     "id": "tamarind-rice",
@@ -15834,7 +16508,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 56,
+    "tasty_score": 64
   },
   {
     "id": "dal-khichdi",
@@ -15883,7 +16559,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 56
   },
   {
     "id": "vegetable-khichdi",
@@ -15935,7 +16613,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 52
   },
   {
     "id": "bajra-khichdi",
@@ -15980,7 +16660,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 46
   },
   {
     "id": "masala-bhaat",
@@ -16031,7 +16713,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 54,
+    "tasty_score": 62
   },
   {
     "id": "vangi-bhaat",
@@ -16080,7 +16764,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 56,
+    "tasty_score": 62
   },
   {
     "id": "chitranna",
@@ -16128,7 +16814,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 58,
+    "tasty_score": 58
   },
   {
     "id": "dal-rice-plate",
@@ -16177,7 +16865,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 56
   },
   {
     "id": "kadhi-chawal",
@@ -16225,7 +16915,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 60
   },
   {
     "id": "dal-lasooni",
@@ -16272,7 +16964,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 58
   },
   {
     "id": "chana-dal-palak",
@@ -16320,7 +17014,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 56
   },
   {
     "id": "moong-dal-tadka",
@@ -16368,7 +17064,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "green-moong-dal",
@@ -16415,7 +17113,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 52
   },
   {
     "id": "kabuli-chana-curry",
@@ -16461,7 +17161,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 62
   },
   {
     "id": "dalma",
@@ -16510,7 +17212,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 78,
+    "tasty_score": 54
   },
   {
     "id": "sabut-masoor-dal",
@@ -16558,7 +17262,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 56
   },
   {
     "id": "dhuli-urad-dal",
@@ -16603,7 +17309,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 54
   },
   {
     "id": "mango-dal",
@@ -16648,7 +17356,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 56
   },
   {
     "id": "tomato-pappu",
@@ -16693,7 +17403,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 56
   },
   {
     "id": "palakura-pappu",
@@ -16740,7 +17452,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 54
   },
   {
     "id": "saunf-wali-dal",
@@ -16785,7 +17499,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 50
   },
   {
     "id": "oats-khichdi",
@@ -16836,7 +17552,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 86,
+    "tasty_score": 44
   },
   {
     "id": "corn-pulao",
@@ -16883,7 +17601,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 62
   },
   {
     "id": "soya-pulao",
@@ -16936,7 +17656,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 66
   },
   {
     "id": "masoor-pulao",
@@ -16989,7 +17711,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 64
   },
   {
     "id": "sprouts-pulao",
@@ -17042,7 +17766,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 63
   },
   {
     "id": "bhuni-moong-dal-khichuri",
@@ -17092,7 +17818,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 60
   },
   {
     "id": "plain-roti",
@@ -17130,7 +17858,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 48
   },
   {
     "id": "chapati",
@@ -17168,7 +17898,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 72,
+    "tasty_score": 48
   },
   {
     "id": "phulka",
@@ -17205,7 +17937,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 47
   },
   {
     "id": "tawa-paratha",
@@ -17245,7 +17979,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 52,
+    "tasty_score": 60
   },
   {
     "id": "lachha-paratha",
@@ -17285,7 +18021,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 46,
+    "tasty_score": 68
   },
   {
     "id": "bhatura",
@@ -17328,7 +18066,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 26,
+    "tasty_score": 82
   },
   {
     "id": "poori",
@@ -17367,7 +18107,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 30,
+    "tasty_score": 75
   },
   {
     "id": "missi-roti",
@@ -17413,7 +18155,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 55
   },
   {
     "id": "makki-di-roti",
@@ -17450,7 +18194,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 62,
+    "tasty_score": 62
   },
   {
     "id": "bajra-roti",
@@ -17487,7 +18233,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 48
   },
   {
     "id": "jowar-bhakri",
@@ -17524,7 +18272,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 46
   },
   {
     "id": "ragi-roti",
@@ -17566,7 +18316,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 50
   },
   {
     "id": "gobi-paratha",
@@ -17613,7 +18365,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 68
   },
   {
     "id": "mooli-paratha",
@@ -17659,7 +18413,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 64
   },
   {
     "id": "onion-paratha",
@@ -17704,7 +18460,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 67
   },
   {
     "id": "thepla-plain",
@@ -17750,7 +18508,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 58
   },
   {
     "id": "dal-paratha",
@@ -17797,7 +18557,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 64
   },
   {
     "id": "sattu-paratha",
@@ -17844,7 +18606,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 64
   },
   {
     "id": "mix-veg-paratha",
@@ -17894,7 +18658,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 65
   },
   {
     "id": "beetroot-paratha",
@@ -17940,7 +18706,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 62
   },
   {
     "id": "palak-paratha",
@@ -17987,7 +18755,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 62
   },
   {
     "id": "cheese-paratha",
@@ -18032,7 +18802,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 34,
+    "tasty_score": 78
   },
   {
     "id": "kanda-poha",
@@ -18078,7 +18850,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 62
   },
   {
     "id": "batata-poha",
@@ -18124,7 +18898,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 62
   },
   {
     "id": "aloo-poha",
@@ -18169,7 +18945,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 61
   },
   {
     "id": "vegetable-upma",
@@ -18218,7 +18996,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 52
   },
   {
     "id": "moong-dal-chilla",
@@ -18262,7 +19042,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 76,
+    "tasty_score": 56
   },
   {
     "id": "vegetable-chilla",
@@ -18309,7 +19091,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 56
   },
   {
     "id": "bread-upma",
@@ -18355,7 +19139,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 55
   },
   {
     "id": "vermicelli-upma",
@@ -18404,7 +19190,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 55
   },
   {
     "id": "sabudana-vada",
@@ -18448,7 +19236,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 32,
+    "tasty_score": 70
   },
   {
     "id": "dalia-porridge",
@@ -18490,7 +19280,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 80,
+    "tasty_score": 52
   },
   {
     "id": "oats-porridge",
@@ -18530,7 +19322,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 86,
+    "tasty_score": 50
   },
   {
     "id": "masala-oats",
@@ -18577,7 +19371,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 54
   },
   {
     "id": "vegetable-daliya",
@@ -18626,7 +19422,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 54
   },
   {
     "id": "cornflakes-bowl",
@@ -18665,7 +19463,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 60,
+    "tasty_score": 56
   },
   {
     "id": "muesli-bowl",
@@ -18706,7 +19506,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 58
   },
   {
     "id": "fruit-bowl",
@@ -18744,7 +19546,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 90,
+    "tasty_score": 56
   },
   {
     "id": "poori-bhaji",
@@ -18791,7 +19595,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 36,
+    "tasty_score": 72
   },
   {
     "id": "chole-bhature-plate",
@@ -18842,7 +19648,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 88
   },
   {
     "id": "sprouts-salad",
@@ -18885,7 +19693,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 92,
+    "tasty_score": 42
   },
   {
     "id": "moong-sprouts-bhel",
@@ -18928,7 +19738,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 56
   },
   {
     "id": "ragi-mudde",
@@ -18963,7 +19775,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 84,
+    "tasty_score": 30
   },
   {
     "id": "ragi-malt",
@@ -19004,7 +19818,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 78,
+    "tasty_score": 50
   },
   {
     "id": "aloo-tikki-breakfast",
@@ -19051,7 +19867,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 42,
+    "tasty_score": 70
   },
   {
     "id": "aloo-tikki",
@@ -19097,7 +19915,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 76
   },
   {
     "id": "onion-pakora",
@@ -19140,7 +19960,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 28,
+    "tasty_score": 82
   },
   {
     "id": "potato-pakora",
@@ -19183,7 +20005,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 28,
+    "tasty_score": 80
   },
   {
     "id": "palak-pakora",
@@ -19226,7 +20050,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 32,
+    "tasty_score": 76
   },
   {
     "id": "mirchi-bhajiya",
@@ -19268,7 +20094,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 28,
+    "tasty_score": 78
   },
   {
     "id": "bread-pakora",
@@ -19315,7 +20143,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 26,
+    "tasty_score": 80
   },
   {
     "id": "masala-maggi",
@@ -19361,7 +20191,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 78
   },
   {
     "id": "corn-chaat",
@@ -19404,7 +20236,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 68
   },
   {
     "id": "peanut-chaat",
@@ -19448,7 +20282,9 @@
       "peanut"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 66
   },
   {
     "id": "masala-papad",
@@ -19489,7 +20325,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 64
   },
   {
     "id": "white-dhokla",
@@ -19536,7 +20374,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "rava-dhokla",
@@ -19586,7 +20426,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 60
   },
   {
     "id": "handvo",
@@ -19637,7 +20479,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "muthia",
@@ -19688,7 +20532,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 55
   },
   {
     "id": "fafda",
@@ -19729,7 +20575,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 32,
+    "tasty_score": 68
   },
   {
     "id": "khandvi",
@@ -19776,7 +20624,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 62
   },
   {
     "id": "patra",
@@ -19824,7 +20674,9 @@
       "sesame"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 58
   },
   {
     "id": "methi-puri",
@@ -19868,7 +20720,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 34,
+    "tasty_score": 62
   },
   {
     "id": "sweet-corn-fritters",
@@ -19910,7 +20764,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 36,
+    "tasty_score": 68
   },
   {
     "id": "besan-toast",
@@ -19956,7 +20812,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 62
   },
   {
     "id": "poha-cutlet",
@@ -20003,7 +20861,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 66
   },
   {
     "id": "sabudana-thalipeeth",
@@ -20047,7 +20907,9 @@
       "peanut"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 62
   },
   {
     "id": "thalipeeth",
@@ -20096,7 +20958,9 @@
       "sesame"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 56
   },
   {
     "id": "rava-toast",
@@ -20143,7 +21007,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 62
   },
   {
     "id": "aloo-bonda",
@@ -20188,7 +21054,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 72
   },
   {
     "id": "mysore-bonda",
@@ -20235,7 +21103,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 30,
+    "tasty_score": 70
   },
   {
     "id": "chana-chaat",
@@ -20279,7 +21149,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 70
   },
   {
     "id": "paneer-tikka-masala",
@@ -20329,7 +21201,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 84
   },
   {
     "id": "shahi-paneer",
@@ -20379,7 +21253,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 86
   },
   {
     "id": "paneer-lababdar",
@@ -20429,7 +21305,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 85
   },
   {
     "id": "paneer-do-pyaza",
@@ -20476,7 +21354,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 74
   },
   {
     "id": "paneer-korma",
@@ -20525,7 +21405,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 82
   },
   {
     "id": "methi-paneer",
@@ -20572,7 +21454,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 72
   },
   {
     "id": "achari-paneer",
@@ -20619,7 +21503,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 56,
+    "tasty_score": 72
   },
   {
     "id": "paneer-pasanda",
@@ -20669,7 +21555,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 38,
+    "tasty_score": 84
   },
   {
     "id": "paneer-makhani",
@@ -20717,7 +21605,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 32,
+    "tasty_score": 90
   },
   {
     "id": "saag-paneer",
@@ -20764,7 +21654,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 74
   },
   {
     "id": "paneer-kofta",
@@ -20814,7 +21706,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 36,
+    "tasty_score": 82
   },
   {
     "id": "paneer-capsicum",
@@ -20861,7 +21755,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 70
   },
   {
     "id": "paneer-roll",
@@ -20910,7 +21806,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 44,
+    "tasty_score": 80
   },
   {
     "id": "tofu-bhurji",
@@ -20956,7 +21854,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "tofu-stir-fry",
@@ -21002,7 +21902,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 58
   },
   {
     "id": "tofu-curry",
@@ -21051,7 +21953,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 60
   },
   {
     "id": "palak-tofu",
@@ -21098,7 +22002,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 58
   },
   {
     "id": "egg-masala",
@@ -21144,7 +22050,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 70
   },
   {
     "id": "anda-masala",
@@ -21191,7 +22099,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 70
   },
   {
     "id": "masala-omelette",
@@ -21235,7 +22145,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 68
   },
   {
     "id": "egg-drop-curry",
@@ -21281,7 +22193,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 66
   },
   {
     "id": "dim-curry",
@@ -21328,7 +22242,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 70
   },
   {
     "id": "egg-kurma",
@@ -21377,7 +22293,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 72
   },
   {
     "id": "scrambled-eggs",
@@ -21418,7 +22336,9 @@
       "egg"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 64
   },
   {
     "id": "boiled-egg-sabzi",
@@ -21464,7 +22384,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 64
   },
   {
     "id": "egg-ghotala",
@@ -21510,7 +22432,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 74
   },
   {
     "id": "half-fry",
@@ -21548,7 +22472,9 @@
       "egg"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 64
   },
   {
     "id": "egg-biryani",
@@ -21600,7 +22526,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 86
   },
   {
     "id": "egg-pulao",
@@ -21649,7 +22577,9 @@
       "egg"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 74
   },
   {
     "id": "chicken-masala",
@@ -21693,7 +22623,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 78
   },
   {
     "id": "butter-chicken",
@@ -21742,7 +22674,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 32,
+    "tasty_score": 95
   },
   {
     "id": "chicken-tikka-masala",
@@ -21790,7 +22724,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 46,
+    "tasty_score": 88
   },
   {
     "id": "kadai-chicken",
@@ -21837,7 +22773,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 80
   },
   {
     "id": "chicken-korma",
@@ -21886,7 +22824,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 42,
+    "tasty_score": 84
   },
   {
     "id": "chicken-do-pyaza",
@@ -21933,7 +22873,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 78
   },
   {
     "id": "chicken-bhuna",
@@ -21977,7 +22919,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 78
   },
   {
     "id": "methi-chicken",
@@ -22024,7 +22968,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 76
   },
   {
     "id": "palak-chicken",
@@ -22069,7 +23015,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 76
   },
   {
     "id": "chicken-pulao",
@@ -22118,7 +23066,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 80
   },
   {
     "id": "chicken-65",
@@ -22167,7 +23117,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 32,
+    "tasty_score": 90
   },
   {
     "id": "chicken-fry",
@@ -22211,7 +23163,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 82
   },
   {
     "id": "pepper-chicken",
@@ -22256,7 +23210,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 78
   },
   {
     "id": "ginger-chicken",
@@ -22301,7 +23257,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 78
   },
   {
     "id": "chicken-stew",
@@ -22351,7 +23309,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 68,
+    "tasty_score": 74
   },
   {
     "id": "chicken-kheema",
@@ -22397,7 +23357,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 78
   },
   {
     "id": "dahi-chicken",
@@ -22445,7 +23407,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 76
   },
   {
     "id": "chicken-sukha",
@@ -22492,7 +23456,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 58,
+    "tasty_score": 78
   },
   {
     "id": "chicken-handi",
@@ -22542,7 +23508,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 45,
+    "tasty_score": 85
   },
   {
     "id": "mutton-curry",
@@ -22588,7 +23556,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 80
   },
   {
     "id": "mutton-korma",
@@ -22639,7 +23609,9 @@
       "nuts"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 40,
+    "tasty_score": 86
   },
   {
     "id": "mutton-keema",
@@ -22685,7 +23657,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 79
   },
   {
     "id": "keema-matar",
@@ -22731,7 +23705,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 54,
+    "tasty_score": 79
   },
   {
     "id": "mutton-biryani",
@@ -22781,7 +23757,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 92
   },
   {
     "id": "mutton-sukha",
@@ -22828,7 +23806,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 80
   },
   {
     "id": "mutton-masala",
@@ -22874,7 +23854,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 80
   },
   {
     "id": "bhuna-gosht",
@@ -22920,7 +23902,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 80
   },
   {
     "id": "mutton-do-pyaza",
@@ -22968,7 +23952,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 79
   },
   {
     "id": "fish-curry",
@@ -23014,7 +24000,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 72
   },
   {
     "id": "fish-masala",
@@ -23060,7 +24048,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 66,
+    "tasty_score": 73
   },
   {
     "id": "machher-jhol",
@@ -23105,7 +24095,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 70
   },
   {
     "id": "goan-fish-curry",
@@ -23150,7 +24142,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 76
   },
   {
     "id": "prawn-curry",
@@ -23196,7 +24190,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 76
   },
   {
     "id": "prawn-masala",
@@ -23242,7 +24238,9 @@
     "spice_level": "medium",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 64,
+    "tasty_score": 76
   },
   {
     "id": "prawn-biryani",
@@ -23292,7 +24290,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 48,
+    "tasty_score": 88
   },
   {
     "id": "fish-biryani",
@@ -23342,7 +24342,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 86
   },
   {
     "id": "crab-masala",
@@ -23389,7 +24391,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 60,
+    "tasty_score": 78
   },
   {
     "id": "veg-manchow-soup",
@@ -23441,7 +24445,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 70,
+    "tasty_score": 70
   },
   {
     "id": "hot-and-sour-soup",
@@ -23491,7 +24497,9 @@
       "soy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 72,
+    "tasty_score": 68
   },
   {
     "id": "sweet-corn-soup",
@@ -23534,7 +24542,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 74,
+    "tasty_score": 66
   },
   {
     "id": "grilled-vegetables",
@@ -23579,7 +24589,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 90,
+    "tasty_score": 50
   },
   {
     "id": "mushroom-soup",
@@ -23625,7 +24637,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 50,
+    "tasty_score": 66
   },
   {
     "id": "tomato-soup",
@@ -23671,7 +24685,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 62,
+    "tasty_score": 68
   },
   {
     "id": "minestrone-soup",
@@ -23721,7 +24737,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 82,
+    "tasty_score": 58
   },
   {
     "id": "green-salad",
@@ -23762,7 +24780,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 95,
+    "tasty_score": 35
   },
   {
     "id": "kachumber-salad",
@@ -23803,7 +24823,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 93,
+    "tasty_score": 40
   },
   {
     "id": "fruit-salad",
@@ -23844,7 +24866,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 85,
+    "tasty_score": 60
   },
   {
     "id": "corn-salad",
@@ -23885,7 +24909,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 84,
+    "tasty_score": 50
   },
   {
     "id": "chickpea-salad",
@@ -23926,7 +24952,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 90,
+    "tasty_score": 52
   },
   {
     "id": "pasta-salad",
@@ -23973,7 +25001,9 @@
       "gluten"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 55,
+    "tasty_score": 64
   },
   {
     "id": "caesar-salad",
@@ -24017,7 +25047,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 52,
+    "tasty_score": 66
   },
   {
     "id": "greek-salad",
@@ -24064,7 +25096,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 62
   },
   {
     "id": "quinoa-salad",
@@ -24105,7 +25139,9 @@
     "spice_level": "spicy",
     "allergens": [],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 92,
+    "tasty_score": 52
   },
   {
     "id": "boondi-raita",
@@ -24148,7 +25184,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 66,
+    "tasty_score": 58
   },
   {
     "id": "cucumber-raita",
@@ -24191,7 +25229,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 82,
+    "tasty_score": 55
   },
   {
     "id": "mixed-veg-raita",
@@ -24234,7 +25274,9 @@
       "dairy"
     ],
     "onion_garlic": true,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 80,
+    "tasty_score": 55
   },
   {
     "id": "suji-halwa",
@@ -24276,7 +25318,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 16,
+    "tasty_score": 82
   },
   {
     "id": "moong-dal-halwa",
@@ -24317,7 +25361,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 14,
+    "tasty_score": 86
   },
   {
     "id": "payasam",
@@ -24358,7 +25404,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 16,
+    "tasty_score": 82
   },
   {
     "id": "sevai-kheer",
@@ -24401,7 +25449,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 16,
+    "tasty_score": 82
   },
   {
     "id": "sabudana-kheer",
@@ -24442,7 +25492,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 18,
+    "tasty_score": 78
   },
   {
     "id": "phirni",
@@ -24483,7 +25535,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 16,
+    "tasty_score": 82
   },
   {
     "id": "kulfi",
@@ -24524,7 +25578,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 14,
+    "tasty_score": 86
   },
   {
     "id": "fruit-custard",
@@ -24566,7 +25622,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 28,
+    "tasty_score": 78
   },
   {
     "id": "fruit-cream",
@@ -24605,7 +25663,9 @@
       "dairy"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 22,
+    "tasty_score": 80
   },
   {
     "id": "modak",
@@ -24643,7 +25703,9 @@
     "spice_level": "mild",
     "allergens": [],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 18,
+    "tasty_score": 78
   },
   {
     "id": "puran-poli",
@@ -24684,7 +25746,9 @@
       "gluten"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 18,
+    "tasty_score": 80
   },
   {
     "id": "atte-ka-halwa",
@@ -24727,7 +25791,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 16,
+    "tasty_score": 80
   },
   {
     "id": "lauki-halwa",
@@ -24768,7 +25834,9 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": true
+    "jain_safe": true,
+    "healthy_score": 22,
+    "tasty_score": 76
   },
   {
     "id": "beetroot-halwa",
@@ -24809,6 +25877,8 @@
       "nuts"
     ],
     "onion_garlic": false,
-    "jain_safe": false
+    "jain_safe": false,
+    "healthy_score": 22,
+    "tasty_score": 78
   }
 ]
