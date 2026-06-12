@@ -18,8 +18,9 @@ revenue-ready.
 
 **Honest constraints:**
 - Indian quick-commerce apps (Blinkit/Zepto/Instamart/BigBasket/JioMart) do **not** expose
-  a public "pre-fill my cart" deep-link. So v1 opens the app (optionally to a search for the
-  first item) and the user pastes the copied list into search.
+  a public "pre-fill my cart" deep-link, and they only search one term at a time. So the
+  flow is: pick a store, then open a **search per product** (one tap per item), with a
+  "copy whole list" fallback to paste into search.
 - Direct partnerships need traction. Until then, "free" earning = joining a **free affiliate
   network** (EarnKaro / Cuelinks / Amazon Associates). Blinkit/Zepto specifically may not be
   available on those networks; BigBasket / Amazon Fresh / JioMart are more likely.
