@@ -38,9 +38,19 @@ export function coerceUnit(unit: string, allowed: readonly string[]): string {
   return allowed[0] ?? DEFAULT_UNIT;
 }
 
+const COMPACT_SEGMENT_MIN_WIDTH = 32;
+
 /** Width for compact unit pill strip given number of visible units. */
 export function compactUnitStripWidth(unitCount: number): number {
-  const COMPACT_SEGMENT_MIN_WIDTH = 32;
   const n = Math.max(1, unitCount);
   return n * COMPACT_SEGMENT_MIN_WIDTH + (n - 1) + 8;
 }
+
+/** Flex weights for qty/unit row — equal by default; unit grows when more pills are shown. */
+export function qtyUnitFlexWeights(unitCount: number): { qty: number; unit: number } {
+  const n = Math.max(1, unitCount);
+  if (n <= 2) return { qty: 1, unit: 1 };
+  return { qty: 1, unit: 1 + (n - 2) * 0.45 };
+}
+
+export const QTY_FIELD_MIN_WIDTH = 48;

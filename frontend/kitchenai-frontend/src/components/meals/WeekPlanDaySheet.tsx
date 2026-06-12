@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Chip, IconButton, Text } from 'react-native-paper';
+import { Button, IconButton, Text } from 'react-native-paper';
+import { MealTagPill, mealTagPillRowStyle } from './MealTagPill';
 import { BottomSheet } from '../BottomSheet';
 import type { MealOfDayMeal } from '../MealOfDayCard';
 import { formatWeekPlanDayLabel, todayDateKey, type WeekPlanDay } from './WeekPlanCarousel';
@@ -188,11 +189,9 @@ export function WeekPlanDaySheet({
               {ingredients.length > 0 ? (
                 <>
                   <Text variant="labelSmall" style={styles.ingLabel}>Ingredients</Text>
-                  <View style={styles.chipWrap}>
+                  <View style={mealTagPillRowStyle.wrap}>
                     {ingredients.map((ing, i) => (
-                      <Chip key={i} compact style={styles.ingChip} textStyle={styles.ingChipText}>
-                        {ing}
-                      </Chip>
+                      <MealTagPill key={i} label={ing} variant="ingredient" />
                     ))}
                   </View>
                 </>
@@ -203,22 +202,18 @@ export function WeekPlanDaySheet({
                   <Text variant="labelSmall" style={styles.pairsLabel}>
                     Pairs well with — tap to include with message
                   </Text>
-                  <View style={styles.chipWrap}>
+                  <View style={mealTagPillRowStyle.wrap}>
                     {pairsWith.map((item, i) => {
                       const pairSelected = selectedPairs.includes(item);
                       return (
-                        <Chip
+                        <MealTagPill
                           key={i}
-                          compact
-                          icon={pairSelected ? 'check' : 'silverware-fork-knife'}
+                          label={item}
+                          variant="pairs"
                           selected={pairSelected}
-                          showSelectedOverlay
+                          icon={pairSelected ? 'check' : 'silverware-fork-knife'}
                           onPress={() => togglePairSelection(slot, item)}
-                          style={[styles.pairsChip, pairSelected && styles.pairsChipSelected]}
-                          textStyle={[styles.pairsChipText, pairSelected && styles.pairsChipTextSelected]}
-                        >
-                          {item}
-                        </Chip>
+                        />
                       );
                     })}
                   </View>
@@ -280,14 +275,7 @@ const styles = StyleSheet.create({
   meta: { color: '#888', marginTop: 4 },
   description: { color: '#666', marginBottom: 10, lineHeight: 18 },
   ingLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  ingChip: { height: 28, backgroundColor: '#E8F5E9' },
-  ingChipText: { fontSize: 11, color: '#555' },
   pairsLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
-  pairsChip: { height: 30, backgroundColor: '#F5F5F5' },
-  pairsChipSelected: { backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#2E7D32' },
-  pairsChipText: { fontSize: 11, color: '#555' },
-  pairsChipTextSelected: { color: '#333', fontWeight: '600' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actionBtn: { borderRadius: 10 },
 });

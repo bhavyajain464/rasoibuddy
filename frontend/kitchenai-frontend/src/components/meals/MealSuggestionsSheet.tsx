@@ -4,13 +4,13 @@ import {
   ActivityIndicator,
   Button,
   Card,
-  Chip,
   IconButton,
   Menu,
   Text,
   TextInput,
 } from 'react-native-paper';
 import { BottomSheet } from '../BottomSheet';
+import { MealTagPill, mealTagPillRowStyle } from './MealTagPill';
 import { showAppError } from '../../utils/alertMessage';
 import * as api from '../../services/api';
 
@@ -305,11 +305,9 @@ export function MealSuggestionsSheet({
                 </View>
 
                 <Text variant="labelSmall" style={styles.ingLabel}>Ingredients</Text>
-                <View style={styles.chipWrap}>
+                <View style={mealTagPillRowStyle.wrap}>
                   {meal.ingredients?.map((ing, i) => (
-                    <Chip key={i} compact style={styles.ingChip} textStyle={styles.ingChipText}>
-                      {ing}
-                    </Chip>
+                    <MealTagPill key={i} label={ing} variant="ingredient" />
                   ))}
                 </View>
 
@@ -318,25 +316,18 @@ export function MealSuggestionsSheet({
                     <Text variant="labelSmall" style={styles.pairsLabel}>
                       Pairs well with — tap to include with message
                     </Text>
-                    <View style={styles.chipWrap}>
+                    <View style={mealTagPillRowStyle.wrap}>
                       {meal.pairs_with.map((item, i) => {
                         const pairSelected = (selectedPairsByMeal[idx] ?? []).includes(item);
                         return (
-                          <Chip
+                          <MealTagPill
                             key={i}
-                            compact
-                            icon={pairSelected ? 'check' : 'silverware-fork-knife'}
+                            label={item}
+                            variant="pairs"
                             selected={pairSelected}
-                            showSelectedOverlay
+                            icon={pairSelected ? 'check' : 'silverware-fork-knife'}
                             onPress={() => togglePairSelection(idx, item)}
-                            style={[styles.pairsChip, pairSelected && styles.pairsChipSelected]}
-                            textStyle={[
-                              styles.pairsChipText,
-                              pairSelected && styles.pairsChipTextSelected,
-                            ]}
-                          >
-                            {item}
-                          </Chip>
+                          />
                         );
                       })}
                     </View>
@@ -346,17 +337,14 @@ export function MealSuggestionsSheet({
                 {meal.items_to_order && meal.items_to_order.length > 0 ? (
                   <>
                     <Text variant="labelSmall" style={styles.orderLabel}>Need to order</Text>
-                    <View style={styles.chipWrap}>
+                    <View style={mealTagPillRowStyle.wrap}>
                       {meal.items_to_order.map((item, i) => (
-                        <Chip
+                        <MealTagPill
                           key={i}
-                          compact
+                          label={item}
+                          variant="order"
                           icon="cart-outline"
-                          style={styles.orderChip}
-                          textStyle={styles.orderChipText}
-                        >
-                          {item}
-                        </Chip>
+                        />
                       ))}
                     </View>
                   </>
@@ -443,17 +431,8 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   metaText: { color: '#888' },
   ingLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  ingChip: { height: 28, backgroundColor: '#E8F5E9' },
-  ingChipText: { fontSize: 11, color: '#555' },
   pairsLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
-  pairsChip: { height: 30, backgroundColor: '#F5F5F5' },
-  pairsChipSelected: { backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#2E7D32' },
-  pairsChipText: { fontSize: 11, color: '#555' },
-  pairsChipTextSelected: { color: '#333', fontWeight: '600' },
   orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
-  orderChip: { height: 28, backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },
-  orderChipText: { fontSize: 11, color: '#E65100' },
   nutritionText: { color: '#666', fontStyle: 'italic', marginBottom: 8 },
   cookBtn: { marginTop: 8, alignSelf: 'flex-start', borderRadius: 10 },
 });

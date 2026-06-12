@@ -28,9 +28,6 @@ import type { MainTabParamList } from '../navigation/types';
 import * as api from '../services/api';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
-import { useEntitlements } from '../context/EntitlementsContext';
-import { navigateToUpgradePlan } from '../utils/upgrade';
-import { UpgradeRequiredError } from '../services/api';
 
 const MEALS_TABS = [
   { value: 'suggest', label: 'Meal planning', icon: 'calendar-week' },
@@ -106,24 +103,16 @@ function CategoryBox({
   icon,
   label,
   subtitle,
-  locked,
   onPress,
 }: {
   icon: string;
   label: string;
   subtitle: string;
-  locked?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.gridItem, pressed && { opacity: 0.88 }]}>
       <Surface style={styles.gridSurface} elevation={0}>
-        {locked ? (
-          <View style={styles.premiumBadge}>
-            <IconButton icon="lock" size={14} iconColor="#fff" style={{ margin: 0 }} />
-            <Text variant="labelSmall" style={styles.premiumBadgeText}>Pro</Text>
-          </View>
-        ) : null}
         <View style={styles.gridIconWrap}>
           <IconButton icon={icon} iconColor="#2E7D32" size={26} style={{ margin: 0 }} />
         </View>
@@ -160,8 +149,6 @@ export function MealsScreen() {
   const [weekPlanAnchor, setWeekPlanAnchor] = useState(todayDateKey());
   const [selectedPlanDate, setSelectedPlanDate] = useState(todayDateKey());
   const [sheetDate, setSheetDate] = useState<string | null>(null);
-  const { isMealCategoryFree, refresh: refreshEntitlements } = useEntitlements();
-
   const loadWeekPlan = useCallback(async () => {
     setWeekPlanLoading(true);
     try {
@@ -240,23 +227,11 @@ export function MealsScreen() {
       const match = categories.find((c) => c.id === catId) || categories[0] || null;
       setResult(match);
     } catch (e: unknown) {
-      if (e instanceof UpgradeRequiredError) {
-        navigateToUpgradePlan(navigation, {
-          source: 'locked_meal',
-          mealCategoryId: catId,
-          preferredTier: 'pro',
-          preferredInterval: 'monthly',
-        });
-        setError(null);
-        setSelectedCategory(null);
-        void refreshEntitlements();
-      } else {
-        setError((e as Error).message || 'Failed to generate suggestions.');
-      }
+      setError((e as Error).message || 'Failed to generate suggestions.');
     } finally {
       setLoading(false);
     }
-  }, [userPrompt, mealTypeFilter, refreshEntitlements, navigation, refreshCookProfileReady]);
+  }, [userPrompt, mealTypeFilter, refreshCookProfileReady]);
 
   const onCategoryPress = useCallback(
     (catId: string) => {
@@ -264,18 +239,9 @@ export function MealsScreen() {
         void openWeekPlanDay(todayDateKey());
         return;
       }
-      if (!isMealCategoryFree(catId)) {
-        navigateToUpgradePlan(navigation, {
-          source: 'locked_meal',
-          mealCategoryId: catId,
-          preferredTier: 'pro',
-          preferredInterval: 'monthly',
-        });
-        return;
-      }
       void generateForCategory(catId);
     },
-    [isMealCategoryFree, generateForCategory, navigation, openWeekPlanDay],
+    [generateForCategory, openWeekPlanDay],
   );
 
   useEffect(() => {
@@ -300,23 +266,12 @@ export function MealsScreen() {
     setMealTypeFilter(mealType);
     navigation.setParams({ generateCategory: undefined, mealType: undefined });
 
-    if (!isMealCategoryFree(catId)) {
-      navigateToUpgradePlan(navigation, {
-        source: 'locked_meal',
-        mealCategoryId: catId,
-        preferredTier: 'pro',
-        preferredInterval: 'monthly',
-      });
-      return;
-    }
-
     void generateForCategory(catId, undefined, mealType);
   }, [
     route.params?.openWeekPlanDate,
     route.params?.generateCategory,
     route.params?.mealType,
     navigation,
-    isMealCategoryFree,
     generateForCategory,
     openWeekPlanDay,
   ]);
@@ -450,7 +405,6 @@ export function MealsScreen() {
                 icon={cat.icon}
                 label={cat.title}
                 subtitle={cat.subtitle}
-                locked={!isMealCategoryFree(cat.id)}
                 onPress={() => onCategoryPress(cat.id)}
               />
             ))}
@@ -515,18 +469,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
-  premiumBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 10,
-    paddingRight: 6,
-    zIndex: 1,
-  },
-  premiumBadgeText: { color: '#fff', fontWeight: '700' },
   gridIconWrap: {
     alignSelf: 'flex-start',
     marginBottom: 8,

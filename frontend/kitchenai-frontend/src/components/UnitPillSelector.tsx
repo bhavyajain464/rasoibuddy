@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { DEFAULT_UNIT, UNIT_OPTIONS } from './UnitDropdown';
+import { sanitizeQtyInput } from '../utils/qty';
 import { palette } from '../theme';
 
 export { DEFAULT_UNIT, UNIT_OPTIONS };
@@ -21,13 +22,6 @@ export const COMPACT_UNIT_STRIP_WIDTH =
   UNIT_OPTIONS.length * COMPACT_SEGMENT_MIN_WIDTH +
   (UNIT_OPTIONS.length - 1) +
   8;
-
-function sanitizeDecimalInput(raw: string): string {
-  const cleaned = raw.replace(/[^\d.]/g, '');
-  const dot = cleaned.indexOf('.');
-  if (dot === -1) return cleaned;
-  return cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
-}
 
 function BorderFieldLabel({
   label,
@@ -58,6 +52,8 @@ type QuantityBoxProps = {
   onChangeText: (text: string) => void;
   style?: ViewStyle;
   compact?: boolean;
+  /** Stretch to fill a flex slot in QtyUnitStrip. */
+  fillWidth?: boolean;
   /** Parent row supplies label gutter (paddingTop); use in multi-field rows. */
   embedded?: boolean;
 };
@@ -68,6 +64,7 @@ export function QuantityBox({
   onChangeText,
   style,
   compact = false,
+  fillWidth = false,
   embedded = false,
 }: QuantityBoxProps) {
   return (
@@ -75,15 +72,16 @@ export function QuantityBox({
       style={[
         styles.fieldRoot,
         compact && styles.fieldRootCompact,
+        fillWidth && styles.fieldRootFill,
         embedded && styles.fieldRootEmbedded,
         style,
       ]}
     >
-      <View style={[styles.qtyBox, compact && styles.qtyBoxCompact]}>
+      <View style={[styles.qtyBox, compact && styles.qtyBoxCompact, fillWidth && styles.qtyBoxFill]}>
         <BorderFieldLabel label={label} align="left" />
         <RNTextInput
           value={value}
-          onChangeText={(text) => onChangeText(sanitizeDecimalInput(text))}
+          onChangeText={(text) => onChangeText(sanitizeQtyInput(text))}
           keyboardType="decimal-pad"
           inputMode="decimal"
           style={[styles.qtyInput, compact && styles.qtyInputCompact]}
@@ -91,7 +89,7 @@ export function QuantityBox({
           placeholder="0"
           placeholderTextColor={palette.textMuted}
           returnKeyType="done"
-          maxLength={8}
+          maxLength={7}
         />
       </View>
     </View>
@@ -267,6 +265,12 @@ const styles = StyleSheet.create({
   fieldRootEmbedded: {
     paddingTop: 0,
   },
+  fieldRootFill: {
+    flex: 1,
+    minWidth: 0,
+    width: '100%',
+    marginBottom: 0,
+  },
   borderLabelWrap: {
     position: 'absolute',
     top: -9,
@@ -307,6 +311,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: COMPACT_HEIGHT,
     borderRadius: 10,
+  },
+  qtyBoxFill: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
   qtyInput: {
     width: '100%',

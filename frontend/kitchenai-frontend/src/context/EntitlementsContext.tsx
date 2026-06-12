@@ -60,13 +60,7 @@ export function EntitlementsProvider({ children }: { children: React.ReactNode }
     (entitlements?.bill_scans_remaining ?? 0) > 0 ||
     (entitlements?.bill_scan_limit ?? 2) < 0;
 
-  const isMealCategoryFree = useCallback(
-    (categoryId: string) => {
-      if (isPro) return true;
-      return categoryId === 'daily' || categoryId === 'meal_of_day' || categoryId === 'today_plan';
-    },
-    [isPro],
-  );
+  const isMealCategoryFree = useCallback((_categoryId: string) => true, []);
 
   return (
     <EntitlementsContext.Provider
