@@ -73,34 +73,34 @@ jobs:
             RAZORPAY_WEBHOOK_SECRET_PRODUCTION=razorpay-webhook-secret-production:latest,
             SMTP_PASS=smtp-pass:latest
           RUN_ENV_VARS: >-
-            ENVIRONMENT=production,
-            GEMINI_MODEL=gemini-2.5-flash-lite,
-            LLM_PROVIDER=groq,
-            GROQ_MODEL=llama-3.3-70b-versatile,
-            GROQ_NLU_MODEL=llama-3.3-70b-versatile,
-            RAZORPAY_ENV=production,
-            SMTP_HOST=smtp.gmail.com,
-            SMTP_PORT=587,
-            SMTP_USER=kitchmateai@gmail.com,
-            SMTP_FROM=Kitchmate <kitchmateai@gmail.com>,
-            WHATSAPP_TEST_MODE=true,
-            GOOGLE_WEB_CLIENT_ID=208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com,
-            GOOGLE_IOS_CLIENT_ID=208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com,
-            GOOGLE_ANDROID_CLIENT_ID=208103249970-ssbd98i8gqndd1o10vbaa6e5nfhkfcft.apps.googleusercontent.com,
-            KAFKA_ENABLED=true,
-            KAFKA_BROKERS=kafka-2ee49b67-bhavyajain464-358c.d.aivencloud.com:24210,
-            KAFKA_TOPIC_SHELFLIFE=shelf-life-estimate,
-            KAFKA_CA_FILE=/secrets/kafka-ca.pem,
-            KAFKA_SASL_ENABLED=true,
-            KAFKA_SASL_MECHANISM=PLAIN,
-            KAFKA_USERNAME=avnadmin,
-            KAFKA_TLS_ENABLED=true,
-            PREMIUM_GRANT_TIER=elite,
-            PREMIUM_GRANT_EMAILS=akhilshukla2000@gmail.com;avishabagdiya@gmail.com;bhavyajain464@gmail.com;houseofshringara25@gmail.com;infinitystones464@gmail.com;kitchmateai@gmail.com;prabalcs@gmail.com;prabaltikeriha@gmail.com;ritikjain3585@gmail.com;sankalpchauhan.me@gmail.com;singhjishan2@gmail.com;yash.singhania.smart@gmail.com;yashh.singhaniaa@gmail.com,
-            API_PUBLIC_URL=https://kitchenai-backend-208103249970.asia-south1.run.app,
-            ZOMATO_MAX_ORDERS_PER_SYNC=15,
-            COMMERCE_ENABLED=false,
-            COMMERCE_ENABLED_PARTNERS=blinkit,zepto,
+            ENVIRONMENT=production#
+            GEMINI_MODEL=gemini-2.5-flash-lite#
+            LLM_PROVIDER=groq#
+            GROQ_MODEL=llama-3.3-70b-versatile#
+            GROQ_NLU_MODEL=llama-3.3-70b-versatile#
+            RAZORPAY_ENV=production#
+            SMTP_HOST=smtp.gmail.com#
+            SMTP_PORT=587#
+            SMTP_USER=kitchmateai@gmail.com#
+            SMTP_FROM=Kitchmate <kitchmateai@gmail.com>#
+            WHATSAPP_TEST_MODE=true#
+            GOOGLE_WEB_CLIENT_ID=208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com#
+            GOOGLE_IOS_CLIENT_ID=208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com#
+            GOOGLE_ANDROID_CLIENT_ID=208103249970-ssbd98i8gqndd1o10vbaa6e5nfhkfcft.apps.googleusercontent.com#
+            KAFKA_ENABLED=true#
+            KAFKA_BROKERS=kafka-2ee49b67-bhavyajain464-358c.d.aivencloud.com:24210#
+            KAFKA_TOPIC_SHELFLIFE=shelf-life-estimate#
+            KAFKA_CA_FILE=/secrets/kafka-ca.pem#
+            KAFKA_SASL_ENABLED=true#
+            KAFKA_SASL_MECHANISM=PLAIN#
+            KAFKA_USERNAME=avnadmin#
+            KAFKA_TLS_ENABLED=true#
+            PREMIUM_GRANT_TIER=elite#
+            PREMIUM_GRANT_EMAILS=akhilshukla2000@gmail.com;avishabagdiya@gmail.com;bhavyajain464@gmail.com;houseofshringara25@gmail.com;infinitystones464@gmail.com;kitchmateai@gmail.com;prabalcs@gmail.com;prabaltikeriha@gmail.com;ritikjain3585@gmail.com;sankalpchauhan.me@gmail.com;singhjishan2@gmail.com;yash.singhania.smart@gmail.com;yashh.singhaniaa@gmail.com#
+            API_PUBLIC_URL=https://kitchenai-backend-208103249970.asia-south1.run.app#
+            ZOMATO_MAX_ORDERS_PER_SYNC=15#
+            COMMERCE_ENABLED=false#
+            COMMERCE_ENABLED_PARTNERS=blinkit,zepto#
             COMMERCE_MAX_PARTNERS=2
         run: |
           gcloud run deploy "${SERVICE}" \
@@ -113,7 +113,7 @@ jobs:
             --cpu 1 \
             --allow-unauthenticated \
             --set-secrets "${RUN_SECRETS}" \
-            --set-env-vars "${RUN_ENV_VARS}" \
+            --set-env-vars "^#^${RUN_ENV_VARS}" \
             --quiet
 
       - name: Show service URL
