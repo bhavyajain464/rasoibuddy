@@ -12,25 +12,32 @@ import {
   Surface,
   Button,
   ActivityIndicator,
-  Checkbox,
   Icon,
 } from 'react-native-paper';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as api from '../services/api';
-import { OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
+import { CommercePartner, OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
+import { OrderOnlineSheet } from '../components/OrderOnlineSheet';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { formatShoppingQty } from '../utils/shoppingFormat';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
+import { EditShoppingItemSheet } from '../components/shopping/EditShoppingItemSheet';
+import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
+import type { InventoryMenuAction } from '../components/inventory/InventoryItemActionsSheet';
 import { DEFAULT_UNIT } from '../components/UnitPillSelector';
 import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
-import {
-  readOrderSuggestionsCache,
-  writeOrderSuggestionsCache,
-} from '../utils/orderSuggestionsCache';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
+import { normalizeSuggestedShoppingLine, sameIngredient } from '../utils/ingredientUnits';
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 import { restoreListEntries } from '../utils/restoreListEntries';
+import { writeOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
+
+/** Server-side suggestion pool size (matches backend OrderSuggestCacheSize). */
+const SUGGEST_CACHE_SIZE = 12;
+/** How many suggestions to show at once in the UI. */
+const SUGGEST_DISPLAY_LIMIT = 5;
 
 type ShoppingListEntry = { item: UserShoppingItem; index: number };
 
@@ -45,6 +52,8 @@ export function ShoppingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editItem, setEditItem] = useState<UserShoppingItem | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
@@ -59,12 +68,16 @@ export function ShoppingScreen() {
   const [orderSuggestFailed, setOrderSuggestFailed] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
   const [addingSuggest, setAddingSuggest] = useState<string | null>(null);
-  const [hiddenSuggest, setHiddenSuggest] = useState<Record<string, boolean>>({});
+  const [orderPartners, setOrderPartners] = useState<CommercePartner[]>([]);
+  const [commerceEnabled, setCommerceEnabled] = useState(false);
+  const [orderSheetVisible, setOrderSheetVisible] = useState(false);
   const lastSuggestNamesRef = useRef<string[]>([]);
+  const skipMountLoadSuggestions = useRef(true);
   const [suggestExpanded, setSuggestExpanded] = useState(false);
   const skipMountLoadItems = useRef(true);
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
+  const { catalog } = useIngredientCatalog();
 
   const selectedList = useMemo(
     () => items.filter((i) => selectedIds[i.id]),
@@ -90,33 +103,19 @@ export function ShoppingScreen() {
       lastSuggestNamesRef.current = [];
       return;
     }
-    const next = Array.isArray(data.items) ? data.items : [];
-    setOrderSuggestions(next);
+    const pool = (Array.isArray(data.items) ? data.items : []).slice(0, SUGGEST_CACHE_SIZE);
+    setOrderSuggestions(pool);
     setOrderSummary(data.summary ?? '');
     setOrderSuggestFailed(false);
-    lastSuggestNamesRef.current = next.map((s) => s.name.trim()).filter(Boolean);
+    lastSuggestNamesRef.current = pool.map((s) => s.name.trim()).filter(Boolean);
+    void writeOrderSuggestionsCache({ ...data, items: pool }, lastSuggestNamesRef.current);
   }, []);
 
-  const loadOrderSuggestions = useCallback(async (opts?: { refresh?: boolean }) => {
+  const refillSuggestionPool = useCallback(async () => {
     setOrderLoading(true);
-
-    if (!opts?.refresh) {
-      const cached = await readOrderSuggestionsCache();
-      if (cached) {
-        applyOrderSuggestResponse(cached.response);
-        lastSuggestNamesRef.current = cached.lastSuggestNames;
-        setOrderLoading(false);
-        return;
-      }
-    }
-
-    const exclude = opts?.refresh ? lastSuggestNamesRef.current : [];
     try {
-      const data = await api.getOrderSuggestions(exclude);
+      const data = await api.getOrderSuggestions();
       applyOrderSuggestResponse(data);
-      if (data.source !== 'error') {
-        await writeOrderSuggestionsCache(data, lastSuggestNamesRef.current);
-      }
     } catch {
       setOrderSuggestions([]);
       setOrderSummary('Nothing to suggest right now.');
@@ -127,12 +126,28 @@ export function ShoppingScreen() {
     }
   }, [applyOrderSuggestResponse]);
 
+  const loadOrderSuggestions = refillSuggestionPool;
+
   useFocusEffect(
     useCallback(() => {
       void loadItems();
       void loadOrderSuggestions();
     }, [loadItems, loadOrderSuggestions]),
   );
+
+  // Commerce surface is server-controlled (COMMERCE_ENABLED + partner list). Client has no store URLs.
+  useEffect(() => {
+    let active = true;
+    void api.getCommercePartners().then((res) => {
+      if (!active) return;
+      const on = Boolean(res.enabled) && Array.isArray(res.partners) && res.partners.length > 0;
+      setCommerceEnabled(on);
+      setOrderPartners(on ? res.partners : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Shopping list changed elsewhere while this tab is focused.
   useEffect(() => {
@@ -145,24 +160,35 @@ export function ShoppingScreen() {
     void loadItems();
   }, [isFocused, loadItems, refreshVersion, refreshScope]);
 
+  // Inventory or shopping list changed elsewhere while this tab is focused.
+  useEffect(() => {
+    if (!isFocused) return;
+    if (skipMountLoadSuggestions.current) {
+      skipMountLoadSuggestions.current = false;
+      return;
+    }
+    if (!refreshAppliesTo(refreshScope, ['shopping', 'inventory'])) return;
+    void loadOrderSuggestions();
+  }, [isFocused, loadOrderSuggestions, refreshVersion, refreshScope]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadItems();
-    await loadOrderSuggestions({ refresh: true });
+    await loadOrderSuggestions();
     setRefreshing(false);
   }, [loadItems, loadOrderSuggestions]);
 
   const visibleSuggestions = useMemo(() => {
-    const listNames = items.map((i) => i.name.trim().toLowerCase());
+    const listNames = items.map((i) => i.name.trim()).filter(Boolean);
     return orderSuggestions.filter((s) => {
-      const key = s.name.trim().toLowerCase();
-      if (!key || hiddenSuggest[key]) return false;
-      return !listNames.some((l) => l.includes(key) || key.includes(l));
+      const key = s.name.trim();
+      if (!key) return false;
+      return !listNames.some((name) => sameIngredient(catalog, s.name, name));
     });
-  }, [orderSuggestions, items, hiddenSuggest]);
+  }, [orderSuggestions, items, catalog]);
 
   const displaySuggestions = useMemo(
-    () => visibleSuggestions.slice(0, 4),
+    () => visibleSuggestions.slice(0, SUGGEST_DISPLAY_LIMIT),
     [visibleSuggestions],
   );
 
@@ -170,9 +196,10 @@ export function ShoppingScreen() {
     const key = suggestion.name.trim().toLowerCase();
     setAddingSuggest(key);
     try {
-      await api.addShoppingItem(suggestion.name.trim(), suggestion.qty || 0, suggestion.unit || DEFAULT_UNIT);
-      setHiddenSuggest((prev) => ({ ...prev, [key]: true }));
+      const line = normalizeSuggestedShoppingLine(catalog, suggestion);
+      await api.addShoppingItem(line.name, line.qty, line.unit);
       await loadItems();
+      await refillSuggestionPool();
       showAppSuccess(`"${suggestion.name}" added to your list`);
     } catch {
       showAppError('Could not add item to list.');
@@ -186,18 +213,10 @@ export function ShoppingScreen() {
     setAddingSuggest('__all__');
     try {
       await api.addBulkShoppingItems(
-        displaySuggestions.map((s) => ({
-          name: s.name.trim(),
-          qty: s.qty || 0,
-          unit: s.unit || DEFAULT_UNIT,
-        })),
+        displaySuggestions.map((s) => normalizeSuggestedShoppingLine(catalog, s)),
       );
-      const nextHidden = { ...hiddenSuggest };
-      displaySuggestions.forEach((s) => {
-        nextHidden[s.name.trim().toLowerCase()] = true;
-      });
-      setHiddenSuggest(nextHidden);
       await loadItems();
+      await refillSuggestionPool();
       showAppSuccess(`Added ${displaySuggestions.length} item${displaySuggestions.length !== 1 ? 's' : ''} to your list`);
     } catch {
       showAppError('Could not add suggestions.');
@@ -236,11 +255,13 @@ export function ShoppingScreen() {
     const pending = pendingShoppingDeletesRef.current.get(batchId);
     if (!pending) return;
     pendingShoppingDeletesRef.current.delete(batchId);
-    void api.bulkDeleteShoppingItems(pending.ids).catch(() => {
+    void api.bulkDeleteShoppingItems(pending.ids).then(() => {
+      bump('shopping');
+    }).catch(() => {
       restoreShoppingEntries(pending.entries);
       showAppError('Could not remove items.');
     });
-  }, [restoreShoppingEntries]);
+  }, [restoreShoppingEntries, bump]);
 
   const commitShoppingPurchase = useCallback(
     (batchId: string) => {
@@ -385,59 +406,68 @@ export function ShoppingScreen() {
     setAddModalVisible(true);
   };
 
+  const openEditItem = useCallback((item: UserShoppingItem) => {
+    setEditItem(item);
+  }, []);
+
+  const buildShoppingMenu = useCallback(
+    (item: UserShoppingItem): InventoryMenuAction[] => [
+      {
+        key: 'edit',
+        label: 'Edit',
+        icon: 'pencil-outline',
+        onPress: () => openEditItem(item),
+      },
+      {
+        key: 'inventory',
+        label: 'Add to inventory',
+        icon: 'fridge-outline',
+        onPress: () => scheduleAddToInventory([item.id]),
+      },
+      {
+        key: 'remove',
+        label: 'Remove from list',
+        icon: 'delete-outline',
+        destructive: true,
+        onPress: () => scheduleRemoveFromList([item.id]),
+      },
+    ],
+    [openEditItem, scheduleAddToInventory, scheduleRemoveFromList],
+  );
+
+  const handleSaveEdit = async (patch: { name: string; qty: number; unit: string }) => {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      const updated = await api.updateShoppingItem(editItem.id, patch);
+      setItems((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
+      setEditItem(null);
+      showAppSuccess('Shopping list updated');
+      bump('shopping');
+    } catch {
+      showAppError('Could not update item.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const renderItem = (item: UserShoppingItem, idx: number) => {
     const selected = Boolean(selectedIds[item.id]);
 
     return (
-      <Pressable
+      <ShoppingListItem
         key={item.id}
-        onPress={() => selectionMode && toggleSelect(item.id)}
-        onLongPress={() => {
-          if (!selectionMode) {
-            setSelectionMode(true);
-            setSelectedIds({ [item.id]: true });
-          }
+        item={item}
+        index={idx}
+        selectionMode={selectionMode}
+        selected={selected}
+        menuActions={buildShoppingMenu(item)}
+        onToggleSelect={() => toggleSelect(item.id)}
+        onEnterSelection={() => {
+          setSelectionMode(true);
+          setSelectedIds({ [item.id]: true });
         }}
-      >
-        <Surface style={[styles.itemCard, selected && styles.itemCardSelected]} elevation={1}>
-          <View style={styles.itemRow}>
-            {selectionMode ? (
-              <Checkbox
-                status={selected ? 'checked' : 'unchecked'}
-                onPress={() => toggleSelect(item.id)}
-              />
-            ) : (
-              <View style={styles.itemNum}>
-                <Text style={styles.itemNumText}>{idx + 1}</Text>
-              </View>
-            )}
-            <View style={styles.itemInfo}>
-              <Text variant="bodyLarge" style={styles.itemName}>{item.name}</Text>
-              <Text variant="bodySmall" style={styles.itemQty}>{formatShoppingQty(item)}</Text>
-            </View>
-            {!selectionMode ? (
-              <View style={styles.itemActions}>
-                <IconButton
-                  icon="fridge-outline"
-                  iconColor="#2E7D32"
-                  size={22}
-                  onPress={() => scheduleAddToInventory([item.id])}
-                  accessibilityLabel="Add to inventory"
-                  style={{ margin: 0 }}
-                />
-                <IconButton
-                  icon="delete-outline"
-                  iconColor="#E57373"
-                  size={22}
-                  onPress={() => scheduleRemoveFromList([item.id])}
-                  accessibilityLabel="Remove from list"
-                  style={{ margin: 0 }}
-                />
-              </View>
-            ) : null}
-          </View>
-        </Surface>
-      </Pressable>
+      />
     );
   };
 
@@ -481,7 +511,7 @@ export function ShoppingScreen() {
                     {displaySuggestions.length > 0 ? ` (${displaySuggestions.length})` : ''}
                   </Text>
                   <Text variant="labelSmall" style={styles.suggestBadge}>
-                    {orderSuggestFailed ? 'Unavailable' : 'AI · tap to expand'}
+                    {orderSuggestFailed ? 'Unavailable' : 'From meal plan · tap to expand'}
                   </Text>
                 </View>
                 <Icon
@@ -494,7 +524,7 @@ export function ShoppingScreen() {
             <IconButton
               icon="refresh"
               size={20}
-              onPress={() => void loadOrderSuggestions({ refresh: true })}
+              onPress={() => void loadOrderSuggestions()}
               disabled={orderLoading}
               accessibilityLabel="Refresh suggestions"
             />
@@ -543,13 +573,27 @@ export function ShoppingScreen() {
                       return (
                         <View key={key} style={styles.suggestRow}>
                           <View style={styles.suggestRowInfo}>
-                            <Text variant="bodyMedium" style={styles.suggestName}>{s.name}</Text>
+                            <View style={styles.itemTitleRow}>
+                              <View style={styles.itemNameWrap}>
+                                <Text
+                                  variant="bodyMedium"
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={styles.suggestName}
+                                >
+                                  {s.name}
+                                </Text>
+                              </View>
+                              <Text variant="bodyMedium" style={styles.itemQtySuffix}>
+                                <Text style={styles.itemSep}> · </Text>
+                                <Text style={styles.itemQty}>{qtyLabel}</Text>
+                              </Text>
+                            </View>
                             {s.reason ? (
                               <Text variant="bodySmall" style={styles.suggestReason} numberOfLines={2}>
                                 {s.reason}
                               </Text>
                             ) : null}
-                            <Text variant="labelSmall" style={styles.suggestQty}>{qtyLabel}</Text>
                           </View>
                           <IconButton
                             icon="plus-circle-outline"
@@ -621,10 +665,24 @@ export function ShoppingScreen() {
           </View>
         ) : null}
 
+        {!loading && items.length > 0 && !selectionMode && commerceEnabled ? (
+          <Button
+            mode="contained-tonal"
+            icon="cart-arrow-right"
+            onPress={() => setOrderSheetVisible(true)}
+            style={styles.orderOnlineBtn}
+            textColor="#1B5E20"
+          >
+            Order this list online
+          </Button>
+        ) : null}
+
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} size="large" />
         ) : items.length > 0 ? (
-          <View style={styles.listWrap}>{items.map(renderItem)}</View>
+          <View style={styles.listWrap}>
+            {items.map(renderItem)}
+          </View>
         ) : (
           <Surface style={styles.emptyCard} elevation={1}>
             <IconButton icon="cart-outline" iconColor="#2E7D32" size={44} style={{ margin: 0 }} />
@@ -673,6 +731,22 @@ export function ShoppingScreen() {
       <AddShoppingModal
         visible={addModalVisible}
         onDismiss={() => setAddModalVisible(false)}
+      />
+
+      <EditShoppingItemSheet
+        visible={editItem !== null}
+        item={editItem}
+        onDismiss={() => !editSaving && setEditItem(null)}
+        onSave={handleSaveEdit}
+        saving={editSaving}
+      />
+
+      <OrderOnlineSheet
+        visible={orderSheetVisible}
+        onClose={() => setOrderSheetVisible(false)}
+        items={items}
+        partners={orderPartners}
+        source="shopping_list"
       />
 
       {undoSnackbar}
@@ -733,10 +807,21 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingVertical: 4,
   },
-  suggestRowInfo: { flex: 1, paddingVertical: 6 },
-  suggestName: { fontWeight: '700', color: '#333' },
+  suggestRowInfo: { flex: 1, paddingVertical: 6, minWidth: 0 },
+  suggestName: { fontWeight: '700', color: '#333', lineHeight: 20 },
   suggestReason: { color: '#888', marginTop: 2, lineHeight: 16 },
-  suggestQty: { color: '#888888', marginTop: 4 },
+  itemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  itemNameWrap: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  itemQtySuffix: { flexShrink: 0, lineHeight: 20 },
+  itemSep: { fontWeight: '400', color: '#888888' },
+  itemQty: { fontWeight: '500', color: '#888888' },
   suggestEmpty: { color: '#999', marginTop: 12, lineHeight: 18 },
   listSectionTitle: {
     marginHorizontal: 20,
@@ -782,35 +867,7 @@ const styles = StyleSheet.create({
   },
 
   listWrap: { paddingHorizontal: 20, marginTop: 8, gap: 8 },
-  itemCard: {
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-  },
-  itemCardSelected: {
-    borderWidth: 1.5,
-    borderColor: '#2E7D32',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    paddingRight: 4,
-  },
-  itemActions: { flexDirection: 'row', alignItems: 'center' },
-  itemNum: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  itemNumText: { color: '#666666', fontWeight: '700', fontSize: 13 },
-  itemInfo: { flex: 1 },
-  itemName: { fontWeight: '600', color: '#333' },
-  itemQty: { color: '#888', marginTop: 2 },
+  orderOnlineBtn: { marginTop: 4, marginBottom: 8, marginHorizontal: 20, borderRadius: 12 },
 
   selectionBar: {
     position: 'absolute',

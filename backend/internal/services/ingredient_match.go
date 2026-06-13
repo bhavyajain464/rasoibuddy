@@ -1,6 +1,10 @@
 package services
 
-import "strings"
+import (
+	"strings"
+
+	"kitchenai-backend/internal/services/ingredients"
+)
 
 // commonPantryStaples are assumed to be on hand in any Indian kitchen, so they are not
 // reported as "missing" for the shopping-list gap (you don't add salt/water/oil to a cart).
@@ -106,4 +110,14 @@ func MatchDishToInventory(dish CatalogDish, inventoryNames []string) DishIngredi
 		res.Coverage = 1.0
 	}
 	return res
+}
+
+// ShoppingListHasItem reports whether item matches any name on the active shopping list.
+func ShoppingListHasItem(item string, listNames []string) bool {
+	for _, name := range listNames {
+		if ingredients.SameIngredient(item, name) {
+			return true
+		}
+	}
+	return false
 }

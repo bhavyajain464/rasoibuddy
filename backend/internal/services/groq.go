@@ -176,6 +176,20 @@ func GroqChatFilterMeals(ctx context.Context, apiKey, model, user string) (strin
 
 // GroqChatOrderSuggest proposes groceries missing from pantry for frequent meals.
 func GroqChatOrderSuggest(ctx context.Context, apiKey, model, user string, seed *int64) (string, error) {
+	const orderSuggestSystemPrompt = `You suggest grocery items for an Indian household kitchen app.
+Output ONLY valid JSON (no markdown). Schema:
+{"items":[{"name":"string","qty":number,"unit":"pcs|kg|g|L|ml","reason":"short"}],"summary":"one sentence"}
+Rules:
+- Suggest items NOT in pantry and NOT already on shopping list.
+- Use BOTH meal history and catalog.json ingredient profiles provided in the user message.
+- Prioritize catalog-derived staples that are missing from pantry and needed for meals they cook often.
+- Use simple English grocery names (onion, tomato, paneer, atta).
+- NEVER suggest bundled names like "mixed vegetables" or "whole spices" — list specific items (carrot, french beans, cauliflower, peas, capsicum, cumin seeds, etc.).
+- NEVER suggest roti, chapati, paratha, naan, or bread if atta, wheat flour, or maida is already in pantry (they make bread at home).
+- NEVER suggest steamed rice or jeera rice if rice or chawal is in pantry.
+- Do not repeat items listed under "already suggested this session".
+- qty may be 0 if unknown; unit defaults to pcs.
+- Maximum 4 items. If nothing to suggest, return {"items":[],"summary":"brief explanation"}.`
 	topP := 0.92
 	return groqChatWithSampling(ctx, apiKey, model, 0.8, &topP, seed, groqMaxTokensOrderSuggest, []groqMessage{
 		{Role: "system", Content: orderSuggestSystemPrompt},

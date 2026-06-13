@@ -54,6 +54,19 @@ func TestInventoryItemsUsedByDishMatchesPantryNames(t *testing.T) {
 	}
 }
 
+func TestShoppingListHasItem(t *testing.T) {
+	list := []string{"Onion", "Tomato"}
+	if !ShoppingListHasItem("onion", list) {
+		t.Fatal("expected onion to match Onion on shopping list")
+	}
+	if ShoppingListHasItem("Potato", list) {
+		t.Fatal("potato should not match onion/tomato list")
+	}
+	if !ShoppingListHasItem("Green Cardamom", []string{"Cardamom"}) {
+		t.Fatal("green cardamom should match cardamom on list for dedup")
+	}
+}
+
 func TestMatchDishToInventoryWordAware(t *testing.T) {
 	dish := CatalogDish{KeyIngredients: []string{"red chilli powder", "paneer"}}
 	// inventory has a looser name that should still match red chilli powder

@@ -8,6 +8,9 @@ import { formatWeekPlanDayLabel, todayDateKey, type WeekPlanDay } from './WeekPl
 import * as api from '../../services/api';
 import { showAppError, showAppInfo, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
+import { mealIngredientsMissingFromPantry } from '../../utils/ingredientPantryMatch';
+import { normalizeSuggestedShoppingLine } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
 const SLOT_ORDER = ['breakfast', 'lunch', 'dinner'] as const;
@@ -25,12 +28,6 @@ function mealsInOrder(meals: MealOfDayMeal[]): MealOfDayMeal[] {
     if (slot) bySlot.set(slot, meal);
   }
   return SLOT_ORDER.map((slot) => bySlot.get(slot)).filter(Boolean) as MealOfDayMeal[];
-}
-
-function shoppingItemsForMeal(meal: MealOfDayMeal): string[] {
-  const order = meal.items_to_order?.filter((s) => s.trim()) ?? [];
-  if (order.length > 0) return order;
-  return meal.ingredients?.filter((s) => s.trim()) ?? [];
 }
 
 type Props = {
@@ -53,13 +50,32 @@ export function WeekPlanDaySheet({
   navigation,
 }: Props) {
   const { bump } = useAppRefresh();
+  const { catalog } = useIngredientCatalog();
   const [refreshingSlot, setRefreshingSlot] = useState<string | null>(null);
   const [addingShoppingSlot, setAddingShoppingSlot] = useState<string | null>(null);
   const [selectedPairsBySlot, setSelectedPairsBySlot] = useState<Record<string, string[]>>({});
+  const [inventoryNames, setInventoryNames] = useState<string[]>([]);
 
   useEffect(() => {
     setSelectedPairsBySlot({});
   }, [day?.date]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let active = true;
+    void api.fetchInventoryBuckets(['active', 'expiring']).then((buckets) => {
+      if (!active) return;
+      const names = [...(buckets.active ?? []), ...(buckets.expiring ?? [])]
+        .map((item) => item.canonical_name.trim())
+        .filter(Boolean);
+      setInventoryNames(names);
+    }).catch(() => {
+      if (active) setInventoryNames([]);
+    });
+    return () => {
+      active = false;
+    };
+  }, [visible, day?.date]);
 
   const today = anchorDate || todayDateKey();
   const title = day ? formatWeekPlanDayLabel(day.date, today) : 'Day plan';
@@ -92,16 +108,16 @@ export function WeekPlanDaySheet({
   };
 
   const handleAddToShopping = async (meal: MealOfDayMeal) => {
-    const items = shoppingItemsForMeal(meal);
+    const items = mealIngredientsMissingFromPantry(meal, inventoryNames);
     if (!items.length) {
-      showAppInfo('No ingredients to add for this meal.');
+      showAppInfo('Everything for this meal is already in your pantry.');
       return;
     }
     const slot = meal.meal_slot ?? 'meal';
     setAddingShoppingSlot(slot);
     try {
       await api.addBulkShoppingItems(
-        items.map((name) => ({ name: name.trim(), qty: 1, unit: 'pcs' })),
+        items.map((name) => normalizeSuggestedShoppingLine(catalog, { name, qty: 0, unit: 'pcs' })),
       );
       showAppSuccess(`Added ${items.length} item${items.length === 1 ? '' : 's'} to shopping list`);
       bump('shopping');
@@ -157,7 +173,7 @@ export function WeekPlanDaySheet({
           const slotLabel = SLOT_LABELS[slot] ?? slot;
           const ingredients = meal.ingredients ?? [];
           const pairsWith = meal.pairs_with?.filter((s) => s.trim()) ?? [];
-          const shopItems = shoppingItemsForMeal(meal);
+          const shopItems = mealIngredientsMissingFromPantry(meal, inventoryNames);
           const selectedPairs = selectedPairsBySlot[slot] ?? [];
 
           return (
@@ -220,6 +236,22 @@ export function WeekPlanDaySheet({
                 </>
               ) : null}
 
+              {shopItems.length > 0 ? (
+                <>
+                  <Text variant="labelSmall" style={styles.orderLabel}>Need to order</Text>
+                  <View style={mealTagPillRowStyle.wrap}>
+                    {shopItems.map((item, i) => (
+                      <MealTagPill
+                        key={i}
+                        label={item}
+                        variant="order"
+                        icon="cart-outline"
+                      />
+                    ))}
+                  </View>
+                </>
+              ) : null}
+
               <View style={styles.actions}>
                 <Button
                   mode="outlined"
@@ -231,7 +263,9 @@ export function WeekPlanDaySheet({
                   style={styles.actionBtn}
                   textColor={palette.primary}
                 >
-                  Add to list ({shopItems.length})
+                  {shopItems.length === 0
+                    ? 'All in pantry'
+                    : `Add to list (${shopItems.length})`}
                 </Button>
                 <Button
                   mode="contained"
@@ -276,6 +310,7 @@ const styles = StyleSheet.create({
   description: { color: '#666', marginBottom: 10, lineHeight: 18 },
   ingLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
   pairsLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  orderLabel: { color: '#E65100', fontWeight: '700', marginBottom: 6 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   actionBtn: { borderRadius: 10 },
 });

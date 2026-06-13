@@ -12,7 +12,7 @@ import {
 import { Icon, Text } from 'react-native-paper';
 import { IngredientSearchOverlay } from './IngredientSearchOverlay';
 import { CatalogIngredient } from '../types';
-import { defaultUnitForCatalogItem } from '../utils/ingredientUnits';
+import { defaultUnitForCatalogItem, resolveCatalogItem } from '../utils/ingredientUnits';
 import {
   MAX_INLINE_OPTIONS,
   OPTION_MIN_HEIGHT,
@@ -44,10 +44,6 @@ type Props = {
   /** Opens keyboard / full-screen search when mounted (e.g. first row in add modal). */
   autoFocus?: boolean;
 };
-
-function norm(s: string): string {
-  return s.trim().toLowerCase();
-}
 
 function BorderFieldLabel({ label }: { label: string }) {
   return (
@@ -88,14 +84,10 @@ export function IngredientNamePicker({
   const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const didAutoFocus = useRef(false);
 
-  const selected = useMemo(() => {
-    if (ingredientId) {
-      return catalog.find((c) => c.ingredient_id === ingredientId);
-    }
-    const n = norm(value);
-    if (!n) return undefined;
-    return catalog.find((c) => norm(c.name) === n);
-  }, [catalog, ingredientId, value]);
+  const selected = useMemo(
+    () => resolveCatalogItem(catalog, ingredientId, value),
+    [catalog, ingredientId, value],
+  );
 
   const displayValue = selected?.name ?? value;
 

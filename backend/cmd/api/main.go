@@ -212,8 +212,13 @@ func main() {
 	api.Handle("/shopping/bulk", middleware.RequireAuth(http.HandlerFunc(handlers.AddBulkShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/purchase", middleware.RequireAuth(http.HandlerFunc(handlers.PurchaseShoppingItems(sqlDB, kafkaProducer)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/bulk-delete", middleware.RequireAuth(http.HandlerFunc(handlers.BulkDeleteShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
-	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, mealPlanCache, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.UpdateShoppingItem(sqlDB)))).Methods("PUT", "OPTIONS")
 	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.DeleteShoppingItem(sqlDB)))).Methods("DELETE", "OPTIONS")
+
+	// Commerce (Phase 0): grocery "order this list" deep-links from the household shopping flow.
+	api.Handle("/commerce/partners", middleware.RequireAuth(http.HandlerFunc(handlers.GetCommercePartners(cfg)))).Methods("GET", "OPTIONS")
+	api.Handle("/commerce/order-link", middleware.RequireAuth(http.HandlerFunc(handlers.CreateOrderLink(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 
 	// Restaurant platform (modular monolith — extractable to restaurant-api later)
 	kitchenSvc := kitchenpostgres.New(sqlDB)

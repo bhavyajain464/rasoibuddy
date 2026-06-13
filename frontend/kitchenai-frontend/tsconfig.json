@@ -6,5 +6,5 @@
     "composite": true
   },
   "include": ["**/*.ts", "**/*.tsx", "src/types/**/*.d.ts"],
-  "exclude": ["node_modules", "android", "ios"]
+  "exclude": ["node_modules", "android", "ios", "**/*.test.ts", "**/*.test.tsx"]
 }

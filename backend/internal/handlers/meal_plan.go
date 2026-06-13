@@ -166,6 +166,57 @@ func listHouseholdKitchenIDs(ctx context.Context, db *sql.DB) ([]string, error) 
 	return ids, rows.Err()
 }
 
+// LoadKitchenWeekPlanEntry returns the normalized kitchen week plan, generating on demand when needed.
+func LoadKitchenWeekPlanEntry(
+	ctx context.Context,
+	db *sql.DB,
+	cfg *config.Config,
+	cookedLog *services.CookedLogService,
+	cache *services.MealPlanCache,
+	kitchenID string,
+	userID string,
+) (*services.WeekPlanEntry, error) {
+	if cache == nil || !cache.Enabled() {
+		return nil, services.ErrOrderSuggestNoPlan
+	}
+	today := services.TodayDateKey(time.Now())
+	entry, ok, err := cache.Get(ctx, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	if ok && entry != nil {
+		normalized, needsFill, normErr := services.NormalizeWeekPlan(entry, today)
+		if normErr != nil {
+			return nil, normErr
+		}
+		if !needsFill && len(normalized.Days) >= services.MealPlanDaysCount() {
+			return normalized, nil
+		}
+		entry = normalized
+	}
+	if !ok || entry == nil || len(entry.Days) < services.MealPlanDaysCount() {
+		primaryUser, pErr := primaryUserForKitchen(db, kitchenID)
+		if pErr != nil || primaryUser == "" {
+			primaryUser = userID
+		}
+		if err := GenerateAndCacheWeekPlanForKitchen(ctx, db, cfg, cookedLog, cache, kitchenID, primaryUser, today); err != nil {
+			return nil, err
+		}
+		entry, ok, err = cache.Get(ctx, kitchenID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok || entry == nil {
+			return nil, services.ErrOrderSuggestNoPlan
+		}
+	}
+	normalized, _, normErr := services.NormalizeWeekPlan(entry, today)
+	if normErr != nil {
+		return nil, normErr
+	}
+	return normalized, nil
+}
+
 // GenerateAndCacheWeekPlanForKitchen builds 7 days × 3 slots for a kitchen.
 func GenerateAndCacheWeekPlanForKitchen(
 	ctx context.Context,
