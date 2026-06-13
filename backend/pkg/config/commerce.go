@@ -41,10 +41,15 @@ func defaultCommercePartners() []CommercePartner {
 // loadCommerceConfig builds the partner list and applies optional env overrides:
 //
 //	COMMERCE_ENABLED=true|false  (default false — surface hidden client-side)
+//	COMMERCE_ENABLED_PARTNERS=blinkit,zepto  (optional whitelist; order preserved)
+//	COMMERCE_MAX_PARTNERS=2  (optional cap after whitelist/disable filtering; 0 = no cap)
 //	COMMERCE_DISABLED_PARTNERS=zepto,jiomart  (comma list to hide specific partners)
 //	COMMERCE_AFFILIATE_<ID>=<template with {target} and {subid}>  (turns on commission)
 func loadCommerceConfig() CommerceConfig {
 	enabled := getEnvBool("COMMERCE_ENABLED", false)
+	if !enabled {
+		return CommerceConfig{Enabled: false, Partners: nil}
+	}
 
 	disabled := map[string]bool{}
 	for _, p := range strings.Split(getEnv("COMMERCE_DISABLED_PARTNERS", ""), ",") {
@@ -53,16 +58,61 @@ func loadCommerceConfig() CommerceConfig {
 		}
 	}
 
-	var partners []CommercePartner
+	whitelist := parseCommercePartnerIDs(getEnv("COMMERCE_ENABLED_PARTNERS", ""))
+	maxPartners := getEnvInt("COMMERCE_MAX_PARTNERS", 0)
+
+	byID := map[string]CommercePartner{}
 	for _, p := range defaultCommercePartners() {
-		if disabled[p.ID] {
-			continue
+		byID[p.ID] = p
+	}
+
+	var partners []CommercePartner
+	appendPartner := func(id string) {
+		p, ok := byID[id]
+		if !ok || disabled[id] {
+			return
 		}
-		// Per-partner affiliate template, e.g. COMMERCE_AFFILIATE_BLINKIT.
 		p.AffiliateTemplate = strings.TrimSpace(os.Getenv("COMMERCE_AFFILIATE_" + strings.ToUpper(p.ID)))
 		partners = append(partners, p)
 	}
+
+	if len(whitelist) > 0 {
+		for _, id := range whitelist {
+			appendPartner(id)
+		}
+	} else {
+		for _, p := range defaultCommercePartners() {
+			appendPartner(p.ID)
+		}
+	}
+
+	if maxPartners > 0 && len(partners) > maxPartners {
+		partners = partners[:maxPartners]
+	}
+
+	if len(partners) == 0 {
+		enabled = false
+	}
+
 	return CommerceConfig{Enabled: enabled, Partners: partners}
+}
+
+func parseCommercePartnerIDs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, part := range strings.Split(raw, ",") {
+		id := strings.ToLower(strings.TrimSpace(part))
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 // FindPartner returns a configured partner by id.

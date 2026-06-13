@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Platform, Linking, ScrollView } from 'react-native';
-import { Portal, Modal, Text, Button, IconButton, Icon, Divider } from 'react-native-paper';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, Platform, Linking } from 'react-native';
+import { Portal, Modal, Text, Button, IconButton, Icon } from 'react-native-paper';
 import * as api from '../services/api';
 import { CommercePartner, UserShoppingItem } from '../types';
-import { copyToClipboard } from '../utils/copyToClipboard';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 
 type Props = {
@@ -14,19 +13,35 @@ type Props = {
   source?: string;
 };
 
-// OrderOnlineSheet: pick a store, then open a search per product. Quick-commerce apps only
-// search one item at a time, so we give a per-item "Open" action (plus copy-all as a fallback).
+function orderPayload(items: UserShoppingItem[]) {
+  return items
+    .filter((it) => it.name?.trim())
+    .map((it) => ({ name: it.name.trim(), qty: it.qty, unit: it.unit }));
+}
+
 export function OrderOnlineSheet({ visible, onClose, items, partners, source = 'shopping_list' }: Props) {
   const [partner, setPartner] = useState<CommercePartner | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [opened, setOpened] = useState<Record<string, boolean>>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  const close = () => {
+  const orderItems = useMemo(() => orderPayload(items), [items]);
+  const currentItem = orderItems[currentIndex];
+  const totalItems = orderItems.length;
+
+  const reset = () => {
     setPartner(null);
     setBusy(null);
-    setOpened({});
+    setCurrentIndex(0);
+  };
+
+  const close = () => {
+    reset();
     onClose();
   };
+
+  useEffect(() => {
+    if (!visible) reset();
+  }, [visible]);
 
   const openUrl = async (url: string) => {
     if (Platform.OS === 'web') {
@@ -37,18 +52,39 @@ export function OrderOnlineSheet({ visible, onClose, items, partners, source = '
     if (ok) await Linking.openURL(url);
   };
 
-  // Open the partner's search for a single product.
-  const handleItem = async (item: UserShoppingItem) => {
-    if (!partner || busy) return;
-    setBusy(item.id);
+  const openItemSearch = async (index: number, partnerId: string) => {
+    const line = orderItems[index];
+    if (!line) return;
+    const res = await api.createOrderLink(partnerId, [line], 'shopping_item');
+    await openUrl(res.url);
+    setCurrentIndex(index);
+  };
+
+  const startOrdering = async (p: CommercePartner) => {
+    if (!orderItems.length || busy) return;
+    setPartner(p);
+    setBusy('start');
+    setCurrentIndex(0);
     try {
-      const res = await api.createOrderLink(
-        partner.id,
-        [{ name: item.name, qty: item.qty, unit: item.unit }],
-        'shopping_item',
-      );
+      const res = await api.createOrderLink(p.id, orderItems, source);
       await openUrl(res.url);
-      setOpened((prev) => ({ ...prev, [item.id]: true }));
+      const label = orderItems.length === 1
+        ? orderItems[0].name
+        : `${orderItems[0].name} (1 of ${orderItems.length})`;
+      showAppSuccess(`Opened ${label} on ${p.name}.`);
+    } catch (e) {
+      setPartner(null);
+      showAppError(e instanceof Error ? e.message : 'Could not open ordering. Try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleOpenCurrent = async () => {
+    if (!partner || busy || !currentItem) return;
+    setBusy('open');
+    try {
+      await openItemSearch(currentIndex, partner.id);
     } catch (e) {
       showAppError(e instanceof Error ? e.message : 'Could not open this item. Try again.');
     } finally {
@@ -56,19 +92,13 @@ export function OrderOnlineSheet({ visible, onClose, items, partners, source = '
     }
   };
 
-  // Copy the whole list (fallback — paste into the store's search).
-  const handleCopyAll = async () => {
-    if (!partner || busy) return;
-    setBusy('__copy__');
+  const handleNext = async () => {
+    if (!partner || busy || currentIndex >= totalItems - 1) return;
+    setBusy('next');
     try {
-      const payload = items
-        .filter((it) => it.name && it.name.trim())
-        .map((it) => ({ name: it.name, qty: it.qty, unit: it.unit }));
-      const res = await api.createOrderLink(partner.id, payload, source);
-      if (res.copy_text) await copyToClipboard(res.copy_text).catch(() => undefined);
-      showAppSuccess('List copied — paste into the store search.');
-    } catch {
-      showAppError('Could not copy the list.');
+      await openItemSearch(currentIndex + 1, partner.id);
+    } catch (e) {
+      showAppError(e instanceof Error ? e.message : 'Could not open next item. Try again.');
     } finally {
       setBusy(null);
     }
@@ -79,9 +109,11 @@ export function OrderOnlineSheet({ visible, onClose, items, partners, source = '
       <Modal visible={visible} onDismiss={close} contentContainerStyle={styles.modal}>
         {!partner ? (
           <>
-            <Text variant="titleMedium" style={styles.title}>Order online — pick a store</Text>
+            <Text variant="titleMedium" style={styles.title}>Order online</Text>
             <Text variant="bodySmall" style={styles.sub}>
-              Then tap each item to open its search in the app.
+              {totalItems === 1
+                ? 'Pick a store — we’ll open the search for your item.'
+                : `Pick a store — we’ll open the first of ${totalItems} items.`}
             </Text>
             <View style={styles.partners}>
               {partners.map((p) => (
@@ -89,7 +121,9 @@ export function OrderOnlineSheet({ visible, onClose, items, partners, source = '
                   key={p.id}
                   mode="outlined"
                   icon={() => <Icon source="storefront-outline" size={18} color="#2E7D32" />}
-                  onPress={() => setPartner(p)}
+                  onPress={() => void startOrdering(p)}
+                  loading={busy === 'start'}
+                  disabled={!!busy}
                   style={styles.partnerBtn}
                   contentStyle={styles.partnerBtnContent}
                   textColor="#1B5E20"
@@ -103,49 +137,53 @@ export function OrderOnlineSheet({ visible, onClose, items, partners, source = '
         ) : (
           <>
             <View style={styles.headerRow}>
-              <IconButton icon="arrow-left" size={20} onPress={() => setPartner(null)} style={{ margin: 0 }} />
-              <Text variant="titleMedium" style={styles.titleInline}>Open on {partner.name}</Text>
+              <IconButton icon="arrow-left" size={20} onPress={reset} style={{ margin: 0 }} />
+              <Text variant="titleMedium" style={styles.titleInline}>Ordering on {partner.name}</Text>
             </View>
             <Text variant="bodySmall" style={styles.sub}>
-              Tap a product to search it on {partner.name}, add it, then come back for the next.
+              Your shopping list is already loaded. Search and add each item in {partner.name}, then tap Next.
             </Text>
 
-            <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-              {items.map((it) => (
-                <View key={it.id} style={styles.itemRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyMedium" style={styles.itemName} numberOfLines={1}>
-                      {it.name}
-                    </Text>
-                    {it.qty ? (
-                      <Text variant="bodySmall" style={styles.itemQty}>{it.qty} {it.unit}</Text>
-                    ) : null}
-                  </View>
-                  <Button
-                    mode={opened[it.id] ? 'text' : 'contained-tonal'}
-                    compact
-                    loading={busy === it.id}
-                    disabled={!!busy}
-                    onPress={() => handleItem(it)}
-                    textColor="#1B5E20"
-                    icon={opened[it.id] ? 'check' : 'magnify'}
-                  >
-                    {opened[it.id] ? 'Opened' : 'Open'}
-                  </Button>
-                </View>
-              ))}
-            </ScrollView>
+            {currentItem ? (
+              <View style={styles.currentCard}>
+                <Text variant="labelSmall" style={styles.progress}>
+                  Item {currentIndex + 1} of {totalItems}
+                </Text>
+                <Text variant="titleMedium" style={styles.currentName}>{currentItem.name}</Text>
+                {currentItem.qty ? (
+                  <Text variant="bodySmall" style={styles.currentQty}>
+                    {currentItem.qty} {currentItem.unit}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
 
-            <Divider style={{ marginVertical: 8 }} />
             <Button
-              onPress={handleCopyAll}
-              loading={busy === '__copy__'}
-              disabled={!!busy}
-              icon="content-copy"
-              textColor="#2E7D32"
+              mode="contained-tonal"
+              icon="magnify"
+              onPress={() => void handleOpenCurrent()}
+              loading={busy === 'open'}
+              disabled={!!busy || !currentItem}
+              style={styles.primaryBtn}
+              textColor="#1B5E20"
             >
-              Copy whole list
+              Open search for this item
             </Button>
+
+            {totalItems > 1 ? (
+              <Button
+                mode="contained"
+                icon="arrow-right"
+                onPress={() => void handleNext()}
+                loading={busy === 'next'}
+                disabled={!!busy || currentIndex >= totalItems - 1}
+                buttonColor="#2E7D32"
+                style={styles.nextBtn}
+              >
+                {currentIndex >= totalItems - 1 ? 'Last item' : 'Next item'}
+              </Button>
+            ) : null}
+
             <Button onPress={close} textColor="#888">Done</Button>
           </>
         )}
@@ -163,14 +201,15 @@ const styles = StyleSheet.create({
   partnerBtn: { borderColor: '#A5D6A7', borderRadius: 12 },
   partnerBtnContent: { height: 46, justifyContent: 'flex-start' },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-  list: { maxHeight: 340 },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    gap: 8,
+  currentCard: {
+    backgroundColor: '#F1F8E9',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
   },
-  itemName: { color: '#1A1A1A' },
-  itemQty: { color: '#888' },
+  progress: { color: '#558B2F', marginBottom: 4 },
+  currentName: { color: '#1A1A1A' },
+  currentQty: { color: '#666', marginTop: 2 },
+  primaryBtn: { marginBottom: 8, borderRadius: 12 },
+  nextBtn: { marginBottom: 8, borderRadius: 12 },
 });

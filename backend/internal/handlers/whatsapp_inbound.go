@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"kitchenai-backend/internal/services"
+	"kitchenai-backend/internal/services/ingredients"
 	"kitchenai-backend/pkg/config"
 	"kitchenai-backend/pkg/httputil"
 
@@ -173,12 +174,21 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 		if unit == "" {
 			unit = "pcs"
 		}
+		name, qty, unit = ingredients.NormalizeShoppingLine(name, qty, unit)
 		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
 			return "", nil, err
 		}
 		if kitchen == nil {
 			return "", nil, fmt.Errorf("kitchen not found")
+		}
+		if existing, ok := findActiveShoppingItem(db, kitchen.KitchenID, name); ok {
+			return fmt.Sprintf("\"%s\" is already on your shopping list.", existing.Name), map[string]any{
+				"shopping_item_id": existing.ID,
+				"name":             existing.Name,
+				"qty":              existing.Qty,
+				"unit":             existing.Unit,
+			}, nil
 		}
 		var id, itemName, itemUnit string
 		var itemQty float64
@@ -200,11 +210,14 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 		}, nil
 
 	case services.IntentMarkOutOfStock:
-		n, itemID, itemName, err := markInventoryOutOfStock(db, userID, name)
+		n, itemID, itemName, shoppingAlreadyListed, err := markInventoryOutOfStock(db, userID, name)
 		if err != nil {
 			return "", nil, err
 		}
 		if n == 0 {
+			if shoppingAlreadyListed {
+				return fmt.Sprintf("\"%s\" is already on your shopping list.", name), nil, nil
+			}
 			return fmt.Sprintf("No inventory item matched \"%s\" — added to shopping list instead.", name), nil, nil
 		}
 		return fmt.Sprintf("Marked \"%s\" as expired in inventory.", itemName), map[string]any{
@@ -267,19 +280,19 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 	}
 }
 
-func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, itemID, matchedName string, err error) {
+func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, itemID, matchedName string, shoppingAlreadyListed bool, err error) {
 	kitchen, err := resolveKitchenForUser(db, userID)
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
 	if kitchen == nil {
-		return 0, "", "", fmt.Errorf("kitchen not found")
+		return 0, "", "", false, fmt.Errorf("kitchen not found")
 	}
 	pattern := "%" + strings.ToLower(itemName) + "%"
 
 	tx, err := db.Begin()
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
 	defer tx.Rollback()
 
@@ -292,7 +305,7 @@ func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, i
 		FOR UPDATE
 	`, kitchen.KitchenID, pattern)
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
 	var ids []string
 	for lockRows.Next() {
@@ -307,20 +320,27 @@ func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, i
 	}
 	lockRows.Close()
 	if err := lockRows.Err(); err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
 
 	if len(ids) == 0 {
+		shoppingName, _, _ := ingredients.NormalizeShoppingLine(itemName, 1, "pcs")
+		if _, ok := findActiveShoppingItem(db, kitchen.KitchenID, shoppingName); ok {
+			if err := tx.Commit(); err != nil {
+				return 0, "", "", true, err
+			}
+			return 0, "", "", true, nil
+		}
 		if _, err := tx.Exec(`
 			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
 			VALUES ($1, $2, $3, 1, 'pcs')
-		`, userID, kitchen.KitchenID, itemName); err != nil {
-			return 0, "", "", err
+		`, userID, kitchen.KitchenID, shoppingName); err != nil {
+			return 0, "", "", false, err
 		}
 		if err := tx.Commit(); err != nil {
-			return 0, "", "", err
+			return 0, "", "", false, err
 		}
-		return 0, "", "", nil
+		return 0, "", "", false, nil
 	}
 
 	res, err := tx.Exec(`
@@ -329,13 +349,13 @@ func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, i
 		WHERE item_id = ANY($1::uuid[])
 	`, pq.Array(ids))
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
 	n, _ := res.RowsAffected()
 	if err := tx.Commit(); err != nil {
-		return 0, "", "", err
+		return 0, "", "", false, err
 	}
-	return n, itemID, matchedName, nil
+	return n, itemID, matchedName, false, nil
 }
 
 func appendUserDislike(db *sql.DB, userID, dislike string) error {

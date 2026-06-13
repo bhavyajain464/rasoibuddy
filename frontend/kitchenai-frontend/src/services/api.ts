@@ -256,7 +256,7 @@ export async function syncSubscribeOrder(orderId: string): Promise<{ is_pro: boo
   };
 }
 
-// ─── Commerce (grocery "order this list") ────────────────────
+// ─── Commerce (server flag + partners; links from POST /commerce/order-link only) ───
 
 export async function getCommercePartners(): Promise<CommercePartnersResponse> {
   try {
@@ -700,6 +700,19 @@ export async function addBulkShoppingItems(items: { name: string; qty: number; u
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(items),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function updateShoppingItem(
+  id: string,
+  patch: { name: string; qty: number; unit: string },
+): Promise<UserShoppingItem> {
+  const res = await authFetch(`${API_BASE_URL}/shopping/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

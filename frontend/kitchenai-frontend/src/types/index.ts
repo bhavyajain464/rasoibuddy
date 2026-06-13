@@ -120,7 +120,7 @@ export interface OrderSuggestResponse {
   generated_at: string;
 }
 
-// Commerce (Phase 0): grocery "order this list" deep-links.
+// Commerce (Phase 0): server-controlled grocery ordering — display metadata only (no store URLs).
 export interface CommercePartner {
   id: string;
   name: string;
