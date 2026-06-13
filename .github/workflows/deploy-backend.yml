@@ -101,8 +101,7 @@ jobs:
             ZOMATO_MAX_ORDERS_PER_SYNC=15#
             COMMERCE_ENABLED=false#
             COMMERCE_ENABLED_PARTNERS=blinkit,zepto#
-            COMMERCE_MAX_PARTNERS=2#
-            ONBOARDING_ALWAYS_SHOW=true
+            COMMERCE_MAX_PARTNERS=2
         run: |
           gcloud run deploy "${SERVICE}" \
             --image "${IMAGE_SHA}" \
