@@ -31,7 +31,7 @@ export function showUpgradeMessage(message: string, onUpgrade?: () => void) {
     upgradePaywallRef.current.openUpgrade({ source: 'bill_scan' });
     return;
   }
-  const full = `${message} Pro unlocks unlimited bill scans and all meal categories.`;
+  const full = `${message} Pro unlocks unlimited bill scans.`;
   if (Platform.OS === 'web') {
     showAppInfo(full);
     return;

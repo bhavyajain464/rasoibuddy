@@ -161,3 +161,8 @@ func itemCoveredByPantry(item string, pantry []string) bool {
 	}
 	return false
 }
+
+// IngredientMatchesPantry reports whether ingredientName is covered by any pantry item name.
+func IngredientMatchesPantry(ingredientName string, pantryNames []string) bool {
+	return itemCoveredByPantry(ingredientName, pantryNames)
+}

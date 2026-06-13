@@ -28,6 +28,8 @@ import { LogMealModal } from '../components/modals/LogMealModal';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { palette } from '../theme';
 import { MealOfDayCard, MealOfDayMeal } from '../components/MealOfDayCard';
+import { todayDateKey } from '../components/meals/WeekPlanCarousel';
+import { parseWeekPlanDays, todayMealsFromWeekPlanDays } from '../utils/weekPlan';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -74,10 +76,9 @@ export function HomeScreen({ navigation }: any) {
   const loadMealOfDay = useCallback(async () => {
     setMealOfDayLoading(true);
     try {
-      const res = await api.getMealOfDay();
-      const cat = res?.categories?.find((c) => c.id === 'meal_of_day') ?? res?.categories?.[0];
-      const list = cat?.meals ?? [];
-      const withNames = list.filter((m) => m?.name?.trim());
+      const res = await api.getWeekPlan();
+      const planDays = parseWeekPlanDays(res?.days);
+      const withNames = todayMealsFromWeekPlanDays(planDays);
       setMealOfDayMeals(withNames);
       setMealOfDayNotReady(withNames.length === 0);
     } catch {
@@ -178,7 +179,7 @@ export function HomeScreen({ navigation }: any) {
             notReady={mealOfDayNotReady}
             onPress={() =>
               navigation.navigate('Meals', {
-                generateCategory: 'meal_of_day',
+                openWeekPlanDate: todayDateKey(),
                 returnToTab: 'Home',
               })
             }

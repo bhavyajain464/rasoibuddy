@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -11,6 +12,11 @@ import (
 	"kitchenai-backend/internal/handlers"
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/middleware"
+	invpostgres "kitchenai-backend/internal/platform/inventory/postgres"
+	kitchenpostgres "kitchenai-backend/internal/platform/kitchen/postgres"
+	zomatosvc "kitchenai-backend/internal/restaurant/integrations/zomato"
+	restauranthttp "kitchenai-backend/internal/restaurant/transport/http"
+	restaurantsvc "kitchenai-backend/internal/restaurant/services"
 	redislib "kitchenai-backend/internal/redis"
 	"kitchenai-backend/internal/services"
 	"kitchenai-backend/pkg/config"
@@ -24,7 +30,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key, X-App-Platform, X-App-Version, X-App-Build")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Razorpay-Signature, X-Admin-Key, X-App-Platform, X-App-Version, X-App-Build, X-Zomato-Worker-Secret")
 		w.Header().Set("Access-Control-Max-Age", "300")
 
 		if r.Method == "OPTIONS" {
@@ -76,9 +82,11 @@ func main() {
 	defer redisClient.Close()
 	cookedLogSvc := services.NewCookedLogService(sqlDB, redisClient)
 	mealOfDayCache := services.NewMealOfDayCache(redisClient)
+	mealPlanCache := services.NewMealPlanCache(redisClient)
 	dietDigestSvc := services.NewDietDigestService(sqlDB, cookedLogSvc, cfg)
 	services.StartNightlyDigestScheduler(dietDigestSvc)
 	handlers.StartMealOfDayScheduler(sqlDB, cfg, cookedLogSvc, mealOfDayCache)
+	handlers.StartWeekPlanScheduler(sqlDB, cfg, cookedLogSvc, mealPlanCache)
 
 	authService := services.NewAuthService(sqlDB, cfg)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -107,6 +115,7 @@ func main() {
 	api.Handle("/kitchen/create", middleware.RequireAuth(http.HandlerFunc(handlers.CreateKitchen(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/kitchen/join", middleware.RequireAuth(http.HandlerFunc(handlers.JoinKitchenByInviteCode(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/kitchen/leave", middleware.RequireAuth(http.HandlerFunc(handlers.LeaveKitchen(sqlDB)))).Methods("POST", "OPTIONS")
+	api.Handle("/ingredients", middleware.RequireAuth(http.HandlerFunc(handlers.GetIngredientsCatalog()))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")
@@ -160,6 +169,7 @@ func main() {
 	admin.HandleFunc("/meal-of-day/refresh", handlers.AdminRefreshMealOfDay(sqlDB, cfg, cookedLogSvc, mealOfDayCache)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/meal-of-day/clear-cache", handlers.AdminClearMealOfDayCache(mealOfDayCache)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/inventory/backfill-food-groups", handlers.AdminBackfillInventoryFoodGroups(sqlDB, cfg)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/inventory/backfill-catalog", handlers.AdminBackfillInventoryCatalog(sqlDB)).Methods("POST", "OPTIONS")
 	if cfg.AdminAPIKey != "" {
 		log.Printf("Admin API enabled at /api/v1/admin/*")
 	} else {
@@ -183,6 +193,8 @@ func main() {
 	// Smart Meals & cooked history
 	api.Handle("/meals/smart", middleware.RequireAuth(http.HandlerFunc(handlers.GetSmartMeals(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/meal-of-day", middleware.RequireAuth(http.HandlerFunc(handlers.GetMealOfDay(mealOfDayCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/week-plan", middleware.RequireAuth(http.HandlerFunc(handlers.GetWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/meals/week-plan/refresh", middleware.RequireAuth(http.HandlerFunc(handlers.PostRefreshWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/cooked-history", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookedHistory(cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked", middleware.RequireAuth(http.HandlerFunc(handlers.LogCookedDish(cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.GetDietAnalysisSettings(dietDigestSvc)))).Methods("GET", "OPTIONS")
@@ -200,8 +212,33 @@ func main() {
 	api.Handle("/shopping/bulk", middleware.RequireAuth(http.HandlerFunc(handlers.AddBulkShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/purchase", middleware.RequireAuth(http.HandlerFunc(handlers.PurchaseShoppingItems(sqlDB, kafkaProducer)))).Methods("POST", "OPTIONS")
 	api.Handle("/shopping/bulk-delete", middleware.RequireAuth(http.HandlerFunc(handlers.BulkDeleteShoppingItems(sqlDB)))).Methods("POST", "OPTIONS")
-	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/shopping/order-suggestions", middleware.RequireAuth(http.HandlerFunc(handlers.GetOrderSuggestions(sqlDB, mealPlanCache, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
+	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.UpdateShoppingItem(sqlDB)))).Methods("PUT", "OPTIONS")
 	api.Handle("/shopping/{id}", middleware.RequireAuth(http.HandlerFunc(handlers.DeleteShoppingItem(sqlDB)))).Methods("DELETE", "OPTIONS")
+
+	// Commerce (Phase 0): grocery "order this list" deep-links from the household shopping flow.
+	api.Handle("/commerce/partners", middleware.RequireAuth(http.HandlerFunc(handlers.GetCommercePartners(cfg)))).Methods("GET", "OPTIONS")
+	api.Handle("/commerce/order-link", middleware.RequireAuth(http.HandlerFunc(handlers.CreateOrderLink(sqlDB, cfg)))).Methods("POST", "OPTIONS")
+
+	// Restaurant platform (modular monolith — extractable to restaurant-api later)
+	kitchenSvc := kitchenpostgres.New(sqlDB)
+	invSvc := invpostgres.New(sqlDB)
+	menuSvc := restaurantsvc.NewMenuService(sqlDB, cfg)
+	deductionSvc := restaurantsvc.NewDeductionEngine(invSvc)
+	orderSvc := restaurantsvc.NewOrderService(sqlDB, menuSvc, deductionSvc)
+	billingRestSvc := restaurantsvc.NewBillingService(kitchenSvc)
+	analyticsSvc := restaurantsvc.NewAnalyticsService(sqlDB)
+	shoppingRestSvc := restaurantsvc.NewShoppingService(sqlDB)
+	zomatoSvc := zomatosvc.NewService(sqlDB, orderSvc, menuSvc)
+	zomatoSvc.ResumeRunningSyncs(context.Background())
+	restHandler := restauranthttp.NewHandler(kitchenSvc, invSvc, menuSvc, orderSvc, shoppingRestSvc, billingRestSvc, analyticsSvc, zomatoSvc, sqlDB)
+	publicConnect := router.PathPrefix("/api/v1").Subrouter()
+	restHandler.RegisterZomatoPublicConnect(publicConnect)
+	restHandler.RegisterZomatoConnectFallback(router)
+	restRouter := api.PathPrefix("").Subrouter()
+	restRouter.Use(middleware.RequireAuth)
+	restHandler.RegisterRoutes(restRouter)
+	restHandler.RegisterZomatoIngest(api)
 
 	// Procurement (legacy)
 	api.Handle("/procurement/shopping-list", middleware.RequireAuth(http.HandlerFunc(handlers.GetShoppingListHandler(sqlDB)))).Methods("GET", "POST", "OPTIONS")

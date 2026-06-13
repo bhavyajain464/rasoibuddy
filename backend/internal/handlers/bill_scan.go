@@ -18,6 +18,16 @@ import (
 
 const billScanUserMessage = "We couldn't read this bill. Try a clearer photo with good lighting."
 
+func billScanResultMessage(matched int, skipped []string) string {
+	if matched == 0 && len(skipped) > 0 {
+		return fmt.Sprintf("No recognized ingredients on this bill (%d lines skipped)", len(skipped))
+	}
+	if len(skipped) == 0 {
+		return fmt.Sprintf("Found %d edible items on this bill", matched)
+	}
+	return fmt.Sprintf("Found %d recognized ingredients (%d lines skipped)", matched, len(skipped))
+}
+
 // ScanBillRequest represents the request body for bill scanning
 type ScanBillRequest struct {
 	ImageData string `json:"image_data"` // Base64 encoded image
@@ -26,11 +36,12 @@ type ScanBillRequest struct {
 
 // ScanBillResponse represents the response from bill scanning
 type ScanBillResponse struct {
-	Success bool                     `json:"success"`
-	Message string                   `json:"message,omitempty"`
-	Items   []services.BillItem      `json:"items,omitempty"`
-	Added   []map[string]interface{} `json:"added_to_inventory,omitempty"`
-	Errors  []string                 `json:"errors,omitempty"`
+	Success       bool                     `json:"success"`
+	Message       string                   `json:"message,omitempty"`
+	Items         []services.BillItem      `json:"items,omitempty"`
+	Skipped       []string                 `json:"skipped,omitempty"`
+	Added         []map[string]interface{} `json:"added_to_inventory,omitempty"`
+	Errors        []string                 `json:"errors,omitempty"`
 }
 
 // ScanBill handles bill scanning — extracts items only, does NOT auto-add to inventory.
@@ -84,6 +95,7 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			writeJSONResponse(w, http.StatusInternalServerError, response)
 			return
 		}
+		items, skipped := services.ApplyCatalogMapping(items)
 		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
@@ -93,8 +105,9 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 
 		response := ScanBillResponse{
 			Success: true,
-			Message: fmt.Sprintf("Found %d edible items on this bill", len(items)),
+			Message: billScanResultMessage(len(items), skipped),
 			Items:   items,
+			Skipped: skipped,
 		}
 
 		writeJSONResponse(w, http.StatusOK, response)
@@ -156,6 +169,7 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			writeJSONResponse(w, http.StatusInternalServerError, response)
 			return
 		}
+		items, skipped := services.ApplyCatalogMapping(items)
 		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
@@ -167,8 +181,9 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 
 		response := ScanBillResponse{
 			Success: true,
-			Message: fmt.Sprintf("Successfully scanned bill and found %d items", len(items)),
+			Message: billScanResultMessage(len(items), skipped),
 			Items:   items,
+			Skipped: skipped,
 			Added:   addedItems,
 		}
 
@@ -304,13 +319,15 @@ func TestScanBill(db *sql.DB) http.HandlerFunc {
 			{Name: "Potatoes", Quantity: 4, Unit: "kg", PricePerUnit: 25, TotalPrice: 100, ShelfLifeDays: 14, FoodGroup: "vegetables"},
 			{Name: "Milk", Quantity: 2, Unit: "litre", PricePerUnit: 60, TotalPrice: 120, ShelfLifeDays: 3, FoodGroup: "dairy"},
 		}
+		mockItems, skipped := services.ApplyCatalogMapping(mockItems)
 
 		addedItems, errors := addItemsToInventory(db, mockItems, userID)
 
 		response := ScanBillResponse{
 			Success: true,
-			Message: "Test scan completed successfully (mock data)",
+			Message: billScanResultMessage(len(mockItems), skipped),
 			Items:   mockItems,
+			Skipped: skipped,
 			Added:   addedItems,
 		}
 

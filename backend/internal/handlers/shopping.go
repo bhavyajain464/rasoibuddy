@@ -13,6 +13,7 @@ import (
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/models"
 	"kitchenai-backend/internal/services"
+	"kitchenai-backend/internal/services/ingredients"
 	"kitchenai-backend/pkg/config"
 	"kitchenai-backend/pkg/units"
 
@@ -35,6 +36,11 @@ type AddShoppingItemReq struct {
 	Name string  `json:"name"`
 	Qty  float64 `json:"qty"`
 	Unit string  `json:"unit"`
+}
+
+func normalizeShoppingReq(req *AddShoppingItemReq) error {
+	req.Name, req.Qty, req.Unit = ingredients.NormalizeShoppingLine(req.Name, req.Qty, req.Unit)
+	return units.ValidateQty(req.Qty)
 }
 
 func GetShoppingItems(db *sql.DB) http.HandlerFunc {
@@ -101,10 +107,15 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "name required", 400)
 			return
 		}
-		if req.Qty < 0 {
-			req.Qty = 0
+		if err := normalizeShoppingReq(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-		req.Unit = units.Normalize(req.Unit)
+		if existing, ok := findActiveShoppingItem(db, kitchen.KitchenID, req.Name); ok {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(existing)
+			return
+		}
 
 		var item ShoppingItem
 		err = db.QueryRow(`
@@ -144,14 +155,19 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 		}
 
 		added := []ShoppingItem{}
-		for _, req := range items {
-			if req.Name == "" {
+		pending := fetchActiveShoppingNames(db, kitchen.KitchenID)
+		for i := range items {
+			if items[i].Name == "" {
 				continue
 			}
-			if req.Qty < 0 {
-				req.Qty = 0
+			if err := normalizeShoppingReq(&items[i]); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
-			req.Unit = units.Normalize(req.Unit)
+			req := items[i]
+			if services.ShoppingListHasItem(req.Name, pending) {
+				continue
+			}
 			var item ShoppingItem
 			err := db.QueryRow(`
 				INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
@@ -164,6 +180,7 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 				log.Printf("bulk add shopping item error: %v", err)
 				continue
 			}
+			pending = append(pending, req.Name)
 			added = append(added, item)
 		}
 
@@ -173,6 +190,81 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 			"items": added,
 			"count": len(added),
 		})
+	}
+}
+
+func UpdateShoppingItem(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		itemID := mux.Vars(r)["id"]
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if kitchen == nil {
+			http.Error(w, "kitchen not found", http.StatusNotFound)
+			return
+		}
+
+		var req AddShoppingItemReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid body", 400)
+			return
+		}
+		if strings.TrimSpace(req.Name) == "" {
+			http.Error(w, "name required", 400)
+			return
+		}
+		if err := normalizeShoppingReq(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if existing, ok := findActiveShoppingItemExcluding(db, kitchen.KitchenID, req.Name, itemID); ok {
+			http.Error(w, "item already on shopping list: "+existing.Name, http.StatusConflict)
+			return
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		if err := dblock.LockShoppingItem(tx, itemID, kitchen.KitchenID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", 404)
+				return
+			}
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var item ShoppingItem
+		err = tx.QueryRow(`
+			UPDATE shopping_items
+			SET name = $1, qty = $2, unit = $3
+			WHERE id = $4 AND kitchen_id = $5 AND bought = FALSE
+			RETURNING id, name, qty, unit, bought, created_at, bought_at
+		`, req.Name, req.Qty, req.Unit, itemID, kitchen.KitchenID).Scan(
+			&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt, &item.BoughtAt,
+		)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "not found", 404)
+				return
+			}
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if err := tx.Commit(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(item)
 	}
 }
 
@@ -501,6 +593,40 @@ func parseExcludeQuery(raw string) []string {
 	return out
 }
 
+func findActiveShoppingItem(db *sql.DB, kitchenID, name string) (ShoppingItem, bool) {
+	return findActiveShoppingItemExcluding(db, kitchenID, name, "")
+}
+
+func findActiveShoppingItemExcluding(db *sql.DB, kitchenID, name, excludeID string) (ShoppingItem, bool) {
+	if strings.TrimSpace(kitchenID) == "" || strings.TrimSpace(name) == "" {
+		return ShoppingItem{}, false
+	}
+	rows, err := db.Query(`
+		SELECT id, name, qty, unit, bought, created_at
+		FROM shopping_items
+		WHERE kitchen_id = $1 AND bought = FALSE
+	`, kitchenID)
+	if err != nil {
+		log.Printf("findActiveShoppingItem: %v", err)
+		return ShoppingItem{}, false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item ShoppingItem
+		if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt); err != nil {
+			continue
+		}
+		if excludeID != "" && item.ID == excludeID {
+			continue
+		}
+		item.Unit = units.Normalize(item.Unit)
+		if ingredients.SameIngredient(name, item.Name) {
+			return item, true
+		}
+	}
+	return ShoppingItem{}, false
+}
+
 func fetchActiveShoppingNames(db *sql.DB, kitchenID string) []string {
 	if strings.TrimSpace(kitchenID) == "" {
 		return nil
@@ -527,7 +653,7 @@ func fetchActiveShoppingNames(db *sql.DB, kitchenID string) []string {
 	return names
 }
 
-func GetOrderSuggestions(db *sql.DB, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
+func GetOrderSuggestions(db *sql.DB, mealPlanCache *services.MealPlanCache, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 		kitchen, err := resolveKitchenForUser(db, userID)
@@ -540,37 +666,27 @@ func GetOrderSuggestions(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 			return
 		}
 
-		var eaten []services.CookedLogEntry
-		if cookedLog != nil {
-			if entries, _, err := cookedLog.ListEatenLast15Days(r.Context(), userID); err == nil {
-				eaten = entries
-			}
-		}
-
 		inventory := fetchUserInventory(db, userID)
 		invNames := inventoryNames(inventory)
 
-		suggestIn := services.OrderSuggestInput{
-			EatenLog:     eaten,
-			Inventory:    invNames,
-			ShoppingList: fetchActiveShoppingNames(db, kitchen.KitchenID),
-			ExcludeItems: parseExcludeQuery(r.URL.Query().Get("exclude")),
-		}
-		if prefs := fetchUserPreferences(db, userID); prefs != nil {
-			suggestIn.DietaryTags = prefs.DietaryTags
-			suggestIn.Allergies = prefs.Allergies
-			suggestIn.Dislikes = prefs.Dislikes
-			suggestIn.FavCuisines = prefs.FavCuisines
-			suggestIn.Memories = prefs.Memories
+		weekPlan, planErr := LoadKitchenWeekPlanEntry(r.Context(), db, cfg, cookedLog, mealPlanCache, kitchen.KitchenID, userID)
+		if planErr != nil {
+			log.Printf("order suggestions week plan: %v", planErr)
 		}
 
-		result, err := services.SuggestOrderItems(r.Context(), cfg, suggestIn)
+		suggestIn := services.OrderSuggestInput{
+			WeekPlan:     weekPlan,
+			Inventory:    invNames,
+			ShoppingList: fetchActiveShoppingNames(db, kitchen.KitchenID),
+		}
+
+		result, err := services.SuggestOrderItems(suggestIn)
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
 			log.Printf("order suggestions: %v", err)
 			summary := "Couldn't load suggestions right now. Try again in a moment."
-			if errors.Is(err, services.ErrOrderSuggestNoMeals) {
-				summary = "Log meals you cook often to get personalized order suggestions."
+			if errors.Is(err, services.ErrOrderSuggestNoPlan) {
+				summary = "Open Meals and set up your 7-day plan to get order suggestions."
 			}
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(services.OrderSuggestResult{

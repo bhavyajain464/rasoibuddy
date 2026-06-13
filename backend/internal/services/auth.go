@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"kitchenai-backend/internal/models"
+	restaurantinvites "kitchenai-backend/internal/restaurant/invites"
 	"kitchenai-backend/pkg/config"
 
 	"github.com/google/uuid"
@@ -96,6 +97,9 @@ func (s *AuthService) LoginWithGoogleAndMetadata(ctx context.Context, idToken st
 	user, err := s.upsertGoogleUser(*profile)
 	if err != nil {
 		return nil, err
+	}
+	if err := applyPendingRestaurantInvites(ctx, s.db, user.UserID, user.Email); err != nil {
+		log.Printf("apply pending restaurant invites: %v", err)
 	}
 
 	return s.createSession(user, "google", metadata)
@@ -289,7 +293,12 @@ func (s *AuthService) upsertGoogleUser(profile googleTokenInfoResponse) (*models
 
 func (s *AuthService) ensureUserKitchen(userID, userName string) error {
 	var exists bool
-	if err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM kitchen_members WHERE user_id = $1)`, userID).Scan(&exists); err == nil && exists {
+	if err := s.db.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM kitchen_members
+			WHERE user_id = $1 AND kitchen_kind = 'household'
+		)
+	`, userID).Scan(&exists); err == nil && exists {
 		return nil
 	}
 	kitchenName := strings.TrimSpace(userName)
@@ -416,6 +425,8 @@ func (s *AuthService) getSessionByID(sessionID string) (*AuthSession, error) {
 	var session AuthSession
 	var user models.User
 	var lastUsedAt sql.NullTime
+	var clientIP sql.NullString
+	var userAgent sql.NullString
 
 	err := s.db.QueryRow(`
 		SELECT s.session_id, s.user_id, s.provider, s.expires_at, s.last_used_at,
@@ -426,7 +437,7 @@ func (s *AuthService) getSessionByID(sessionID string) (*AuthSession, error) {
 		WHERE s.session_id = $1 AND s.expires_at > CURRENT_TIMESTAMP
 	`, sessionID).Scan(
 		&session.ID, &user.UserID, &session.Provider, &session.ExpiresAt, &lastUsedAt,
-		&session.ClientIP, &session.UserAgent,
+		&clientIP, &userAgent,
 		&user.GoogleID, &user.Email, &user.Name, &user.PictureURL, &user.CreatedAt, &user.UpdatedAt,
 	)
 
@@ -436,6 +447,12 @@ func (s *AuthService) getSessionByID(sessionID string) (*AuthSession, error) {
 
 	if lastUsedAt.Valid {
 		session.LastUsedAt = &lastUsedAt.Time
+	}
+	if clientIP.Valid {
+		session.ClientIP = clientIP.String
+	}
+	if userAgent.Valid {
+		session.UserAgent = userAgent.String
 	}
 
 	session.User = &user
@@ -475,4 +492,8 @@ func GenerateRandomSecret() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func applyPendingRestaurantInvites(ctx context.Context, db *sql.DB, userID, email string) error {
+	return restaurantinvites.ApplyPendingStaffInvites(ctx, db, userID, email)
 }

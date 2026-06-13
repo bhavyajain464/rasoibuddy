@@ -4,6 +4,15 @@ export interface InventoryFoodGroup {
   sort: number;
 }
 
+export interface CatalogIngredient {
+  ingredient_id: string;
+  name: string;
+  default_unit: string;
+  units?: string[];
+  food_group?: string;
+  synonyms?: string[];
+}
+
 export interface InventoryItem {
   item_id: string;
   canonical_name: string;
@@ -111,6 +120,26 @@ export interface OrderSuggestResponse {
   generated_at: string;
 }
 
+// Commerce (Phase 0): server-controlled grocery ordering — display metadata only (no store URLs).
+export interface CommercePartner {
+  id: string;
+  name: string;
+  logo_url?: string;
+  eta?: string;
+}
+
+export interface CommercePartnersResponse {
+  enabled: boolean;
+  partners: CommercePartner[];
+}
+
+export interface OrderLinkResponse {
+  partner: string;
+  url: string;
+  tracking_id: string;
+  copy_text: string;
+}
+
 export interface ShoppingListResponse {
   items: ShoppingListItem[];
   total_items: number;
@@ -158,12 +187,14 @@ export interface AuthSession {
 export interface ScanResult {
   success?: boolean;
   message?: string;
+  skipped?: string[];
   items?: Array<{
     name: string;
     quantity: number;
     unit: string;
     shelf_life_days?: number;
     food_group?: string;
+    ingredient_id?: string;
     price_per_unit?: number;
     total_price?: number;
   }>;

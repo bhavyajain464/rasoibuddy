@@ -47,7 +47,7 @@ func resolveKitchenMembership(db *sql.DB, userID string) (*kitchenMembership, er
 	err := db.QueryRow(`
 		SELECT kitchen_id::text, user_id::text
 		FROM kitchen_members
-		WHERE user_id = $1
+		WHERE user_id = $1 AND kitchen_kind = 'household'
 		LIMIT 1
 	`, userID).Scan(&m.KitchenID, &m.UserID)
 	if err == sql.ErrNoRows {
@@ -274,7 +274,7 @@ func JoinKitchenByInviteCode(db *sql.DB) http.HandlerFunc {
 		err := db.QueryRow(`
 			SELECT kitchen_id::text
 			FROM kitchens
-			WHERE invite_code = $1
+			WHERE invite_code = $1 AND kind = 'household'
 			LIMIT 1
 		`, code).Scan(&kitchenID)
 		if err == sql.ErrNoRows {

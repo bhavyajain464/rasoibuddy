@@ -1,0 +1,22 @@
+{
+  "name": "kitchenai-frontend-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/api-core",
+    "kitchenai-frontend",
+    "kitchenai-restaurant"
+  ],
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "@types/react": "~19.1.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}

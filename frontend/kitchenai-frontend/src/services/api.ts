@@ -8,6 +8,7 @@ import {
   unknownWhatsAppAction,
 } from '../utils/whatsappAction';
 import {
+  CatalogIngredient,
   InventoryItem,
   InventoryFoodGroup,
   InventoryBucket,
@@ -39,6 +40,8 @@ import {
   CheckoutOrderResponse,
   VerifyCheckoutRequest,
   KitchenInfo,
+  CommercePartnersResponse,
+  OrderLinkResponse,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
@@ -253,6 +256,32 @@ export async function syncSubscribeOrder(orderId: string): Promise<{ is_pro: boo
   };
 }
 
+// ─── Commerce (server flag + partners; links from POST /commerce/order-link only) ───
+
+export async function getCommercePartners(): Promise<CommercePartnersResponse> {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/commerce/partners`);
+    if (!res.ok) return { enabled: false, partners: [] };
+    return res.json();
+  } catch {
+    return { enabled: false, partners: [] };
+  }
+}
+
+export async function createOrderLink(
+  partner: string,
+  items: { name: string; qty: number; unit: string }[],
+  source: string = 'shopping_list',
+): Promise<OrderLinkResponse> {
+  const res = await authFetch(`${API_BASE_URL}/commerce/order-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ partner, items, source }),
+  });
+  if (!res.ok) await parseApiError(res, 'Could not open ordering');
+  return res.json();
+}
+
 // ─── Inventory ───────────────────────────────────────────────
 
 export async function getKitchen(): Promise<KitchenInfo> {
@@ -321,6 +350,13 @@ export async function fetchInventoryBuckets(
 
 export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory/food-groups`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchIngredientsCatalog(query?: string): Promise<CatalogIngredient[]> {
+  const params = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+  const res = await authFetch(`${API_BASE_URL}/ingredients${params}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -669,6 +705,19 @@ export async function addBulkShoppingItems(items: { name: string; qty: number; u
   return res.json();
 }
 
+export async function updateShoppingItem(
+  id: string,
+  patch: { name: string; qty: number; unit: string },
+): Promise<UserShoppingItem> {
+  const res = await authFetch(`${API_BASE_URL}/shopping/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function deleteShoppingItem(id: string): Promise<void> {
   const res = await authFetch(`${API_BASE_URL}/shopping/${id}`, {
     method: 'DELETE',
@@ -781,6 +830,42 @@ export async function getMealOfDay(): Promise<{
     throw new Error('Meal of the Day is temporarily unavailable. The server needs Redis configured.');
   }
   if (!res.ok) await parseApiError(res, 'Failed to load meal of the day');
+  return res.json();
+}
+
+export type WeekPlanDayResponse = {
+  date: string;
+  categories: MealOfDayCategory[];
+};
+
+export async function getWeekPlan(): Promise<{
+  kitchen_id: string;
+  anchor_date: string;
+  days: WeekPlanDayResponse[];
+  generated_at: string;
+  source: string;
+  cache_available: boolean;
+  cache_stale?: boolean;
+} | null> {
+  const res = await authFetch(`${API_BASE_URL}/meals/week-plan`);
+  if (res.status === 404) return null;
+  if (res.status === 503) {
+    throw new Error('Meal planning is temporarily unavailable. The server needs Redis configured.');
+  }
+  if (!res.ok) await parseApiError(res, 'Failed to load meal plan');
+  return res.json();
+}
+
+export async function refreshWeekPlanDay(
+  date: string,
+  mealSlot?: string,
+): Promise<WeekPlanDayResponse> {
+  const res = await authFetch(`${API_BASE_URL}/meals/week-plan/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, meal_slot: mealSlot || undefined }),
+  });
+  if (!res.ok) await parseApiError(res, 'Failed to refresh meal plan');
   return res.json();
 }
 

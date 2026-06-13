@@ -28,6 +28,11 @@ const UNIT_ALIASES: Record<string, string> = {
   milliliter: 'ml',
   milliliters: 'ml',
   ml: 'ml',
+  bunch: 'pcs',
+  bunches: 'pcs',
+  bundle: 'pcs',
+  gucha: 'pcs',
+  guchcha: 'pcs',
 };
 
 export function normalizeUnit(raw: string | undefined | null): string {

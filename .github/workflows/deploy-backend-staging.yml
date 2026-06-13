@@ -94,7 +94,12 @@ jobs:
             KAFKA_SASL_ENABLED=true,
             KAFKA_SASL_MECHANISM=PLAIN,
             KAFKA_USERNAME=avnadmin,
-            KAFKA_TLS_ENABLED=true
+            KAFKA_TLS_ENABLED=true,
+            API_PUBLIC_URL=https://kitchenai-backend-staging-208103249970.asia-south1.run.app,
+            ZOMATO_MAX_ORDERS_PER_SYNC=15,
+            COMMERCE_ENABLED=false,
+            COMMERCE_ENABLED_PARTNERS=blinkit,zepto,instamart,
+            COMMERCE_MAX_PARTNERS=3
         run: |
           gcloud run deploy "${SERVICE}" \
             --image "${IMAGE_SHA}" \

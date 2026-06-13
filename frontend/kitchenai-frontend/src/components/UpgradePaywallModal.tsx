@@ -28,11 +28,10 @@ type ComparisonRow = {
 
 const COMPARISON: ComparisonRow[] = [
   { label: 'Daily meal ideas', free: true, pro: true, elite: true },
-  { label: 'Meal of the Day', free: true, pro: true, elite: true },
-  { label: 'Rescue (use expiring food)', free: false, pro: true, elite: true },
-  { label: 'Meal of the Day', free: false, pro: true, elite: true },
-  { label: 'Healthy & Tasty modes', free: false, pro: true, elite: true },
-  { label: 'Meal Prep mode', free: false, pro: true, elite: true },
+  { label: 'Meal of the Day & week plan', free: true, pro: true, elite: true },
+  { label: 'Rescue (use expiring food)', free: true, pro: true, elite: true },
+  { label: 'Healthy & Tasty modes', free: true, pro: true, elite: true },
+  { label: 'Meal Prep mode', free: true, pro: true, elite: true },
   { label: 'Bill scans', free: '2 / day', pro: 'Unlimited', elite: 'Unlimited' },
   { label: 'Nightly diet email', free: false, pro: false, elite: true },
   { label: 'AI nutrition insights', free: false, pro: false, elite: true },

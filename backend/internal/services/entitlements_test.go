@@ -31,19 +31,13 @@ func TestEffectiveBillScansUsedResetsOnNewDay(t *testing.T) {
 
 func TestCanUseMealCategory(t *testing.T) {
 	free := buildEntitlements(TierFree, "", nil, 0)
-	if ok, _ := CanUseMealCategory(free, "daily"); !ok {
-		t.Fatal("daily should be free")
+	for _, cat := range []string{"daily", "meal_of_day", "rescue_meal", "most_tasty", "long_lasting"} {
+		if ok, _ := CanUseMealCategory(free, cat); !ok {
+			t.Fatalf("%s should be available on free tier", cat)
+		}
 	}
-	if ok, _ := CanUseMealCategory(free, "meal_of_day"); !ok {
-		t.Fatal("meal_of_day should be free")
-	}
-	if ok, _ := CanUseMealCategory(free, "rescue_meal"); ok {
-		t.Fatal("rescue should require pro")
-	}
-	future := time.Now().Add(24 * time.Hour)
-	pro := buildEntitlements(TierPro, IntervalMonthly, &future, 0)
-	if ok, _ := CanUseMealCategory(pro, "most_tasty"); !ok {
-		t.Fatal("pro should allow all categories")
+	if len(free.ProMealCategories) != 0 {
+		t.Fatal("pro meal categories should be empty when suggestions are not tier-gated")
 	}
 }
 

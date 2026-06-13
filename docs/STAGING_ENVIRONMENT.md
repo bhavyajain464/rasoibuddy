@@ -5,7 +5,8 @@ The **develop** branch is the integration environment. **main** stays production
 | Layer | Production (`main`) | Staging (`develop`) |
 | --- | --- | --- |
 | Git branch | `main` | `develop` |
-| Web (Vercel) | Same project **kitchmate** → [kitchmate-one.vercel.app](https://kitchmate-one.vercel.app) | **Preview** deploy on `develop` → [kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app](https://kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app) |
+| Consumer web (Vercel) | Project **kitchmate** → [kitchmate-one.vercel.app](https://kitchmate-one.vercel.app) | **Preview** on `develop` → [kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app](https://kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app) |
+| Partner web (Vercel) | *(not deployed from `main` yet)* | Project **kitchmate-partner** — **production branch `develop`** → [kitchmate-partner.vercel.app](https://kitchmate-partner.vercel.app) |
 | API (Cloud Run) | `kitchenai-backend` | `kitchenai-backend-staging` |
 | Razorpay | Live (`RAZORPAY_ENV=production`) | Test (`RAZORPAY_ENV=staging`) |
 | DB / Redis / Kafka / LLM keys | Shared (same GCP secrets for now) | Same secrets as production |
@@ -28,7 +29,7 @@ Production deploys: `.github/workflows/deploy-backend.yml` on `main` only.
 
 **Onboarding testing:** Staging API sets `ENVIRONMENT=staging`, so `/onboarding/status` always returns `onboarding_done: false` (onboarding shows every login, even after complete). Production is unchanged.
 
-## Frontend (single Vercel project: **kitchmate**)
+## Consumer frontend (Vercel project: **kitchmate**)
 
 One Vercel project, two environments via **branch-scoped env vars**:
 
@@ -45,6 +46,37 @@ Pushes to **`develop`** create a **preview** deployment only (staging API/OAuth)
 **Google OAuth:** Add the develop preview origin to your Web client (see `GOOGLE_OAUTH_SETUP.md`):
 
 - `https://kitchmate-git-develop-bhavyajain464-9089s-projects.vercel.app`
+
+## Partner frontend (Vercel project: **kitchmate-partner**)
+
+Separate Vercel project for `frontend/kitchenai-restaurant` (restaurant staff app).
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `frontend/kitchenai-restaurant` |
+| Production branch | **`develop`** (deploys staging stack, not `main`) |
+| Build | `vercel.json` → `npm run build:web:vercel` (Expo web export) |
+| Install | `cd .. && npm install` (npm workspace for `@kitchenai/api-core`) |
+
+**Production env vars** (Vercel → Settings → Environment Variables → Production):
+
+| Variable | Value |
+| --- | --- |
+| `EXPO_PUBLIC_API_BASE_URL` | `https://kitchenai-backend-staging-208103249970.asia-south1.run.app/api/v1` |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Same as consumer web client |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Same as consumer |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Same as consumer |
+| `EXPO_PUBLIC_WEB_REDIRECT_URI` | Partner Vercel URL (e.g. `https://kitchmate-partner.vercel.app`) |
+
+**Google OAuth:** Add the partner deployment origin to the Web client authorized JavaScript origins and redirect URIs (see `GOOGLE_OAUTH_SETUP.md`).
+
+Local staging run:
+
+```bash
+cd frontend/kitchenai-restaurant
+cp staging.env.example staging.env   # fill Google client IDs
+npm run web:staging
+```
 
 ## Local builds against staging API
 
