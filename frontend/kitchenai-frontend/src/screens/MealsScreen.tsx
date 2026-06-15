@@ -314,8 +314,8 @@ export function MealsScreen() {
         title={mealsTab === 'history' ? 'History & diet' : 'Meal planning'}
         subtitle={
           mealsTab === 'history'
-            ? 'Log what you ate · nightly diet email'
-            : '7-day plan for your kitchen · plus on-demand ideas'
+            ? 'Your meals, day by day'
+            : 'Meals shaped by your pantry'
         }
       />
 

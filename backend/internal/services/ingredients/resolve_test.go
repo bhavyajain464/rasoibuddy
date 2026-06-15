@@ -29,3 +29,20 @@ func TestResolveUnknown(t *testing.T) {
 		t.Fatal("expected no match for unknown ingredient")
 	}
 }
+
+func TestInventoryFieldsFromNameOnboardingStaple(t *testing.T) {
+	name, group := InventoryFieldsFromName("Wheat Flour (Atta)")
+	if name != "Wheat Flour" {
+		t.Fatalf("expected Wheat Flour, got %q", name)
+	}
+	if group == "" || group == "other" {
+		t.Fatalf("expected catalog food_group, got %q", group)
+	}
+}
+
+func TestInventoryFieldsFromNameUnknown(t *testing.T) {
+	name, group := InventoryFieldsFromName("Mystery Item")
+	if name != "Mystery Item" || group != "other" {
+		t.Fatalf("expected passthrough with other, got %q %q", name, group)
+	}
+}

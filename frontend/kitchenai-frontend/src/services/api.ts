@@ -869,6 +869,20 @@ export async function refreshWeekPlanDay(
   return res.json();
 }
 
+export async function setWeekPlanDish(
+  date: string,
+  mealSlot: string,
+  dishId: string,
+): Promise<WeekPlanDayResponse> {
+  const res = await authFetch(`${API_BASE_URL}/meals/week-plan/set-dish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, meal_slot: mealSlot, dish_id: dishId }),
+  });
+  if (!res.ok) await parseApiError(res, 'Failed to update meal');
+  return res.json();
+}
+
 export async function getDietAnalysisSettings(): Promise<DietAnalysisSettings> {
   const res = await authFetch(`${API_BASE_URL}/meals/diet-analysis`);
   if (!res.ok) await parseApiError(res, 'Failed to load diet analysis settings');

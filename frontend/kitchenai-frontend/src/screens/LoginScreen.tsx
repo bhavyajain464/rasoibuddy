@@ -11,10 +11,12 @@ if (Platform.OS === 'web') {
   require('../styles/login-header.web.css');
 }
 
-import { Text, Button, Surface, Icon } from 'react-native-paper';
-import { StatusBar } from 'expo-status-bar';
+import { Text, Button, Surface, Icon, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import type { PublicStackParamList } from '../navigation/types';
 import { colors, palette } from '../theme';
 import { BrandLogo } from '../components/BrandLogo';
 import { BRAND_HEADER_BG, BRAND_LOGO_ASPECT } from '../constants/brand';
@@ -91,18 +93,31 @@ function GoogleButtonNative() {
   );
 }
 
+function WebLoginBackButton({ topInset }: { topInset: number }) {
+  const navigation = useNavigation<NativeStackNavigationProp<PublicStackParamList>>();
+  return (
+    <IconButton
+      icon="arrow-left"
+      size={22}
+      onPress={() => navigation.navigate('Landing')}
+      style={[styles.backBtn, { top: topInset + 4 }]}
+      accessibilityLabel="Back to home"
+    />
+  );
+}
+
 export function LoginScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const cardWidth = Math.min(width - 40, 440);
   const logoHeight = LOGO_WIDTH / BRAND_LOGO_ASPECT;
+  const headerTop = Math.max(insets.top, 12);
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
-
       {/* Inset header — background matches flattened logo matte */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
+        {Platform.OS === 'web' ? <WebLoginBackButton topInset={headerTop} /> : null}
         <View
           style={[styles.logoSlot, { width: LOGO_WIDTH, height: logoHeight }]}
           {...(Platform.OS === 'web' ? { className: 'login-logo-slot' as any } : {})}
@@ -175,6 +190,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.borderLight,
+    position: 'relative',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -185,6 +201,11 @@ const styles = StyleSheet.create({
       android: { elevation: 2 },
       default: {},
     }),
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 8,
+    margin: 0,
   },
   canvas: {
     flex: 1,

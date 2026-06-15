@@ -1,25 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
-  Alert,
   Image,
   Pressable,
-  Linking,
 } from 'react-native';
 import {
   Text,
-  Card,
   Button,
   TextInput,
   Chip,
   Divider,
   IconButton,
   ActivityIndicator,
-  SegmentedButtons,
   Surface,
-  Switch,
   Snackbar,
 } from 'react-native-paper';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -40,32 +35,14 @@ import { ProfilePlanSettingsSection } from '../components/profile/ProfilePlanSet
 import { AppUpdateSection } from '../components/profile/AppUpdateSection';
 import { showAppError, showAppSuccess, showAppInfo } from '../utils/alertMessage';
 import { snackbarLayoutStyles } from '../constants/snackbarLayout';
-import { copyToClipboard } from '../utils/copyToClipboard';
+import { ProfilePreferencesEditor } from '../components/preferences/ProfilePreferencesEditor';
+import { PREF } from '../components/preferences/preferenceStyles';
 import {
-  getMealLogRemindersEnabled,
-  setMealLogRemindersEnabled,
-  isMealLogNotificationSupported,
-} from '../services/mealLogNotifications';
+  prefsSnapshot,
+  type UserPreferencesFormValues,
+} from '../constants/userPreferences';
+import { copyToClipboard } from '../utils/copyToClipboard';
 
-const SPICE_LEVELS = ['mild', 'medium', 'spicy', 'extra_spicy'];
-const COOKING_SKILLS = ['beginner', 'intermediate', 'advanced'];
-const DIETARY_OPTIONS = [
-  'vegetarian', 'vegan', 'eggetarian', 'non-veg',
-  'jain', 'gluten-free', 'lactose-free', 'keto', 'low-carb',
-];
-const CUISINE_OPTIONS = [
-  'North Indian', 'South Indian', 'Bengali', 'Gujarati',
-  'Punjabi', 'Rajasthani', 'Maharashtrian', 'Kerala',
-  'Chinese', 'Italian', 'Continental', 'Thai',
-];
-const MEMORY_CATEGORIES = [
-  { value: 'preference', label: 'Preference', icon: 'heart' },
-  { value: 'health', label: 'Health', icon: 'medical-bag' },
-  { value: 'family', label: 'Family', icon: 'account-group' },
-  { value: 'general', label: 'General', icon: 'information' },
-];
-
-const SPICE_EMOJI: Record<string, string> = { mild: '🌶', medium: '🌶🌶', spicy: '🌶🌶🌶', extra_spicy: '🔥' };
 const MEMORY_DELETE_UNDO_MS = 5000;
 
 type PendingMemoryDelete = {
@@ -111,14 +88,7 @@ export function ProfileScreen() {
   const [spiceLevel, setSpiceLevel] = useState('medium');
   const [cookingSkill, setCookingSkill] = useState('intermediate');
 
-  const [newAllergy, setNewAllergy] = useState('');
-  const [newDislike, setNewDislike] = useState('');
-
-  const [memoryContent, setMemoryContent] = useState('');
-  const [memoryCategory, setMemoryCategory] = useState('general');
   const [addingMemory, setAddingMemory] = useState(false);
-  const [mealLogReminders, setMealLogReminders] = useState(false);
-  const [mealLogRemindersLoading, setMealLogRemindersLoading] = useState(false);
   const [kitchen, setKitchen] = useState<KitchenInfo | null>(null);
   const [kitchenLoading, setKitchenLoading] = useState(false);
   const [creatingKitchen, setCreatingKitchen] = useState(false);
@@ -143,6 +113,35 @@ export function ProfileScreen() {
   const [snackMsg, setSnackMsg] = useState('');
   const snackUndoRef = useRef<(() => Promise<void>) | null>(null);
   const pendingMemoryDeletesRef = useRef<Map<string, PendingMemoryDelete>>(new Map());
+  const savedPrefsRef = useRef('');
+
+  const prefValues = useMemo<UserPreferencesFormValues>(
+    () => ({
+      householdSize,
+      allergies,
+      dislikes,
+      dietaryTags,
+      favCuisines,
+      spiceLevel,
+      cookingSkill,
+    }),
+    [householdSize, allergies, dislikes, dietaryTags, favCuisines, spiceLevel, cookingSkill],
+  );
+
+  const prefsDirty = useMemo(
+    () => savedPrefsRef.current !== '' && prefsSnapshot(prefValues) !== savedPrefsRef.current,
+    [prefValues],
+  );
+
+  const patchPrefValues = (patch: Partial<UserPreferencesFormValues>) => {
+    if (patch.householdSize !== undefined) setHouseholdSize(patch.householdSize);
+    if (patch.allergies !== undefined) setAllergies(patch.allergies);
+    if (patch.dislikes !== undefined) setDislikes(patch.dislikes);
+    if (patch.dietaryTags !== undefined) setDietaryTags(patch.dietaryTags);
+    if (patch.favCuisines !== undefined) setFavCuisines(patch.favCuisines);
+    if (patch.spiceLevel !== undefined) setSpiceLevel(patch.spiceLevel);
+    if (patch.cookingSkill !== undefined) setCookingSkill(patch.cookingSkill);
+  };
 
   useEffect(() => {
     return () => {
@@ -152,58 +151,10 @@ export function ProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (!isMealLogNotificationSupported()) return;
-    void getMealLogRemindersEnabled().then(setMealLogReminders);
-  }, []);
-
-  useEffect(() => {
     if (!route.params?.upgradePlan) return;
     openUpgrade({ source: 'profile' });
     navigation.setParams({ upgradePlan: undefined });
   }, [route.params?.upgradePlan, navigation, openUpgrade]);
-
-  const onToggleMealLogReminders = useCallback(async (enabled: boolean) => {
-    if (!isMealLogNotificationSupported()) {
-      showAppInfo('Meal log reminders are available on the iOS and Android app.');
-      return;
-    }
-    setMealLogRemindersLoading(true);
-    setMealLogReminders(enabled);
-    try {
-      const result = await setMealLogRemindersEnabled(enabled);
-      const on = await getMealLogRemindersEnabled();
-      setMealLogReminders(on);
-      if (result.ok) {
-        if (enabled) {
-          showAppSuccess(
-            'Reminders on — lunch ~1:30 PM and dinner ~8:00 PM. You should get a short confirmation in a few seconds.',
-          );
-        }
-      } else {
-        showAppError(result.message);
-        if (result.reason === 'permission_denied') {
-          Alert.alert(
-            'Notifications blocked',
-            result.message,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  void Linking.openSettings();
-                },
-              },
-            ],
-          );
-        }
-      }
-    } catch {
-      showAppError('Could not update notification settings.');
-      setMealLogReminders(await getMealLogRemindersEnabled());
-    } finally {
-      setMealLogRemindersLoading(false);
-    }
-  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -217,6 +168,15 @@ export function ProfileScreen() {
       setFavCuisines(data.fav_cuisines || []);
       setSpiceLevel(data.spice_level || 'medium');
       setCookingSkill(data.cooking_skill || 'intermediate');
+      savedPrefsRef.current = prefsSnapshot({
+        householdSize: data.household_size || 2,
+        allergies: data.allergies || [],
+        dislikes: data.dislikes || [],
+        dietaryTags: data.dietary_tags || [],
+        favCuisines: data.fav_cuisines || [],
+        spiceLevel: data.spice_level || 'medium',
+        cookingSkill: data.cooking_skill || 'intermediate',
+      });
     } catch (e) {
       console.error('Failed to load profile:', e);
     } finally {
@@ -257,6 +217,7 @@ export function ProfileScreen() {
         spice_level: spiceLevel,
         cooking_skill: cookingSkill,
       });
+      savedPrefsRef.current = prefsSnapshot(prefValues);
       showAppSuccess('Profile saved. Meal suggestions will reflect your preferences.');
     } catch {
       showAppError('Failed to save profile');
@@ -265,15 +226,14 @@ export function ProfileScreen() {
     }
   };
 
-  const handleAddMemory = async () => {
-    if (!memoryContent.trim()) return;
+  const handleAddMemoryNote = async (content: string) => {
     try {
       setAddingMemory(true);
-      const newMem = await api.addMemory(memoryCategory, memoryContent.trim());
+      const newMem = await api.addMemory('general', content.trim());
       setProfile(prev => prev ? { ...prev, memories: [newMem, ...prev.memories] } : prev);
-      setMemoryContent('');
     } catch {
       showAppError('Failed to add memory');
+      throw new Error('add memory failed');
     } finally {
       setAddingMemory(false);
     }
@@ -351,16 +311,6 @@ export function ProfileScreen() {
     } finally {
       setConfirmLoading(false);
     }
-  };
-
-  const toggleChip = (value: string, list: string[], setList: (v: string[]) => void) => {
-    setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
-  };
-
-  const addCustomItem = (text: string, list: string[], setList: (v: string[]) => void, clear: () => void) => {
-    const trimmed = text.trim();
-    if (trimmed && !list.includes(trimmed)) setList([...list, trimmed]);
-    clear();
   };
 
   const handleSignOut = () => {
@@ -487,9 +437,16 @@ export function ProfileScreen() {
 
   return (
     <>
+    <View style={styles.screenRoot}>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingBottom:
+            insets.bottom + 24 + (activeTab === 'preferences' && prefsDirty ? 88 : 0),
+        },
+      ]}
       showsVerticalScrollIndicator={false}
     >
       {/* Profile Header */}
@@ -542,203 +499,34 @@ export function ProfileScreen() {
       </View>
 
       {/* Tabs */}
-      <SegmentedButtons
-        value={activeTab}
-        onValueChange={setActiveTab}
-        buttons={[
+      <View style={styles.profileTabs}>
+        {[
           { value: 'settings', label: 'Settings' },
           { value: 'preferences', label: 'Preferences' },
-          { value: 'memory', label: 'Memory' },
-        ]}
-        style={styles.tabs}
-      />
+        ].map(tab => (
+          <Pressable
+            key={tab.value}
+            onPress={() => setActiveTab(tab.value)}
+            style={[styles.profileTabBtn, activeTab === tab.value && styles.profileTabBtnOn]}
+          >
+            <Text style={[styles.profileTabText, activeTab === tab.value && styles.profileTabTextOn]}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       {/* ── PREFERENCES ─────────────────────────────────── */}
       {activeTab === 'preferences' && (
-        <View style={styles.tabContent}>
-          {/* Household */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Household Size</Text>
-            <View style={styles.counterRow}>
-              <Pressable onPress={() => setHouseholdSize(Math.max(1, householdSize - 1))} style={styles.counterBtn}>
-                <IconButton icon="minus" size={18} iconColor="#666" style={{ margin: 0 }} />
-              </Pressable>
-              <Text variant="headlineMedium" style={styles.counterVal}>{householdSize}</Text>
-              <Pressable onPress={() => setHouseholdSize(householdSize + 1)} style={styles.counterBtn}>
-                <IconButton icon="plus" size={18} iconColor="#666" style={{ margin: 0 }} />
-              </Pressable>
-            </View>
-          </Surface>
-
-          {/* Spice */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Spice Level</Text>
-            <View style={styles.chipRow}>
-              {SPICE_LEVELS.map(level => (
-                <Pressable key={level} onPress={() => setSpiceLevel(level)}>
-                  <Surface style={[styles.optionPill, spiceLevel === level && styles.optionActive]} elevation={0}>
-                    <Text style={styles.optionEmoji}>{SPICE_EMOJI[level]}</Text>
-                    <Text style={[styles.optionText, spiceLevel === level && styles.optionTextActive]}>
-                      {level === 'extra_spicy' ? 'Extra Spicy' : level.charAt(0).toUpperCase() + level.slice(1)}
-                    </Text>
-                  </Surface>
-                </Pressable>
-              ))}
-            </View>
-          </Surface>
-
-          {/* Cooking Skill */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Cooking Skill</Text>
-            <View style={styles.chipRow}>
-              {COOKING_SKILLS.map(skill => (
-                <Pressable key={skill} onPress={() => setCookingSkill(skill)}>
-                  <Surface style={[styles.optionPill, cookingSkill === skill && styles.optionActive]} elevation={0}>
-                    <Text style={[styles.optionText, cookingSkill === skill && styles.optionTextActive]}>
-                      {skill.charAt(0).toUpperCase() + skill.slice(1)}
-                    </Text>
-                  </Surface>
-                </Pressable>
-              ))}
-            </View>
-          </Surface>
-
-          {/* Dietary */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Dietary Preferences</Text>
-            <View style={styles.chipRow}>
-              {DIETARY_OPTIONS.map(tag => (
-                <Chip
-                  key={tag}
-                  selected={dietaryTags.includes(tag)}
-                  onPress={() => toggleChip(tag, dietaryTags, setDietaryTags)}
-                  style={[styles.selChip, dietaryTags.includes(tag) && styles.selChipActive]}
-                  textStyle={dietaryTags.includes(tag) ? styles.selChipTextActive : styles.selChipText}
-                  showSelectedCheck={false}
-                >
-                  {tag}
-                </Chip>
-              ))}
-            </View>
-          </Surface>
-
-          {/* Cuisines */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Favorite Cuisines</Text>
-            <View style={styles.chipRow}>
-              {CUISINE_OPTIONS.map(cuisine => (
-                <Chip
-                  key={cuisine}
-                  selected={favCuisines.includes(cuisine)}
-                  onPress={() => toggleChip(cuisine, favCuisines, setFavCuisines)}
-                  style={[styles.selChip, favCuisines.includes(cuisine) && styles.selChipActive]}
-                  textStyle={favCuisines.includes(cuisine) ? styles.selChipTextActive : styles.selChipText}
-                  showSelectedCheck={false}
-                >
-                  {cuisine}
-                </Chip>
-              ))}
-            </View>
-          </Surface>
-
-          {/* Allergies */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Allergies</Text>
-            <View style={styles.chipRow}>
-              {allergies.map(a => (
-                <Chip key={a} onClose={() => setAllergies(allergies.filter(x => x !== a))} style={styles.grayChip}>
-                  {a}
-                </Chip>
-              ))}
-            </View>
-            <View style={styles.addRow}>
-              <TextInput
-                dense mode="outlined" placeholder="Add allergy (e.g. peanuts)"
-                value={newAllergy} onChangeText={setNewAllergy} style={styles.addInput}
-                outlineColor="#E0E0E0" outlineStyle={{ borderRadius: 12 }}
-                onSubmitEditing={() => addCustomItem(newAllergy, allergies, setAllergies, () => setNewAllergy(''))}
-              />
-              <IconButton icon="plus-circle" iconColor="#888" size={28} onPress={() => addCustomItem(newAllergy, allergies, setAllergies, () => setNewAllergy(''))} style={{ margin: 0 }} />
-            </View>
-          </Surface>
-
-          {/* Dislikes */}
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Dislikes</Text>
-            <View style={styles.chipRow}>
-              {dislikes.map(d => (
-                <Chip key={d} onClose={() => setDislikes(dislikes.filter(x => x !== d))} style={styles.grayChip}>
-                  {d}
-                </Chip>
-              ))}
-            </View>
-            <View style={styles.addRow}>
-              <TextInput
-                dense mode="outlined" placeholder="Add dislike (e.g. bitter gourd)"
-                value={newDislike} onChangeText={setNewDislike} style={styles.addInput}
-                outlineColor="#E0E0E0" outlineStyle={{ borderRadius: 12 }}
-                onSubmitEditing={() => addCustomItem(newDislike, dislikes, setDislikes, () => setNewDislike(''))}
-              />
-              <IconButton icon="plus-circle" iconColor="#888" size={28} onPress={() => addCustomItem(newDislike, dislikes, setDislikes, () => setNewDislike(''))} style={{ margin: 0 }} />
-            </View>
-          </Surface>
-
-          <Button mode="contained" onPress={handleSave} loading={saving} style={styles.saveBtn} contentStyle={{ paddingVertical: 4 }}>
-            Save Preferences
-          </Button>
-        </View>
-      )}
-
-      {/* ── MEMORY ───────────────────────────────────────── */}
-      {activeTab === 'memory' && (
-        <View style={styles.tabContent}>
-          <Surface style={styles.section} elevation={1}>
-            <Text variant="titleSmall" style={styles.secTitle}>Add a Memory</Text>
-            <Text variant="bodySmall" style={styles.hint}>
-              Tell us things like "My kid doesn't eat spicy food", "We love Sunday biryani". These notes personalize meal suggestions.
-            </Text>
-            <View style={styles.chipRow}>
-              {MEMORY_CATEGORIES.map(cat => (
-                <Pressable key={cat.value} onPress={() => setMemoryCategory(cat.value)}>
-                  <Surface style={[styles.optionPill, memoryCategory === cat.value && styles.optionActive]} elevation={0}>
-                    <IconButton icon={cat.icon} size={14} iconColor={memoryCategory === cat.value ? '#fff' : '#888'} style={{ margin: 0 }} />
-                    <Text style={[styles.optionText, memoryCategory === cat.value && styles.optionTextActive]}>{cat.label}</Text>
-                  </Surface>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              mode="outlined" placeholder="e.g. My daughter is allergic to cashews"
-              value={memoryContent} onChangeText={setMemoryContent}
-              multiline numberOfLines={3} style={styles.memInput}
-              outlineColor="#E0E0E0" activeOutlineColor="#2E7D32" outlineStyle={{ borderRadius: 12 }}
-            />
-            <Button mode="contained" onPress={handleAddMemory} loading={addingMemory} disabled={!memoryContent.trim()} style={styles.addMemBtn}>
-              Add Memory
-            </Button>
-          </Surface>
-
-          <Text variant="titleSmall" style={styles.memListTitle}>Your Memories ({profile?.memories?.length || 0})</Text>
-
-          {(!profile?.memories || profile.memories.length === 0) ? (
-            <Surface style={styles.emptyMem} elevation={1}>
-              <IconButton icon="brain" iconColor="#ccc" size={40} style={{ margin: 0 }} />
-              <Text variant="bodyMedium" style={styles.emptyMemText}>
-                No memories yet. Add notes about your family's food habits to get better suggestions.
-              </Text>
-            </Surface>
-          ) : (
-            profile.memories.map((memory: UserMemory) => (
-              <Surface key={memory.id} style={styles.memCard} elevation={1}>
-                <View style={styles.memHeader}>
-                  <Chip compact style={styles.memCatChip} textStyle={{ fontSize: 11 }}>{memory.category}</Chip>
-                  <IconButton icon="close" size={16} iconColor="#ccc" onPress={() => handleDeleteMemory(memory)} style={{ margin: 0 }} />
-                </View>
-                <Text variant="bodyMedium" style={styles.memText}>{memory.content}</Text>
-                <Text variant="bodySmall" style={styles.memDate}>{new Date(memory.created_at).toLocaleDateString()}</Text>
-              </Surface>
-            ))
-          )}
+        <View style={styles.tabContentPrefs}>
+          <ProfilePreferencesEditor
+            values={prefValues}
+            onChange={patchPrefValues}
+            memories={profile?.memories ?? []}
+            onDeleteMemory={handleDeleteMemory}
+            onAddMemory={handleAddMemoryNote}
+            addingMemory={addingMemory}
+          />
         </View>
       )}
 
@@ -756,29 +544,6 @@ export function ProfileScreen() {
             loadError={entitlementsError}
             onRetry={() => void refreshEntitlements()}
           />
-
-          {isMealLogNotificationSupported() ? (
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secTitle}>Meal log reminders</Text>
-              <Text variant="bodySmall" style={styles.reminderHint}>
-                Local notifications only — we ask you to log what you ate. No promos or other alerts.
-              </Text>
-              <View style={styles.settRow}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text variant="bodyMedium" style={styles.settLabel}>Daily reminders</Text>
-                  <Text variant="bodySmall" style={styles.reminderSub}>
-                    1:30 PM & 8:00 PM · opens meal log when tapped
-                  </Text>
-                </View>
-                <Switch
-                  value={mealLogReminders}
-                  onValueChange={(v) => void onToggleMealLogReminders(v)}
-                  disabled={mealLogRemindersLoading}
-                  color="#2E7D32"
-                />
-              </View>
-            </Surface>
-          ) : null}
 
           <Surface style={styles.section} elevation={1}>
             <Text variant="titleSmall" style={styles.secTitle}>Shared Kitchen</Text>
@@ -903,6 +668,23 @@ export function ProfileScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    {activeTab === 'preferences' && prefsDirty ? (
+      <View style={[styles.saveBar, { paddingBottom: insets.bottom + 14 }]}>
+        <View style={styles.saveBarHint}>
+          <View style={styles.saveBarDot} />
+          <Text style={styles.saveBarText}>Unsaved changes</Text>
+        </View>
+        <Pressable
+          onPress={() => void handleSave()}
+          disabled={saving}
+          style={[styles.saveBarBtn, saving && { opacity: 0.7 }]}
+        >
+          <Text style={styles.saveBarBtnText}>{saving ? 'Saving…' : 'Save'}</Text>
+        </Pressable>
+      </View>
+    ) : null}
+    </View>
 
     <AppConfirmDialog
       visible={confirmDialog != null}
@@ -1066,8 +848,69 @@ const styles = StyleSheet.create({
   statNum: { color: '#fff', fontWeight: '800', fontSize: 18 },
   statLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 },
 
-  tabs: { marginHorizontal: 20, marginTop: 16, marginBottom: 4 },
+  profileTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 14,
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  profileTabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  profileTabBtnOn: {
+    backgroundColor: PREF.ring,
+  },
+  profileTabText: {
+    fontWeight: '700',
+    fontSize: 14,
+    color: PREF.muted,
+  },
+  profileTabTextOn: {
+    color: PREF.greenDark,
+  },
   tabContent: { paddingHorizontal: 20, paddingTop: 8 },
+  tabContentPrefs: { paddingTop: 8, paddingBottom: 8 },
+  screenRoot: { flex: 1 },
+  saveBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: PREF.line,
+  },
+  saveBarHint: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  saveBarDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: PREF.warn },
+  saveBarText: { fontSize: 13, color: PREF.warn, fontWeight: '600' },
+  saveBarBtn: {
+    backgroundColor: PREF.green,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    shadowColor: PREF.greenDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  saveBarBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
   section: {
     backgroundColor: '#fff',
@@ -1077,56 +920,11 @@ const styles = StyleSheet.create({
   },
   secTitle: { fontWeight: '700', color: '#333', marginBottom: 12 },
 
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-
-  optionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  optionActive: { backgroundColor: '#2E7D32' },
-  optionEmoji: { fontSize: 14 },
-  optionText: { fontSize: 13, color: '#666', fontWeight: '600' },
-  optionTextActive: { color: '#fff' },
-
-  selChip: { backgroundColor: '#F5F5F5' },
-  selChipActive: { backgroundColor: '#2E7D32' },
-  selChipText: { color: '#666' },
-  selChipTextActive: { color: '#fff' },
-
-  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
-  counterBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
-  counterVal: { fontWeight: '800', minWidth: 40, textAlign: 'center', color: '#333' },
-
-  addRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  addInput: { flex: 1, marginRight: 4, backgroundColor: '#fff' },
-
-  grayChip: { backgroundColor: '#F5F5F5' },
-
-  saveBtn: { borderRadius: 14, marginTop: 4, marginBottom: 16, backgroundColor: '#2E7D32' },
-
-  hint: { color: '#888', marginBottom: 12, lineHeight: 18 },
-  memInput: { marginTop: 8, marginBottom: 12, backgroundColor: '#fff' },
-  addMemBtn: { backgroundColor: '#2E7D32', borderRadius: 12 },
-  memListTitle: { fontWeight: '700', color: '#555', marginTop: 12, marginBottom: 10 },
-  emptyMem: { borderRadius: 18, backgroundColor: '#fff', padding: 28, alignItems: 'center' },
-  emptyMemText: { textAlign: 'center', color: '#888', marginTop: 8, lineHeight: 20 },
-  memCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8 },
-  memHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  memCatChip: { backgroundColor: '#E8F5E9' },
-  memText: { color: '#333', lineHeight: 20 },
-  memDate: { color: '#bbb', marginTop: 6 },
-
   settRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   settLabel: { color: '#888' },
   settVal: { color: '#555', fontWeight: '500' },
   settDivider: { marginVertical: 2 },
   reminderHint: { color: '#666', marginBottom: 12, lineHeight: 18 },
-  reminderSub: { color: '#888', marginTop: 2 },
   inviteChip: { backgroundColor: '#E8F5E9' },
   kitchenInput: { marginBottom: 10, backgroundColor: '#fff' },
   joinKitchenConfirmText: { color: '#424242', lineHeight: 22, marginBottom: 8 },

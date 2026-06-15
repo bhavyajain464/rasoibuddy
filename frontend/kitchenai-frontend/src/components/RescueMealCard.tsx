@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text, Chip, Button } from 'react-native-paper';
 import { RescueMealSuggestion } from '../types';
+import { MAX_MAJOR_INGREDIENTS } from '../utils/mealIngredients';
+import { DishImage } from './DishImage';
 
 interface RescueMealCardProps {
   meal: RescueMealSuggestion;
@@ -18,6 +20,12 @@ export function RescueMealCard({ meal, onSendToCook, sendDisabled }: RescueMealC
       ]}
       mode="elevated"
     >
+      <DishImage
+        dishName={meal.meal_name}
+        variant="card"
+        borderRadius={0}
+        accessibilityLabel={`Photo of ${meal.meal_name}`}
+      />
       <Card.Content>
         <View style={styles.header}>
           <Text variant="titleMedium" style={styles.name}>
@@ -52,14 +60,14 @@ export function RescueMealCard({ meal, onSendToCook, sendDisabled }: RescueMealC
 
         <View style={styles.ingredients}>
           <Text variant="labelMedium">Ingredients:</Text>
-          {meal.ingredients.slice(0, 3).map((ing, idx) => (
+          {meal.ingredients.slice(0, MAX_MAJOR_INGREDIENTS).map((ing, idx) => (
             <Text key={idx} variant="bodySmall" style={styles.ingredient}>
               {ing.name} ({ing.quantity} {ing.unit})
             </Text>
           ))}
-          {meal.ingredients.length > 3 && (
+          {meal.ingredients.length > MAX_MAJOR_INGREDIENTS && (
             <Text variant="bodySmall" style={styles.moreText}>
-              +{meal.ingredients.length - 3} more
+              +{meal.ingredients.length - MAX_MAJOR_INGREDIENTS} more
             </Text>
           )}
         </View>
@@ -85,6 +93,8 @@ export function RescueMealCard({ meal, onSendToCook, sendDisabled }: RescueMealC
 const styles = StyleSheet.create({
   card: {
     marginBottom: 12,
+    overflow: 'hidden',
+    borderRadius: 12,
   },
   canCook: {
     borderLeftWidth: 4,

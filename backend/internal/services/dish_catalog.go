@@ -86,6 +86,20 @@ func DishCatalog() []CatalogDish {
 	return out
 }
 
+// FindCatalogDishByID returns a catalog row by stable dish id.
+func FindCatalogDishByID(id string) (CatalogDish, bool) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return CatalogDish{}, false
+	}
+	for _, d := range DishCatalog() {
+		if strings.TrimSpace(d.ID) == id {
+			return d, true
+		}
+	}
+	return CatalogDish{}, false
+}
+
 // DishCatalogSize is the number of dishes in the embedded catalog.
 func DishCatalogSize() int {
 	loadDishCatalog()

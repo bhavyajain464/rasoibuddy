@@ -1,8 +1,6 @@
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 
-const STORAGE_KEY = 'meal_log_reminders_enabled';
 const ANDROID_CHANNEL_ID = 'meal-log-reminders';
 
 const MEAL_LOG_LUNCH_ID = 'meal-log-lunch';
@@ -17,10 +15,6 @@ export type MealLogNotificationData = {
   screen: 'Meals';
   openLog: boolean;
 };
-
-export type MealLogReminderToggleResult =
-  | { ok: true }
-  | { ok: false; reason: 'unsupported' | 'native_module' | 'permission_denied' | 'schedule_failed'; message: string };
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -59,60 +53,6 @@ async function loadNotifications(): Promise<NotificationsModule | null> {
       });
   }
   return notificationsLoad;
-}
-
-export async function getMealLogRemindersEnabled(): Promise<boolean> {
-  const v = await AsyncStorage.getItem(STORAGE_KEY);
-  return v === 'true';
-}
-
-export async function setMealLogRemindersEnabled(
-  enabled: boolean,
-): Promise<MealLogReminderToggleResult> {
-  if (!isMealLogNotificationSupported()) {
-    return {
-      ok: false,
-      reason: 'unsupported',
-      message: 'Meal log reminders are only available on the iOS and Android app.',
-    };
-  }
-
-  if (!enabled) {
-    await AsyncStorage.setItem(STORAGE_KEY, 'false');
-    await cancelMealLogReminders();
-    return { ok: true };
-  }
-
-  const Notifications = await loadNotifications();
-  if (!Notifications) {
-    return {
-      ok: false,
-      reason: 'native_module',
-      message:
-        'Notifications are not available in this app build. Run: npx expo run:android (or run:ios), then try again.',
-    };
-  }
-
-  const perm = await ensureNotificationPermission();
-  if (!perm.granted) {
-    await AsyncStorage.setItem(STORAGE_KEY, 'false');
-    return { ok: false, reason: 'permission_denied', message: perm.message };
-  }
-
-  try {
-    await scheduleMealLogReminders(Notifications);
-    await sendEnabledConfirmationPing(Notifications);
-    await AsyncStorage.setItem(STORAGE_KEY, 'true');
-    return { ok: true };
-  } catch (err) {
-    console.warn('[meal-log-notifications] schedule failed:', err);
-    await AsyncStorage.setItem(STORAGE_KEY, 'false');
-    return {
-      ok: false,
-      reason: 'schedule_failed',
-      message: 'Could not schedule reminders. Try again or reinstall the dev build.',
-    };
-  }
 }
 
 type PermissionResult = { granted: boolean; message: string };
@@ -158,7 +98,7 @@ export async function ensureNotificationPermission(): Promise<PermissionResult> 
 
   return {
     granted: false,
-    message: 'Allow notifications in the iOS prompt to turn on meal log reminders.',
+    message: 'Allow notifications in the iOS prompt to receive meal log reminders.',
   };
 }
 
@@ -217,23 +157,6 @@ async function scheduleMealLogReminders(Notifications: NotificationsModule): Pro
   });
 }
 
-/** One-time ping so the user knows reminders are active (not a meal suggestion). */
-async function sendEnabledConfirmationPing(Notifications: NotificationsModule): Promise<void> {
-  await Notifications.scheduleNotificationAsync({
-    identifier: 'meal-log-enabled-ping',
-    content: {
-      title: 'Meal log reminders on',
-      body: 'You will get a nudge at 1:30 PM and 8:00 PM to log what you ate.',
-      ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 4,
-      repeats: false,
-    },
-  });
-}
-
 export async function cancelMealLogReminders(): Promise<void> {
   const Notifications = await loadNotifications();
   if (!Notifications) return;
@@ -248,9 +171,9 @@ export async function cancelMealLogReminders(): Promise<void> {
   await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
 }
 
-export async function syncMealLogRemindersIfEnabled(): Promise<void> {
+/** Schedules lunch/dinner meal-log reminders when notification permission is granted. */
+export async function syncMealLogReminders(): Promise<void> {
   if (!isMealLogNotificationSupported()) return;
-  if (!(await getMealLogRemindersEnabled())) return;
   const Notifications = await loadNotifications();
   if (!Notifications) return;
   const perm = await ensureNotificationPermission();

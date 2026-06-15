@@ -1,7 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +8,7 @@ import {
 } from 'react-native';
 import { ActivityIndicator, Icon, Surface, Text } from 'react-native-paper';
 import type { MealOfDayMeal } from '../MealOfDayCard';
-import { palette } from '../../theme';
+import { DishImage } from '../DishImage';
 
 export type WeekPlanDay = {
   date: string;
@@ -18,11 +16,28 @@ export type WeekPlanDay = {
 };
 
 const SLOT_ORDER = ['breakfast', 'lunch', 'dinner'] as const;
+
+const SLOT_LABELS: Record<string, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
+
 const H_PAD = 24;
-const CARD_GAP = 10;
-const CARD_HEIGHT = 132;
-const ARROW_SIZE = 34;
-const ARROW_GUTTER = ARROW_SIZE + 12;
+const CARD_PAD = 14;
+const PILL_GAP = 6;
+const PILL_WIDTH = 46;
+const PILL_HEIGHT = 64;
+const DATE_CIRCLE = 26;
+const COL_GAP = 8;
+const COL_COUNT = 3;
+const MIN_COL_WIDTH = 96;
+const SLOT_LABEL_HEIGHT = 16;
+const MEAL_NAME_LINES = 2;
+const MEAL_NAME_LINE_HEIGHT = 17;
+const MEAL_NAME_BLOCK_HEIGHT = MEAL_NAME_LINES * MEAL_NAME_LINE_HEIGHT;
+const THUMB_WIDTH: number | `${number}%` = '100%';
+const TIME_ROW_HEIGHT = 16;
 
 function addDays(dateKey: string, days: number): string {
   const d = new Date(`${dateKey}T12:00:00`);
@@ -38,7 +53,16 @@ export function formatWeekPlanDayLabel(dateKey: string, today: string): string {
   if (dateKey === today) return 'Today';
   if (dateKey === addDays(today, 1)) return 'Tomorrow';
   const d = new Date(`${dateKey}T12:00:00`);
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+}
+
+function weekdayShort(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00`);
+  return d.toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function dayOfMonth(dateKey: string): number {
+  return new Date(`${dateKey}T12:00:00`).getDate();
 }
 
 function mealsBySlot(meals: MealOfDayMeal[]): Record<string, MealOfDayMeal | undefined> {
@@ -50,34 +74,123 @@ function mealsBySlot(meals: MealOfDayMeal[]): Record<string, MealOfDayMeal | und
   return out;
 }
 
-function CarouselScrollArrow({
-  direction,
-  onPress,
-  visible,
-}: {
-  direction: 'left' | 'right';
-  onPress: () => void;
-  visible: boolean;
-}) {
-  if (!visible) return null;
+function useColumnLayout() {
+  const { width: screenWidth } = useWindowDimensions();
 
-  const icon = direction === 'left' ? 'chevron-left' : 'chevron-right';
-  const label = direction === 'left' ? 'Scroll week plan left' : 'Scroll week plan right';
+  return useMemo(() => {
+    const available = screenWidth - H_PAD * 2 - CARD_PAD * 2;
+    const ideal = (available - (COL_COUNT - 1) * COL_GAP) / COL_COUNT;
+    const colWidth = Math.max(MIN_COL_WIDTH, Math.floor(ideal));
+    const rowWidth = COL_COUNT * colWidth + (COL_COUNT - 1) * COL_GAP;
+    const scrollable = rowWidth > available + 1;
+    return { colWidth, scrollable };
+  }, [screenWidth]);
+}
+
+function PlanMealColumn({
+  slot,
+  meal,
+  width,
+  flex,
+  showDivider,
+}: {
+  slot: (typeof SLOT_ORDER)[number];
+  meal?: MealOfDayMeal;
+  width?: number;
+  flex?: number;
+  showDivider: boolean;
+}) {
+  const label = SLOT_LABELS[slot]?.toUpperCase() ?? slot.toUpperCase();
+
+  return (
+    <View
+      style={[
+        styles.column,
+        width != null && { width },
+        flex != null && { flex },
+        showDivider && styles.columnDivider,
+      ]}
+    >
+      <View style={styles.slotLabelWrap}>
+        <Text variant="labelSmall" style={styles.columnSlotLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      <DishImage
+        dishId={meal?.dish_id}
+        dishName={meal?.name}
+        variant="card"
+        width={THUMB_WIDTH}
+        borderRadius={10}
+        style={styles.mealThumb}
+        accessibilityLabel={meal?.name ? `${label}: ${meal.name}` : label}
+      />
+      <View style={styles.mealNameBlock}>
+        <Text variant="bodySmall" style={styles.columnMealName} numberOfLines={MEAL_NAME_LINES}>
+          {meal?.name?.trim() || '—'}
+        </Text>
+      </View>
+      <View style={styles.timeRow}>
+        {meal?.cooking_time_mins ? (
+          <>
+            <Icon source="clock-outline" size={12} color="#888" />
+            <Text variant="labelSmall" style={styles.timeText}>
+              {meal.cooking_time_mins} min
+            </Text>
+          </>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function SelectedDayCard({
+  label,
+  meals,
+  onPress,
+}: {
+  label: string;
+  meals: MealOfDayMeal[];
+  onPress: () => void;
+}) {
+  const { colWidth, scrollable } = useColumnLayout();
+  const bySlot = useMemo(() => mealsBySlot(meals), [meals]);
+
+  const columns = SLOT_ORDER.map((slot, idx) => (
+    <PlanMealColumn
+      key={slot}
+      slot={slot}
+      meal={bySlot[slot]}
+      width={scrollable ? colWidth : undefined}
+      flex={scrollable ? undefined : 1}
+      showDivider={!scrollable && idx < SLOT_ORDER.length - 1}
+    />
+  ));
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.arrowHit,
-        direction === 'left' ? styles.arrowHitLeft : styles.arrowHitRight,
-        pressed && styles.arrowHitPressed,
-      ]}
+      style={({ pressed }) => [pressed && styles.dayCardPressed]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={`${label} meal plan. Tap for full details.`}
     >
-      <View style={styles.arrowCircle}>
-        <Icon source={icon} size={22} color="#424242" />
-      </View>
+      <Surface style={styles.dayCard} elevation={1}>
+        <Text variant="titleSmall" style={styles.dayCardTitle}>{label}</Text>
+        <View style={styles.mealsContent}>
+          {scrollable ? (
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.columnsScroll}
+            >
+              {columns}
+            </ScrollView>
+          ) : (
+            <View style={styles.columnsRow}>{columns}</View>
+          )}
+        </View>
+      </Surface>
     </Pressable>
   );
 }
@@ -91,6 +204,40 @@ type Props = {
   anchorDate?: string;
 };
 
+function WeekDayPill({
+  dateKey,
+  selected,
+  onPress,
+}: {
+  dateKey: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.pillPress,
+        pressed && styles.pillPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${weekdayShort(dateKey)} ${dayOfMonth(dateKey)}`}
+    >
+      <View style={[styles.pill, selected && styles.pillSelected]}>
+        <Text style={[styles.weekday, selected && styles.weekdaySelected]}>
+          {weekdayShort(dateKey)}
+        </Text>
+        <View style={[styles.dateCircle, selected && styles.dateCircleSelected]}>
+          <Text style={[styles.dateNum, selected && styles.dateNumSelected]}>
+            {dayOfMonth(dateKey)}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 export function WeekPlanCarousel({
   days,
   selectedDate,
@@ -101,91 +248,45 @@ export function WeekPlanCarousel({
 }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
-  const scrollXRef = useRef(0);
   const today = anchorDate || todayDateKey();
-
-  const { cardWidth, frameWidth, snapInterval, scrollable } = useMemo(() => {
-    const frame = screenWidth - H_PAD * 2;
-    const width = Math.min(168, Math.floor(frame * 0.44));
-    const rowWidth = days.length * width + Math.max(0, days.length - 1) * CARD_GAP;
-    return {
-      cardWidth: width,
-      frameWidth: frame,
-      snapInterval: width + CARD_GAP,
-      scrollable: rowWidth > frame + 1,
-    };
-  }, [screenWidth, days.length]);
-
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(scrollable);
 
   const sortedDays = useMemo(
     () => [...days].sort((a, b) => a.date.localeCompare(b.date)),
     [days],
   );
 
-  const updateArrowVisibility = useCallback(
-    (x: number, contentWidth: number) => {
-      if (!scrollable || contentWidth <= 0) {
-        setShowLeftArrow(false);
-        setShowRightArrow(scrollable);
-        return;
-      }
-      setShowLeftArrow(x > 4);
-      setShowRightArrow(x < contentWidth - frameWidth - 4);
-    },
-    [scrollable, frameWidth],
-  );
+  const frameWidth = screenWidth - H_PAD * 2;
+  const count = sortedDays.length;
+  const minGap = PILL_GAP;
+  const evenGap = count > 0 ? (frameWidth - count * PILL_WIDTH) / (count + 1) : 0;
+  const fitsInFrame = evenGap >= 2;
+  const stripGap = fitsInFrame ? evenGap : minGap;
+  const snapInterval = PILL_WIDTH + stripGap;
+  const scrollContentWidth = count * PILL_WIDTH + Math.max(0, count - 1) * stripGap;
+
+  const selectedLabel = formatWeekPlanDayLabel(selectedDate, today);
+  const selectedDay = sortedDays.find((d) => d.date === selectedDate) ?? sortedDays[0];
 
   useEffect(() => {
-    if (!scrollable) {
-      setShowLeftArrow(false);
-      setShowRightArrow(false);
-      return;
-    }
-    setShowRightArrow(true);
-    setShowLeftArrow(false);
-  }, [scrollable]);
-
-  const onScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const x = e.nativeEvent.contentOffset.x;
-      scrollXRef.current = x;
-      updateArrowVisibility(x, e.nativeEvent.contentSize.width);
-    },
-    [updateArrowVisibility],
-  );
-
-  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const index = Math.round(x / snapInterval);
-    const day = sortedDays[index];
-    if (day && day.date !== selectedDate) {
-      onSelectDate(day.date);
-    }
-  };
-
-  const scrollNext = useCallback(() => {
-    scrollRef.current?.scrollTo({ x: scrollXRef.current + snapInterval, animated: true });
-  }, [snapInterval]);
-
-  const scrollPrev = useCallback(() => {
-    scrollRef.current?.scrollTo({ x: Math.max(0, scrollXRef.current - snapInterval), animated: true });
-  }, [snapInterval]);
-
-  useEffect(() => {
+    if (fitsInFrame) return;
     const index = sortedDays.findIndex((d) => d.date === selectedDate);
-    if (index < 0 || !scrollRef.current) return;
-    const x = index * snapInterval;
-    scrollRef.current.scrollTo({ x, animated: false });
-    scrollXRef.current = x;
-    updateArrowVisibility(x, sortedDays.length * cardWidth + Math.max(0, sortedDays.length - 1) * CARD_GAP);
-  }, [selectedDate, sortedDays, snapInterval, cardWidth, updateArrowVisibility]);
+    if (index < 0) return;
+    scrollRef.current?.scrollTo({ x: index * snapInterval, animated: true });
+  }, [selectedDate, sortedDays, snapInterval, fitsInFrame]);
+
+  const pills = sortedDays.map((day) => (
+    <WeekDayPill
+      key={day.date}
+      dateKey={day.date}
+      selected={day.date === selectedDate}
+      onPress={() => onSelectDate(day.date)}
+    />
+  ));
 
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="small" color={palette.primary} />
+        <ActivityIndicator size="small" color="#2E7D32" />
         <Text variant="bodySmall" style={styles.loadingText}>Loading your kitchen plan…</Text>
       </View>
     );
@@ -194,94 +295,59 @@ export function WeekPlanCarousel({
   if (!sortedDays.length) {
     return (
       <View style={styles.wrap}>
-        <Text variant="titleMedium" style={styles.heading}>This week</Text>
-        <Surface style={styles.emptyCard} elevation={0}>
+        <View style={styles.emptyCard}>
           <Text variant="bodySmall" style={styles.emptyText}>
             Your 7-day plan appears at midnight (12:00 AM IST).
           </Text>
-        </Surface>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.wrap}>
-      <Text variant="titleMedium" style={styles.heading}>This week</Text>
-      <Text variant="bodySmall" style={styles.subheading}>
-        Shared for your kitchen · updates daily at midnight
-      </Text>
-
-      <View style={[styles.carouselFrame, { width: frameWidth, height: CARD_HEIGHT }]}>
+      {fitsInFrame ? (
+        <View
+          style={[
+            styles.stripFit,
+            {
+              width: frameWidth,
+              height: PILL_HEIGHT,
+              paddingHorizontal: evenGap,
+              gap: evenGap,
+            },
+          ]}
+        >
+          {pills}
+        </View>
+      ) : (
         <ScrollView
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
           snapToInterval={snapInterval}
           snapToAlignment="start"
           decelerationRate="fast"
-          nestedScrollEnabled
-          scrollEventThrottle={16}
-          onScroll={onScroll}
-          onMomentumScrollEnd={onScrollEnd}
-          onContentSizeChange={(w) => updateArrowVisibility(scrollXRef.current, w)}
-          style={{ width: frameWidth, height: CARD_HEIGHT }}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.stripScroll,
+            scrollContentWidth < frameWidth && {
+              paddingHorizontal: (frameWidth - scrollContentWidth) / 2,
+            },
+          ]}
+          style={{ width: frameWidth, height: PILL_HEIGHT }}
         >
-          {sortedDays.map((day) => {
-            const active = day.date === selectedDate;
-            const bySlot = mealsBySlot(day.meals);
-            return (
-              <Pressable
-                key={day.date}
-                onPress={() => {
-                  onSelectDate(day.date);
-                  onDayPress(day.date);
-                }}
-                style={({ pressed }) => [
-                  styles.cardPress,
-                  { width: cardWidth, height: CARD_HEIGHT },
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Surface
-                  style={[styles.card, active && styles.cardActive, { height: CARD_HEIGHT }]}
-                  elevation={active ? 2 : 0}
-                >
-                  <Text variant="labelLarge" style={[styles.dayLabel, active && styles.dayLabelActive]}>
-                    {formatWeekPlanDayLabel(day.date, today)}
-                  </Text>
-                  <Text variant="labelSmall" style={styles.dateMeta}>{day.date}</Text>
-                  <View style={styles.slotList}>
-                    {SLOT_ORDER.map((slot) => {
-                      const meal = bySlot[slot];
-                      const slotLabel = slot === 'breakfast' ? 'B' : slot === 'lunch' ? 'L' : 'D';
-                      return (
-                        <View key={slot} style={styles.slotRow}>
-                          <Text style={[styles.slotBadge, active && styles.slotBadgeActive]}>{slotLabel}</Text>
-                          <Text variant="bodySmall" style={styles.slotMeal} numberOfLines={1}>
-                            {meal?.name?.trim() || '—'}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </Surface>
-              </Pressable>
-            );
-          })}
+          {pills}
         </ScrollView>
+      )}
 
-        {scrollable ? (
-          <>
-            <View style={styles.arrowOverlayLeft} pointerEvents="box-none">
-              <CarouselScrollArrow direction="left" onPress={scrollPrev} visible={showLeftArrow} />
-            </View>
-            <View style={styles.arrowOverlayRight} pointerEvents="box-none">
-              <CarouselScrollArrow direction="right" onPress={scrollNext} visible={showRightArrow} />
-            </View>
-          </>
-        ) : null}
-      </View>
+      {selectedDay ? (
+        <SelectedDayCard
+          label={selectedLabel}
+          meals={selectedDay.meals}
+          onPress={() => onDayPress(selectedDay.date)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -289,122 +355,145 @@ export function WeekPlanCarousel({
 const styles = StyleSheet.create({
   wrap: {
     marginTop: 8,
-    marginBottom: 8,
+    marginBottom: 4,
     marginHorizontal: H_PAD,
   },
-  heading: {
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 2,
-  },
-  subheading: {
-    color: '#777',
-    marginBottom: 12,
-  },
-  carouselFrame: {
-    position: 'relative',
-  },
-  scrollContent: {
+  stripFit: {
     flexDirection: 'row',
-    gap: CARD_GAP,
-    alignItems: 'stretch',
-    paddingRight: CARD_GAP,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardPress: { flexShrink: 0 },
-  card: {
-    borderRadius: 16,
-    padding: 12,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#E8E8E8',
+  stripScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PILL_GAP,
   },
-  cardActive: {
-    borderColor: palette.primary,
-    backgroundColor: '#F1F8F4',
+  pillPress: {
+    width: PILL_WIDTH,
+    height: PILL_HEIGHT,
+    flexShrink: 0,
   },
-  dayLabel: {
-    fontWeight: '800',
+  pillPressed: {
+    opacity: 0.88,
+  },
+  pill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#F0F1F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    gap: 4,
+  },
+  pillSelected: {
+    backgroundColor: '#FAD4B8',
+  },
+  weekday: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#5C5C5C',
+    letterSpacing: 0.1,
+  },
+  weekdaySelected: {
+    color: '#3D3D3D',
+    fontWeight: '700',
+  },
+  dateCircle: {
+    width: DATE_CIRCLE,
+    height: DATE_CIRCLE,
+    borderRadius: DATE_CIRCLE / 2,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateCircleSelected: {
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  dateNum: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#333',
   },
-  dayLabelActive: {
-    color: palette.primary,
+  dateNumSelected: {
+    color: '#1A1A1A',
   },
-  dateMeta: {
-    color: '#999',
-    marginTop: 2,
-    marginBottom: 8,
-    fontSize: 10,
+  dayCardPressed: {
+    opacity: 0.92,
   },
-  slotList: { gap: 6 },
-  slotRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  slotBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    textAlign: 'center',
-    lineHeight: 18,
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#666',
-    backgroundColor: '#F0F0F0',
-    overflow: 'hidden',
-  },
-  slotBadgeActive: {
-    backgroundColor: palette.primary,
-    color: '#fff',
-  },
-  slotMeal: {
-    flex: 1,
-    color: '#444',
-    fontWeight: '600',
-  },
-  arrowOverlayLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: ARROW_GUTTER,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    zIndex: 2,
-  },
-  arrowOverlayRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: ARROW_GUTTER,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    zIndex: 2,
-  },
-  arrowHit: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowHitLeft: {
-    marginLeft: -ARROW_SIZE / 2,
-  },
-  arrowHitRight: {
-    marginRight: -ARROW_SIZE / 2,
-  },
-  arrowHitPressed: {
-    opacity: 0.85,
-  },
-  arrowCircle: {
-    width: ARROW_SIZE,
-    height: ARROW_SIZE,
-    borderRadius: ARROW_SIZE / 2,
+  dayCard: {
+    marginTop: 14,
+    borderRadius: 16,
+    padding: CARD_PAD,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: '#E8E8E8',
+  },
+  dayCardTitle: {
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 10,
+  },
+  mealsContent: {
+    paddingVertical: 4,
+  },
+  columnsRow: {
+    flexDirection: 'row',
+    gap: COL_GAP,
+  },
+  columnsScroll: {
+    flexDirection: 'row',
+    gap: COL_GAP,
+    paddingRight: 4,
+  },
+  column: {
+    minWidth: 0,
+    minHeight: SLOT_LABEL_HEIGHT + 6 + MEAL_NAME_BLOCK_HEIGHT + 6 + TIME_ROW_HEIGHT + 24,
+  },
+  mealThumb: {
+    marginBottom: 8,
+  },
+  slotLabelWrap: {
+    height: SLOT_LABEL_HEIGHT,
+    marginBottom: 6,
+    justifyContent: 'center',
+  },
+  mealNameBlock: {
+    height: MEAL_NAME_BLOCK_HEIGHT,
+    justifyContent: 'center',
+  },
+  columnDivider: {
+    borderRightWidth: 1,
+    borderRightColor: '#E8F5E9',
+    paddingRight: COL_GAP,
+    marginRight: 0,
+  },
+  columnSlotLabel: {
+    color: '#66BB6A',
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    fontSize: 10,
+  },
+  columnMealName: {
+    fontWeight: '600',
+    color: '#1B5E20',
+    lineHeight: MEAL_NAME_LINE_HEIGHT,
+    textAlignVertical: 'center',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: TIME_ROW_HEIGHT,
+    marginTop: 6,
+  },
+  timeText: {
+    color: '#888',
+    fontSize: 11,
   },
   loadingWrap: {
     alignItems: 'center',

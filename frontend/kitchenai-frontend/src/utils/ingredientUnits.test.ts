@@ -35,4 +35,22 @@ describe('resolveCatalogItem', () => {
     expect(line.unit).toBe('g');
     expect(line.qty).toBe(250);
   });
+
+  it('defaults lemon to 2 pcs when qty missing', () => {
+    const lemon: CatalogIngredient = {
+      ingredient_id: 'lemon',
+      name: 'Lemon',
+      default_unit: 'pcs',
+      units: ['pcs'],
+      food_group: 'fruits',
+    };
+    const line = normalizeSuggestedShoppingLine([lemon], {
+      name: 'lemon',
+      qty: 0,
+      unit: 'pcs',
+    });
+    expect(line.name).toBe('Lemon');
+    expect(line.unit).toBe('pcs');
+    expect(line.qty).toBe(2);
+  });
 });

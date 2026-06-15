@@ -1,7 +1,5 @@
-import type { StapleId } from './onboardingStaples';
-
-/** Static requires for onboarding staple thumbnails (assets/staples/{id}.webp). */
-export const STAPLE_IMAGES: Record<StapleId, number> = {
+/** Legacy static requires — onboarding uses catalog ids via getOnboardingStapleImage. */
+export const STAPLE_IMAGES: Record<string, number> = {
   'wheat-flour-atta': require('../../assets/staples/wheat-flour-atta.webp'),
   'rice-basmati': require('../../assets/staples/rice-basmati.webp'),
   'rice-flour': require('../../assets/staples/rice-flour.webp'),

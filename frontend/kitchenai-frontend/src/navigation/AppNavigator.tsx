@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Icon } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/LoginScreen';
+import { LandingScreen } from '../screens/LandingScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { ForceUpdateScreen } from '../screens/ForceUpdateScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -22,21 +24,35 @@ import { AppRefreshProvider } from '../context/AppRefreshContext';
 import { UpgradePaywallProvider } from '../context/UpgradePaywallContext';
 import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { syncWebPathForAuthState } from '../navigation/webHomePath';
 import { palette } from '../theme';
-import type { MainTabParamList, RootStackParamList } from './types';
+import type { MainTabParamList, PublicStackParamList, RootStackParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const PublicStack = createNativeStackNavigator<PublicStackParamList>();
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-const linking = {
-  prefixes: [Platform.OS === 'web' ? window.location.origin : 'kitchenai://'],
+const webOrigin = Platform.OS === 'web' ? window.location.origin : 'kitchenai://';
+
+const publicLinking = {
+  prefixes: [webOrigin],
+  config: {
+    screens: {
+      Landing: '',
+      Login: 'login',
+    },
+  },
+};
+
+const appLinking = {
+  prefixes: [webOrigin, 'kitchenai://'],
   config: {
     screens: {
       MainTabs: {
         screens: {
-          Home: '',
+          Home: 'app',
           Inventory: 'inventory',
           Meals: 'meals',
           Cook: 'cook',
@@ -61,8 +77,19 @@ function TabBarIcon({ name, color }: { name: keyof MainTabParamList; color: stri
 }
 
 function LoadingScreen() {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.loading}>
+    <View
+      style={[
+        styles.loading,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+    >
       <ActivityIndicator size="large" color="#2E7D32" />
     </View>
   );
@@ -99,6 +126,15 @@ function RootNavigator() {
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
+  );
+}
+
+function PublicNavigator() {
+  return (
+    <PublicStack.Navigator screenOptions={{ headerShown: false }}>
+      <PublicStack.Screen name="Landing" component={LandingScreen} />
+      <PublicStack.Screen name="Login" component={LoginScreen} />
+    </PublicStack.Navigator>
   );
 }
 
@@ -143,6 +179,14 @@ export function AppNavigator() {
     }
   }, [token, checkOnboarding]);
 
+  const sessionReady = !loading && (!token || (!checkingOnboarding && onboardingDone !== null));
+  const hasAppSession = Boolean(token && onboardingDone !== false);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+    syncWebPathForAuthState(hasAppSession);
+  }, [sessionReady, hasAppSession]);
+
   if (forceUpdate === null) {
     return <LoadingScreen />;
   }
@@ -151,11 +195,18 @@ export function AppNavigator() {
     return <ForceUpdateScreen message={forceUpdate.message} />;
   }
 
-  if (loading || (token && (checkingOnboarding || onboardingDone === null))) {
+  if (!sessionReady) {
     return <LoadingScreen />;
   }
 
   if (!token) {
+    if (Platform.OS === 'web') {
+      return (
+        <NavigationContainer linking={publicLinking}>
+          <PublicNavigator />
+        </NavigationContainer>
+      );
+    }
     return <LoginScreen />;
   }
 
@@ -169,7 +220,7 @@ export function AppNavigator() {
     <AppRefreshProvider>
     <WhatsAppShareProvider>
     <MealLogNotificationProvider navigationRef={navigationRef}>
-    <NavigationContainer ref={navigationRef} linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={appLinking}>
       <RootNavigator />
     </NavigationContainer>
     </MealLogNotificationProvider>

@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# staple icon generator cache
+scripts/.twemoji-cache/
+
+# Full-res image archives (back up locally; WebP variants are bundled instead)
+assets/staples/masters/
+assets/dishes/masters/

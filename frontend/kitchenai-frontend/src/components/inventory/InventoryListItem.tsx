@@ -10,7 +10,11 @@ import { IconButton, Menu, Text } from 'react-native-paper';
 import { RectButton, Swipeable } from 'react-native-gesture-handler';
 import { InventoryItem, ExpiringItem } from '../../types';
 import { daysUntilExpiryLocal, formatExpiryCountdown } from '../../utils/expiryDate';
+import { resolveCatalogItem } from '../../utils/ingredientUnits';
+import { formatPurchaseQty } from '../../utils/purchaseUnits';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { InventoryItemActionsSheet, type InventoryMenuAction } from './InventoryItemActionsSheet';
+import { IngredientThumb } from '../IngredientThumb';
 import { palette } from '../../theme';
 
 export type InventoryListKind = 'in_stock' | 'expired';
@@ -72,6 +76,15 @@ export function InventoryListItem({
   onSwipeRight,
   style,
 }: Props) {
+  const { catalog } = useIngredientCatalog();
+  const catalogItem = React.useMemo(
+    () => resolveCatalogItem(catalog, undefined, item.canonical_name),
+    [catalog, item.canonical_name],
+  );
+  const qtyLabel = React.useMemo(
+    () => formatPurchaseQty(item.qty, item.unit, catalogItem),
+    [item.qty, item.unit, catalogItem],
+  );
   const swipeRef = useRef<Swipeable>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -201,6 +214,7 @@ export function InventoryListItem({
         : {})}
     >
       <View style={styles.row}>
+        <IngredientThumb name={item.canonical_name} size={40} />
         <View style={styles.left}>
           <View style={styles.titleRow}>
             <View style={styles.nameWrap}>
@@ -214,10 +228,12 @@ export function InventoryListItem({
               </Text>
             </View>
             <Text variant="bodyLarge" style={styles.qtySuffix}>
-              <Text style={styles.sep}> · </Text>
-              <Text style={styles.qty}>
-                {item.qty} {item.unit}
-              </Text>
+              {qtyLabel ? (
+                <>
+                  <Text style={styles.sep}> · </Text>
+                  <Text style={styles.qty}>{qtyLabel}</Text>
+                </>
+              ) : null}
             </Text>
           </View>
         </View>
@@ -297,7 +313,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   left: {
     flex: 1,

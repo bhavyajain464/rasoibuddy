@@ -3,10 +3,12 @@ import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-nat
 import { Checkbox, IconButton, Menu, Surface, Text } from 'react-native-paper';
 import { UserShoppingItem } from '../../types';
 import { formatShoppingQty } from '../../utils/shoppingFormat';
+import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import {
   InventoryItemActionsSheet,
   type InventoryMenuAction,
 } from '../inventory/InventoryItemActionsSheet';
+import { IngredientThumb } from '../IngredientThumb';
 
 type Props = {
   item: UserShoppingItem;
@@ -29,6 +31,7 @@ export function ShoppingListItem({
   onEnterSelection,
   style,
 }: Props) {
+  const { catalog } = useIngredientCatalog();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -102,11 +105,9 @@ export function ShoppingListItem({
                 status={selected ? 'checked' : 'unchecked'}
                 onPress={onToggleSelect}
               />
-            ) : (
-              <View style={styles.itemNum}>
-                <Text style={styles.itemNumText}>{index + 1}</Text>
-              </View>
-            )}
+            ) : null}
+
+            <IngredientThumb name={item.name} size={40} />
 
             <View style={styles.itemInfo}>
               <View style={styles.titleRow}>
@@ -121,8 +122,15 @@ export function ShoppingListItem({
                   </Text>
                 </View>
                 <Text variant="bodyLarge" style={styles.qtySuffix}>
-                  <Text style={styles.sep}> · </Text>
-                  <Text style={styles.qty}>{formatShoppingQty(item)}</Text>
+                  {(() => {
+                    const qtyLabel = formatShoppingQty(item, catalog);
+                    return qtyLabel ? (
+                      <>
+                        <Text style={styles.sep}> · </Text>
+                        <Text style={styles.qty}>{qtyLabel}</Text>
+                      </>
+                    ) : null;
+                  })()}
                 </Text>
               </View>
             </View>
@@ -157,19 +165,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     padding: 12,
     paddingRight: 4,
   },
-  itemNum: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  itemNumText: { color: '#666666', fontWeight: '700', fontSize: 13 },
   itemInfo: { flex: 1, minWidth: 0 },
   titleRow: {
     flexDirection: 'row',

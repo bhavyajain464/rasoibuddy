@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import {
   Text,
@@ -21,7 +22,6 @@ import { OrderOnlineSheet } from '../components/OrderOnlineSheet';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
-import { formatShoppingQty } from '../utils/shoppingFormat';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { EditShoppingItemSheet } from '../components/shopping/EditShoppingItemSheet';
 import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
@@ -33,11 +33,80 @@ import { normalizeSuggestedShoppingLine, sameIngredient } from '../utils/ingredi
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 import { restoreListEntries } from '../utils/restoreListEntries';
 import { writeOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
+import { IngredientThumb } from '../components/IngredientThumb';
 
 /** Server-side suggestion pool size (matches backend OrderSuggestCacheSize). */
 const SUGGEST_CACHE_SIZE = 12;
 /** How many suggestions to show at once in the UI. */
 const SUGGEST_DISPLAY_LIMIT = 5;
+
+const SUGGEST_CARD_MARGIN = 16;
+const SUGGEST_CARD_PAD = 14;
+const SUGGEST_BLOCK_GAP = 10;
+/** Fixed card width so name + quantity fit on one line. */
+const SUGGEST_BLOCK_WIDTH = 168;
+
+function useSuggestBlockLayout(screenWidth: number) {
+  return useMemo(() => {
+    const frameWidth = screenWidth - SUGGEST_CARD_MARGIN * 2 - SUGGEST_CARD_PAD * 2;
+    const blockWidth = SUGGEST_BLOCK_WIDTH;
+    const rowWidth = SUGGEST_DISPLAY_LIMIT * blockWidth + (SUGGEST_DISPLAY_LIMIT - 1) * SUGGEST_BLOCK_GAP;
+    const scrollable = rowWidth > frameWidth + 1;
+    return { blockWidth, frameWidth, scrollable };
+  }, [screenWidth]);
+}
+
+function SuggestOrderBlock({
+  suggestion,
+  width,
+  adding,
+  onAdd,
+}: {
+  suggestion: OrderSuggestItem;
+  width: number;
+  adding: boolean;
+  onAdd: (s: OrderSuggestItem) => void;
+}) {
+  const qtyLabel =
+    suggestion.qty > 0
+      ? `${suggestion.qty} ${suggestion.unit || DEFAULT_UNIT}`
+      : suggestion.unit || DEFAULT_UNIT;
+
+  return (
+    <Pressable
+      onPress={() => void onAdd(suggestion)}
+      disabled={adding}
+      accessibilityRole="button"
+      accessibilityLabel={`Add ${suggestion.name} to list`}
+      style={({ pressed }) => [{ width, opacity: pressed || adding ? 0.88 : 1 }]}
+    >
+      <Surface
+        style={[styles.suggestBlock, { width }]}
+        elevation={0}
+      >
+        <View style={styles.suggestBlockAdd}>
+          {adding ? (
+            <ActivityIndicator size={18} color="#2E7D32" />
+          ) : (
+            <Icon source="plus-circle-outline" size={22} color="#2E7D32" />
+          )}
+        </View>
+
+        <IngredientThumb name={suggestion.name} size={36} />
+
+        <View style={styles.suggestBlockMeta}>
+          <Text variant="labelMedium" style={styles.suggestBlockName} numberOfLines={1}>
+            {suggestion.name}
+          </Text>
+          <Text variant="labelSmall" style={styles.suggestBlockQtyLine} numberOfLines={1}>
+            <Text style={styles.suggestBlockQtySep}> · </Text>
+            <Text style={styles.suggestBlockQty}>{qtyLabel}</Text>
+          </Text>
+        </View>
+      </Surface>
+    </Pressable>
+  );
+}
 
 type ShoppingListEntry = { item: UserShoppingItem; index: number };
 
@@ -48,6 +117,8 @@ type PendingShoppingBatch = {
 
 export function ShoppingScreen() {
   const { contentPaddingBottom } = useTabBarLayout();
+  const { width: screenWidth } = useWindowDimensions();
+  const suggestLayout = useSuggestBlockLayout(screenWidth);
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -64,7 +135,6 @@ export function ShoppingScreen() {
   const pendingShoppingPurchasesRef = useRef<Map<string, PendingShoppingBatch>>(new Map());
 
   const [orderSuggestions, setOrderSuggestions] = useState<OrderSuggestItem[]>([]);
-  const [orderSummary, setOrderSummary] = useState('');
   const [orderSuggestFailed, setOrderSuggestFailed] = useState(false);
   const [orderLoading, setOrderLoading] = useState(true);
   const [addingSuggest, setAddingSuggest] = useState<string | null>(null);
@@ -73,7 +143,6 @@ export function ShoppingScreen() {
   const [orderSheetVisible, setOrderSheetVisible] = useState(false);
   const lastSuggestNamesRef = useRef<string[]>([]);
   const skipMountLoadSuggestions = useRef(true);
-  const [suggestExpanded, setSuggestExpanded] = useState(false);
   const skipMountLoadItems = useRef(true);
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
@@ -98,14 +167,12 @@ export function ShoppingScreen() {
   const applyOrderSuggestResponse = useCallback((data: OrderSuggestResponse) => {
     if (data.source === 'error') {
       setOrderSuggestions([]);
-      setOrderSummary(data.summary || 'Nothing to suggest right now.');
       setOrderSuggestFailed(true);
       lastSuggestNamesRef.current = [];
       return;
     }
     const pool = (Array.isArray(data.items) ? data.items : []).slice(0, SUGGEST_CACHE_SIZE);
     setOrderSuggestions(pool);
-    setOrderSummary(data.summary ?? '');
     setOrderSuggestFailed(false);
     lastSuggestNamesRef.current = pool.map((s) => s.name.trim()).filter(Boolean);
     void writeOrderSuggestionsCache({ ...data, items: pool }, lastSuggestNamesRef.current);
@@ -118,7 +185,6 @@ export function ShoppingScreen() {
       applyOrderSuggestResponse(data);
     } catch {
       setOrderSuggestions([]);
-      setOrderSummary('Nothing to suggest right now.');
       setOrderSuggestFailed(true);
       lastSuggestNamesRef.current = [];
     } finally {
@@ -485,141 +551,74 @@ export function ShoppingScreen() {
       >
         <TabScreenHeader
           title="Shopping List"
-          subtitle={
-            items.length > 0
-              ? `${items.length} item${items.length !== 1 ? 's' : ''} to buy`
-              : 'Nothing to buy yet'
-          }
+          subtitle="Groceries shaped by your meal plan"
         />
 
         <Surface style={styles.suggestCard} elevation={1}>
           <View style={styles.suggestHeader}>
-            <Pressable
-              style={styles.suggestHeaderPressable}
-              onPress={() => setSuggestExpanded((open) => !open)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: suggestExpanded }}
-              accessibilityLabel="Suggested to order, tap to expand or collapse"
-            >
-              <View style={styles.suggestTitleRow}>
-                <View style={styles.suggestIconWrap}>
-                  <Icon source="lightbulb-on-outline" size={22} color="#2E7D32" />
-                </View>
-                <View style={styles.suggestTitleText}>
-                  <Text variant="titleSmall" style={styles.suggestTitle}>
-                    Suggested to order
-                    {displaySuggestions.length > 0 ? ` (${displaySuggestions.length})` : ''}
-                  </Text>
-                  <Text variant="labelSmall" style={styles.suggestBadge}>
-                    {orderSuggestFailed ? 'Unavailable' : 'From meal plan · tap to expand'}
-                  </Text>
-                </View>
-                <Icon
-                  source={suggestExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={22}
-                  color="#888888"
-                />
+            <View style={styles.suggestTitleRow}>
+              <View style={styles.suggestIconWrap}>
+                <Icon source="lightbulb-on-outline" size={22} color="#2E7D32" />
               </View>
-            </Pressable>
-            <IconButton
-              icon="refresh"
-              size={20}
-              onPress={() => void loadOrderSuggestions()}
-              disabled={orderLoading}
-              accessibilityLabel="Refresh suggestions"
-            />
+              <View style={styles.suggestTitleText}>
+                <Text variant="titleSmall" style={styles.suggestTitle}>
+                  Suggested to order
+                  {displaySuggestions.length > 0 ? ` (${displaySuggestions.length})` : ''}
+                </Text>
+              </View>
+            </View>
+            {displaySuggestions.length > 1 ? (
+              <Button
+                mode="contained-tonal"
+                icon="cart-plus"
+                compact
+                onPress={() => void addAllSuggestions()}
+                loading={addingSuggest === '__all__'}
+                disabled={addingSuggest != null || orderLoading}
+                style={styles.suggestAddAllHeader}
+                buttonColor="#E8F5E9"
+                textColor="#2E7D32"
+              >
+                Add all
+              </Button>
+            ) : null}
           </View>
 
-          {!suggestExpanded ? (
-            orderLoading ? (
-              <ActivityIndicator style={styles.suggestLoaderCollapsed} size="small" color="#2E7D32" />
-            ) : (
-              <Text variant="bodySmall" style={styles.suggestCollapsedHint} numberOfLines={2}>
-                {displaySuggestions.length > 0
-                  ? displaySuggestions.map((s) => s.name).join(', ')
-                  : orderSummary || 'Nothing to suggest right now.'}
-              </Text>
-            )
-          ) : orderLoading ? (
+          {orderLoading ? (
             <ActivityIndicator style={styles.suggestLoader} size="small" color="#2E7D32" />
+          ) : displaySuggestions.length > 0 ? (
+            <ScrollView
+              horizontal={suggestLayout.scrollable}
+              scrollEnabled={suggestLayout.scrollable}
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              style={[styles.suggestBlocksScroll, { width: suggestLayout.frameWidth }]}
+              contentContainerStyle={[
+                styles.suggestBlocksRow,
+                !suggestLayout.scrollable && { width: suggestLayout.frameWidth },
+              ]}
+            >
+              {displaySuggestions.map((s) => {
+                const key = s.name.trim().toLowerCase();
+                return (
+                  <SuggestOrderBlock
+                    key={key}
+                    suggestion={s}
+                    width={suggestLayout.blockWidth}
+                    adding={addingSuggest === key}
+                    onAdd={addSuggestionToList}
+                  />
+                );
+              })}
+            </ScrollView>
           ) : (
-            <>
-              {orderSummary && displaySuggestions.length > 0 ? (
-                <Text variant="bodySmall" style={styles.suggestSummary}>{orderSummary}</Text>
-              ) : null}
-
-              {displaySuggestions.length > 0 ? (
-                <>
-                  {displaySuggestions.length > 1 ? (
-                    <Button
-                      mode="contained-tonal"
-                      icon="cart-plus"
-                      compact
-                      onPress={() => void addAllSuggestions()}
-                      loading={addingSuggest === '__all__'}
-                      disabled={addingSuggest != null}
-                      style={styles.suggestAddAll}
-                      buttonColor="#E8F5E9"
-                      textColor="#2E7D32"
-                    >
-                      Add all {displaySuggestions.length}
-                    </Button>
-                  ) : null}
-                  <View style={styles.suggestList}>
-                    {displaySuggestions.map((s) => {
-                      const key = s.name.trim().toLowerCase();
-                      const qtyLabel =
-                        s.qty > 0 ? `${s.qty} ${s.unit || DEFAULT_UNIT}` : s.unit || DEFAULT_UNIT;
-                      return (
-                        <View key={key} style={styles.suggestRow}>
-                          <View style={styles.suggestRowInfo}>
-                            <View style={styles.itemTitleRow}>
-                              <View style={styles.itemNameWrap}>
-                                <Text
-                                  variant="bodyMedium"
-                                  numberOfLines={1}
-                                  ellipsizeMode="tail"
-                                  style={styles.suggestName}
-                                >
-                                  {s.name}
-                                </Text>
-                              </View>
-                              <Text variant="bodyMedium" style={styles.itemQtySuffix}>
-                                <Text style={styles.itemSep}> · </Text>
-                                <Text style={styles.itemQty}>{qtyLabel}</Text>
-                              </Text>
-                            </View>
-                            {s.reason ? (
-                              <Text variant="bodySmall" style={styles.suggestReason} numberOfLines={2}>
-                                {s.reason}
-                              </Text>
-                            ) : null}
-                          </View>
-                          <IconButton
-                            icon="plus-circle-outline"
-                            iconColor="#2E7D32"
-                            size={26}
-                            onPress={() => void addSuggestionToList(s)}
-                            disabled={addingSuggest != null}
-                            loading={addingSuggest === key}
-                            accessibilityLabel={`Add ${s.name}`}
-                          />
-                        </View>
-                      );
-                    })}
-                  </View>
-                </>
-              ) : (
-                <Text variant="bodySmall" style={styles.suggestEmpty}>
-                  {orderSuggestFailed
-                    ? (orderSummary || 'Nothing to suggest right now.')
-                    : orderSummary
-                      || (orderSuggestions.length > 0
-                        ? 'All suggested items are already on your list or in your pantry.'
-                        : 'Nothing to suggest right now.')}
-                </Text>
-              )}
-            </>
+            <Text variant="bodySmall" style={styles.suggestEmpty}>
+              {orderSuggestFailed
+                ? 'Suggestions unavailable right now.'
+                : orderSuggestions.length > 0
+                  ? 'All suggested items are already on your list or in your pantry.'
+                  : 'Nothing to suggest right now.'}
+            </Text>
           )}
         </Surface>
 
@@ -774,16 +773,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
   },
-  suggestHeaderPressable: { flex: 1, marginRight: 4 },
-  suggestTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 },
-  suggestCollapsedHint: {
-    color: '#777',
-    marginTop: 6,
-    lineHeight: 18,
-    paddingHorizontal: 2,
-  },
-  suggestLoaderCollapsed: { marginTop: 8, marginBottom: 4 },
+  suggestTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6, minWidth: 0 },
   suggestIconWrap: {
     width: 40,
     height: 40,
@@ -794,35 +787,60 @@ const styles = StyleSheet.create({
   },
   suggestTitleText: { flex: 1 },
   suggestTitle: { fontWeight: '800', color: '#1A1A1A' },
-  suggestBadge: { color: '#888888', marginTop: 2 },
-  suggestLoader: { marginVertical: 16 },
-  suggestSummary: { color: '#666', marginTop: 10, lineHeight: 18 },
-  suggestAddAll: { alignSelf: 'flex-start', marginTop: 12, borderRadius: 10 },
-  suggestList: { marginTop: 10, gap: 8 },
-  suggestRow: {
+  suggestLoader: { marginVertical: 12 },
+  suggestAddAllHeader: { borderRadius: 10, flexShrink: 0 },
+  suggestBlocksScroll: { marginTop: 2 },
+  suggestBlocksRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 12,
-    paddingLeft: 12,
-    paddingVertical: 4,
+    gap: SUGGEST_BLOCK_GAP,
+    paddingVertical: 2,
   },
-  suggestRowInfo: { flex: 1, paddingVertical: 6, minWidth: 0 },
-  suggestName: { fontWeight: '700', color: '#333', lineHeight: 20 },
-  suggestReason: { color: '#888', marginTop: 2, lineHeight: 16 },
-  itemTitleRow: {
+  suggestBlock: {
+    borderRadius: 14,
+    backgroundColor: '#F4FAF4',
+    borderWidth: 1,
+    borderColor: 'rgba(46, 125, 50, 0.12)',
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
+    position: 'relative',
+  },
+  suggestBlockAdd: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 1,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestBlockMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 6,
     minWidth: 0,
   },
-  itemNameWrap: {
+  suggestBlockName: {
     flexShrink: 1,
     minWidth: 0,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    lineHeight: 17,
   },
-  itemQtySuffix: { flexShrink: 0, lineHeight: 20 },
-  itemSep: { fontWeight: '400', color: '#888888' },
-  itemQty: { fontWeight: '500', color: '#888888' },
-  suggestEmpty: { color: '#999', marginTop: 12, lineHeight: 18 },
+  suggestBlockQtyLine: {
+    flexShrink: 0,
+    lineHeight: 17,
+  },
+  suggestBlockQtySep: {
+    color: '#888',
+    fontWeight: '400',
+  },
+  suggestBlockQty: {
+    color: '#666',
+    fontWeight: '600',
+  },
+  suggestEmpty: { color: '#999', marginTop: 4, lineHeight: 18 },
   listSectionTitle: {
     marginHorizontal: 20,
     marginTop: 16,

@@ -1136,6 +1136,25 @@
       ]
     },
     {
+      "id": "coriander_seeds",
+      "canonical": "Coriander Seeds",
+      "category": "spices",
+      "veg": true,
+      "units": [
+        "g",
+        "kg"
+      ],
+      "synonyms": [
+        "dhania seeds",
+        "dhaniya seeds",
+        "sabut dhania",
+        "whole coriander",
+        "coriander seed",
+        "kothamalli seeds",
+        "dhania whole"
+      ]
+    },
+    {
       "id": "cumin_powder",
       "canonical": "Cumin Powder",
       "category": "spices",
@@ -2265,6 +2284,24 @@
         "pachai payaru",
         "whole green moong",
         "green moong whole"
+      ]
+    },
+    {
+      "id": "moong_sprouts",
+      "canonical": "Moong Sprouts",
+      "category": "vegetables",
+      "veg": true,
+      "units": [
+        "g",
+        "kg"
+      ],
+      "synonyms": [
+        "green moong sprouts",
+        "sprouted moong",
+        "ankurit moong",
+        "moong dal sprouts",
+        "bean sprouts moong",
+        "sprouts moong"
       ]
     },
     {
@@ -5470,8 +5507,7 @@
       "synonyms": [
         "chote patta gobi",
         "mini cabbage",
-        "brussel sprouts",
-        "sprouts"
+        "brussel sprouts"
       ]
     },
     {

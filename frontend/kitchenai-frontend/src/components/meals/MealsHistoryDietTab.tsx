@@ -94,9 +94,6 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
           <Icon source="chart-line" size={28} color="#2E7D32" />
           <View style={styles.dietHeaderText}>
             <Text variant="titleMedium" style={styles.dietTitle}>Diet analysis</Text>
-            <Text variant="bodySmall" style={styles.dietSub}>
-              Nightly PDF with Groq nutrition analysis, macros, micronutrients, and charts for everything you logged.
-            </Text>
           </View>
         </View>
 
@@ -104,10 +101,6 @@ export function MealsHistoryDietTab({ openAddOnMount, onAddModalOpened }: Props)
           <ActivityIndicator style={{ marginVertical: 12 }} color="#2E7D32" />
         ) : dietSettings?.eligible ? (
           <>
-            <Text variant="bodySmall" style={styles.dietMeta}>
-              {dietSettings.delivery_summary}
-              {dietSettings.email ? ` · ${dietSettings.email}` : ''}
-            </Text>
             {!dietSettings.smtp_configured ? (
               <Text variant="bodySmall" style={styles.warn}>
                 Email delivery is not configured on the server yet (SMTP).
@@ -205,7 +198,6 @@ const styles = StyleSheet.create({
   dietHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   dietHeaderText: { flex: 1 },
   dietTitle: { fontWeight: '800', color: '#1A1A1A' },
-  dietSub: { color: '#666', marginTop: 4, lineHeight: 18 },
   dietMeta: { color: '#555', lineHeight: 18, marginBottom: 8 },
   warn: { color: '#E65100', marginBottom: 8 },
   switchRow: {

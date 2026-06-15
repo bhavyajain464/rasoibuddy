@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,17 +11,23 @@ import {
   Text,
   Surface,
   Button,
-  Chip,
   IconButton,
   TextInput,
   Checkbox,
-  ActivityIndicator,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '../services/api';
 import { showAppError } from '../utils/alertMessage';
-import { DEFAULT_ONBOARDING_STAPLES, type OnboardingStaple } from '../data/onboardingStaples';
-import { STAPLE_IMAGES } from '../data/stapleImages';
+import { OnboardingPreferencesForm } from '../components/preferences/OnboardingPreferencesForm';
+import { PREF } from '../components/preferences/preferenceStyles';
+import {
+  buildAutoStaples,
+  buildOnboardingInventoryItems,
+  buildRegionalStaples,
+  getOnboardingStapleImage,
+  summarizeAutoStaples,
+  type OnboardingStaple,
+} from '../data/onboardingStaples';
 import { BrandLogo } from '../components/BrandLogo';
 import { BRAND_LOGO_ASPECT, BRAND_MOTTO } from '../constants/brand';
 
@@ -31,8 +37,8 @@ const INTRO_STEPS = [
     desc: 'Diet, spice level, and cuisines you cook at home',
   },
   {
-    title: 'Stock your staples',
-    desc: 'Atta, dal, masala — add common items in one tap',
+    title: 'Stock your kitchen',
+    desc: '~40 pantry staples added for you; confirm a few regional items',
   },
   {
     title: 'Meals that fit your kitchen',
@@ -40,42 +46,8 @@ const INTRO_STEPS = [
   },
 ] as const;
 
-const STEPS = ['Start', 'Preferences', 'Kitchen Staples'];
+const STEPS = ['Start', 'Preferences', 'Your Kitchen'];
 const SETUP_ESTIMATE = '~2 min';
-
-const DIETARY_OPTIONS = [
-  'vegetarian', 'vegan', 'eggetarian', 'non-veg',
-  'jain', 'gluten-free', 'lactose-free', 'keto',
-];
-const CUISINE_OPTIONS = [
-  'North Indian', 'South Indian', 'Bengali', 'Gujarati',
-  'Punjabi', 'Chinese', 'Italian', 'Continental', 'Thai',
-];
-const SPICE_LEVELS = [
-  { id: 'mild', label: 'Mild', emoji: '🌶' },
-  { id: 'medium', label: 'Medium', emoji: '🌶🌶' },
-  { id: 'spicy', label: 'Spicy', emoji: '🌶🌶🌶' },
-  { id: 'extra_spicy', label: 'Extra Spicy', emoji: '🔥' },
-];
-
-interface StapleItem extends OnboardingStaple {}
-
-function stapleQtyStep(unit: string): number {
-  switch (unit) {
-    case 'kg':
-    case 'L':
-      return 1;
-    case 'g':
-    case 'ml':
-      return 50;
-    default:
-      return 1;
-  }
-}
-
-function stapleQtyMin(unit: string): number {
-  return stapleQtyStep(unit);
-}
 
 function formatStapleQty(qty: number): string {
   return Number.isInteger(qty) ? String(qty) : qty.toFixed(1);
@@ -97,63 +69,62 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [dietaryTags, setDietaryTags] = useState<string[]>([]);
   const [favCuisines, setFavCuisines] = useState<string[]>([]);
   const [spiceLevel, setSpiceLevel] = useState('medium');
+  const [cookingSkill, setCookingSkill] = useState('intermediate');
   const [allergies, setAllergies] = useState<string[]>([]);
+  const [dislikes, setDislikes] = useState<string[]>([]);
   const [newAllergy, setNewAllergy] = useState('');
+  const [newDislike, setNewDislike] = useState('');
+  const [onboardingNote, setOnboardingNote] = useState('');
 
-  // Staples
-  const [staples, setStaples] = useState<StapleItem[]>(() =>
-    DEFAULT_ONBOARDING_STAPLES.map(s => ({ ...s })),
+  // Staples — ~40 auto essentials + regional toggles (no perishables)
+  const onboardingPrefs = useMemo(
+    () => ({ householdSize, dietaryTags, favCuisines }),
+    [householdSize, dietaryTags, favCuisines],
   );
+  const autoStaples = useMemo(
+    () => buildAutoStaples(onboardingPrefs),
+    [onboardingPrefs],
+  );
+  const [regionalStaples, setRegionalStaples] = useState<OnboardingStaple[]>([]);
 
-  const toggleDietary = (tag: string) =>
-    setDietaryTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  useEffect(() => {
+    if (step !== 2) return;
+    setRegionalStaples(prev => {
+      const prevSelected = Object.fromEntries(prev.map(s => [s.id, s.selected]));
+      return buildRegionalStaples(onboardingPrefs, prevSelected);
+    });
+  }, [step, onboardingPrefs]);
+
+  const toggleRegionalStaple = (idx: number) =>
+    setRegionalStaples(prev => prev.map((s, i) => i === idx ? { ...s, selected: !s.selected } : s));
+
   const toggleCuisine = (c: string) =>
     setFavCuisines(prev => prev.includes(c) ? prev.filter(t => t !== c) : [...prev, c]);
-  const toggleStaple = (idx: number) =>
-    setStaples(prev => prev.map((s, i) => i === idx ? { ...s, selected: !s.selected } : s));
-
-  const selectAllCategory = (cat: string, select: boolean) =>
-    setStaples(prev => prev.map(s => s.category === cat ? { ...s, selected: select } : s));
-
-  const selectAllStaples = (select: boolean) =>
-    setStaples(prev => prev.map(s => ({ ...s, selected: select })));
-
-  const adjustStapleQty = (idx: number, direction: 1 | -1) => {
-    setStaples(prev =>
-      prev.map((s, i) => {
-        if (i !== idx) return s;
-        const step = stapleQtyStep(s.unit);
-        const min = stapleQtyMin(s.unit);
-        const next = Math.max(min, s.qty + direction * step);
-        return { ...s, qty: next };
-      }),
-    );
-  };
-
-  const addAllergy = () => {
-    const trimmed = newAllergy.trim();
-    if (trimmed && !allergies.includes(trimmed)) setAllergies(prev => [...prev, trimmed]);
-    setNewAllergy('');
-  };
 
   const buildOnboardingPayload = (items: { name: string; qty: number; unit: string }[]) => ({
     household_size: householdSize,
     dietary_tags: dietaryTags,
     fav_cuisines: favCuisines,
     spice_level: spiceLevel,
-    cooking_skill: 'intermediate',
+    cooking_skill: cookingSkill,
     allergies,
-    dislikes: [] as string[],
+    dislikes,
     items,
   });
 
   const handleComplete = async () => {
     setSaving(true);
     try {
-      const selectedItems = staples.filter(s => s.selected).map(s => ({
-        name: s.name, qty: s.qty, unit: s.unit,
-      }));
-      await api.completeOnboarding(buildOnboardingPayload(selectedItems));
+      const items = buildOnboardingInventoryItems(autoStaples, regionalStaples);
+      await api.completeOnboarding(buildOnboardingPayload(items));
+      const note = onboardingNote.trim();
+      if (note) {
+        try {
+          await api.addMemory('general', note);
+        } catch {
+          // onboarding already saved — note is optional
+        }
+      }
       onComplete();
     } catch (e: any) {
       showAppError('Failed to complete setup. Please try again.');
@@ -181,27 +152,31 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     }
   };
 
-  const categories = [...new Set(staples.map(s => s.category))];
-  const selectedCount = staples.filter(s => s.selected).length;
-  const allStaplesSelected = staples.length > 0 && staples.every(s => s.selected);
-  const anyStaplesSelected = staples.some(s => s.selected);
+  const regionalSelectedCount = regionalStaples.filter(s => s.selected).length;
+  const totalInventoryCount = autoStaples.length + regionalSelectedCount;
+  const autoSummary = summarizeAutoStaples(autoStaples);
 
   return (
     <View style={styles.container}>
       {/* Progress */}
       <View style={[styles.progressWrap, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${((step + 1) / STEPS.length) * 100}%` }]} />
+        <View style={styles.obProg}>
+          {STEPS.map((_, i) => (
+            <View key={i} style={[styles.obProgSeg, i <= step && styles.obProgSegOn]} />
+          ))}
         </View>
-        <Text style={styles.progressText}>
-          Step {step + 1} of {STEPS.length}
+        <Text style={styles.obStepLabel}>
+          STEP {step + 1} OF {STEPS.length}
           {step === 0 ? ` · ${SETUP_ESTIMATE}` : ''}
         </Text>
       </View>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + (step === 1 ? 100 : 24) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
 
@@ -243,99 +218,45 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
         {/* ── Step 1: Preferences ────────────────────── */}
         {step === 1 && (
-          <View style={styles.stepWrap}>
-            <Text variant="headlineSmall" style={styles.stepTitle}>Your Preferences</Text>
-            <Text variant="bodyMedium" style={styles.stepSub}>This helps us suggest the right meals</Text>
-
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secLabel}>Household Size</Text>
-              <View style={styles.counterRow}>
-                <Pressable onPress={() => setHouseholdSize(Math.max(1, householdSize - 1))} style={styles.counterBtn}>
-                  <IconButton icon="minus" size={18} iconColor="#666" style={{ margin: 0 }} />
-                </Pressable>
-                <Text variant="headlineMedium" style={styles.counterVal}>{householdSize}</Text>
-                <Pressable onPress={() => setHouseholdSize(householdSize + 1)} style={styles.counterBtn}>
-                  <IconButton icon="plus" size={18} iconColor="#666" style={{ margin: 0 }} />
-                </Pressable>
-              </View>
-            </Surface>
-
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secLabel}>Dietary Preference</Text>
-              <View style={styles.chipRow}>
-                {DIETARY_OPTIONS.map(tag => (
-                  <Chip
-                    key={tag}
-                    selected={dietaryTags.includes(tag)}
-                    onPress={() => toggleDietary(tag)}
-                    style={[styles.chip, dietaryTags.includes(tag) && styles.chipActive]}
-                    textStyle={dietaryTags.includes(tag) ? { color: '#fff' } : { color: '#555' }}
-                    showSelectedCheck={false}
-                  >
-                    {tag}
-                  </Chip>
-                ))}
-              </View>
-            </Surface>
-
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secLabel}>Spice Level</Text>
-              <View style={styles.chipRow}>
-                {SPICE_LEVELS.map(s => (
-                  <Pressable key={s.id} onPress={() => setSpiceLevel(s.id)}>
-                    <Surface style={[styles.spicePill, spiceLevel === s.id && styles.spicePillActive]} elevation={0}>
-                      <Text style={styles.spiceEmoji}>{s.emoji}</Text>
-                      <Text style={[styles.spiceText, spiceLevel === s.id && { color: '#fff' }]}>{s.label}</Text>
-                    </Surface>
-                  </Pressable>
-                ))}
-              </View>
-            </Surface>
-
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secLabel}>Favorite Cuisines</Text>
-              <View style={styles.chipRow}>
-                {CUISINE_OPTIONS.map(c => (
-                  <Chip
-                    key={c}
-                    selected={favCuisines.includes(c)}
-                    onPress={() => toggleCuisine(c)}
-                    style={[styles.chip, favCuisines.includes(c) && styles.chipActive]}
-                    textStyle={favCuisines.includes(c) ? { color: '#fff' } : { color: '#555' }}
-                    showSelectedCheck={false}
-                  >
-                    {c}
-                  </Chip>
-                ))}
-              </View>
-            </Surface>
-
-            <Surface style={styles.section} elevation={1}>
-              <Text variant="titleSmall" style={styles.secLabel}>Allergies (optional)</Text>
-              <View style={styles.chipRow}>
-                {allergies.map(a => (
-                  <Chip key={a} onClose={() => setAllergies(prev => prev.filter(x => x !== a))} style={styles.grayChip}>
-                    {a}
-                  </Chip>
-                ))}
-              </View>
-              <View style={styles.addRow}>
-                <TextInput
-                  dense mode="outlined" placeholder="e.g. peanuts, shellfish"
-                  value={newAllergy} onChangeText={setNewAllergy} style={styles.addInput}
-                  outlineStyle={{ borderRadius: 12 }} outlineColor="#E0E0E0"
-                  onSubmitEditing={addAllergy}
-                />
-                <IconButton icon="plus-circle" iconColor="#888" size={28} onPress={addAllergy} style={{ margin: 0 }} />
-              </View>
-            </Surface>
+          <View>
+            <View style={styles.obHd}>
+              <Text style={styles.obTitle}>How do you like to eat?</Text>
+              <Text style={styles.obSub}>
+                We'll tailor every meal idea to this. Change it anytime.
+              </Text>
+            </View>
+            <OnboardingPreferencesForm
+              householdSize={householdSize}
+              onHouseholdSize={setHouseholdSize}
+              spiceLevel={spiceLevel}
+              onSpiceLevel={setSpiceLevel}
+              cookingSkill={cookingSkill}
+              onCookingSkill={setCookingSkill}
+              dietaryTags={dietaryTags}
+              onDietaryTags={setDietaryTags}
+              favCuisines={favCuisines}
+              onToggleCuisine={toggleCuisine}
+              allergies={allergies}
+              onAllergies={setAllergies}
+              dislikes={dislikes}
+              onDislikes={setDislikes}
+              newAllergy={newAllergy}
+              onNewAllergy={setNewAllergy}
+              newDislike={newDislike}
+              onNewDislike={setNewDislike}
+              note={onboardingNote}
+              onNote={setOnboardingNote}
+            />
           </View>
         )}
 
-        {/* ── Step 2: Kitchen Staples ────────────────── */}
+        {/* ── Step 2: Your Kitchen ───────────────────── */}
         {step === 2 && (
           <View style={styles.stepWrap}>
-            <Text variant="headlineSmall" style={styles.stepTitle}>Kitchen Staples</Text>
+            <Text variant="headlineSmall" style={styles.stepTitle}>Your Kitchen</Text>
+            <Text variant="bodyMedium" style={styles.stepSub}>
+              We add long-lasting staples automatically. Fresh items like onion & tomato come from bill scan.
+            </Text>
 
             <Surface style={styles.joinSection} elevation={1}>
               <Text variant="titleSmall" style={styles.secLabel}>Join a shared kitchen</Text>
@@ -367,146 +288,117 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             <View style={styles.joinDividerRow}>
               <View style={styles.joinDividerLine} />
               <Text variant="labelSmall" style={styles.joinDividerLabel}>
-                or stock your staples
+                or start fresh
               </Text>
               <View style={styles.joinDividerLine} />
             </View>
 
-            <Text variant="bodyMedium" style={styles.staplesSelectSub}>
-              Select items already in your kitchen
-            </Text>
-
-            <View style={styles.staplesBulkRow}>
-              <Text variant="bodySmall" style={styles.staplesBulkCount}>
-                {selectedCount} of {staples.length} selected
+            <Surface style={styles.autoStaplesBanner} elevation={0}>
+              <Text variant="titleSmall" style={styles.autoStaplesTitle}>
+                Adding {autoStaples.length} pantry staples
               </Text>
-              <View style={styles.staplesBulkActions}>
-                <Pressable
-                  onPress={() => selectAllStaples(true)}
-                  disabled={allStaplesSelected}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: allStaplesSelected }}
-                >
-                  <Text style={[styles.selectAllText, allStaplesSelected && styles.selectAllTextMuted]}>
-                    Select all
-                  </Text>
-                </Pressable>
-                <Text style={styles.staplesBulkSep}>·</Text>
-                <Pressable
-                  onPress={() => selectAllStaples(false)}
-                  disabled={!anyStaplesSelected}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !anyStaplesSelected }}
-                >
-                  <Text style={[styles.selectAllText, !anyStaplesSelected && styles.selectAllTextMuted]}>
-                    Deselect all
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+              <Text variant="bodySmall" style={styles.autoStaplesDesc}>
+                {autoSummary} — scaled for {householdSize}{' '}
+                {householdSize === 1 ? 'person' : 'people'}. No input needed.
+              </Text>
+            </Surface>
 
-            {categories.map(cat => {
-              const catItems = staples.filter(s => s.category === cat);
-              const allSelected = catItems.every(s => s.selected);
-              return (
-                <Surface key={cat} style={styles.catSection} elevation={1}>
-                  <View style={styles.catHeader}>
-                    <Text variant="titleSmall" style={styles.catLabel}>{cat}</Text>
-                    <Pressable onPress={() => selectAllCategory(cat, !allSelected)}>
-                      <Text style={styles.selectAllText}>{allSelected ? 'Deselect All' : 'Select All'}</Text>
+            <Surface style={styles.catSection} elevation={1}>
+              <Text variant="titleSmall" style={styles.catLabel}>Regional staples</Text>
+              <Text variant="bodySmall" style={styles.regionalHint}>
+                Pre-selected from your cuisines — toggle off anything you do not stock.
+              </Text>
+              {regionalStaples.map((item, idx) => {
+                const image = getOnboardingStapleImage(item.id);
+                return (
+                  <View key={item.id} style={styles.stapleRow}>
+                    <Pressable
+                      onPress={() => toggleRegionalStaple(idx)}
+                      style={styles.stapleMain}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: item.selected }}
+                    >
+                      <Checkbox
+                        status={item.selected ? 'checked' : 'unchecked'}
+                        onPress={() => toggleRegionalStaple(idx)}
+                        color="#2E7D32"
+                      />
+                      {image ? (
+                        <Image
+                          source={image}
+                          style={[styles.stapleThumb, !item.selected && styles.stapleThumbMuted]}
+                          accessibilityIgnoresInvertColors
+                        />
+                      ) : (
+                        <View style={[styles.stapleThumb, styles.stapleThumbPlaceholder]} />
+                      )}
+                      <View style={styles.stapleInfo}>
+                        <Text variant="bodyMedium" style={[styles.stapleName, !item.selected && { color: '#aaa' }]}>
+                          {item.name}
+                        </Text>
+                        <Text variant="bodySmall" style={styles.stapleQty}>
+                          {formatStapleQty(item.qty)} {item.unit}
+                        </Text>
+                      </View>
                     </Pressable>
                   </View>
-                  {catItems.map((item) => {
-                    const idx = staples.indexOf(item);
-                    return (
-                      <View key={idx} style={styles.stapleRow}>
-                        <Pressable
-                          onPress={() => toggleStaple(idx)}
-                          style={styles.stapleMain}
-                          accessibilityRole="checkbox"
-                          accessibilityState={{ checked: item.selected }}
-                        >
-                          <Checkbox
-                            status={item.selected ? 'checked' : 'unchecked'}
-                            onPress={() => toggleStaple(idx)}
-                            color="#2E7D32"
-                          />
-                          <Image
-                            source={STAPLE_IMAGES[item.id]}
-                            style={[styles.stapleThumb, !item.selected && styles.stapleThumbMuted]}
-                            accessibilityIgnoresInvertColors
-                          />
-                          <View style={styles.stapleInfo}>
-                            <Text variant="bodyMedium" style={[styles.stapleName, !item.selected && { color: '#aaa' }]}>
-                              {item.name}
-                            </Text>
-                            {!item.selected && (
-                              <Text variant="bodySmall" style={styles.stapleQty}>
-                                {formatStapleQty(item.qty)} {item.unit}
-                              </Text>
-                            )}
-                          </View>
-                        </Pressable>
-                        {item.selected ? (
-                          <View style={styles.stapleQtyControls}>
-                            <Pressable
-                              onPress={() => adjustStapleQty(idx, -1)}
-                              style={styles.stapleQtyBtn}
-                              accessibilityLabel={`Decrease ${item.name}`}
-                            >
-                              <IconButton icon="minus" size={16} iconColor="#666" style={{ margin: 0 }} />
-                            </Pressable>
-                            <Text variant="bodySmall" style={styles.stapleQtyActive}>
-                              {formatStapleQty(item.qty)} {item.unit}
-                            </Text>
-                            <Pressable
-                              onPress={() => adjustStapleQty(idx, 1)}
-                              style={styles.stapleQtyBtn}
-                              accessibilityLabel={`Increase ${item.name}`}
-                            >
-                              <IconButton icon="plus" size={16} iconColor="#666" style={{ margin: 0 }} />
-                            </Pressable>
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })}
-                </Surface>
-              );
-            })}
+                );
+              })}
+            </Surface>
+
+            <Text variant="bodySmall" style={styles.perishableNote}>
+              Onion, tomato, potato, milk, eggs & other fresh items are not pre-added — scan your grocery bill to stock those.
+            </Text>
 
           </View>
         )}
       </ScrollView>
 
       {/* Bottom actions */}
-      <Surface style={styles.bottomBar} elevation={4}>
-        {step > 0 && (
+      <Surface style={[styles.bottomBar, step === 1 && styles.bottomBarPrefs]} elevation={4}>
+        {step > 0 && step !== 1 && (
           <Button mode="outlined" onPress={() => setStep(step - 1)} style={styles.backBtn}>
             Back
           </Button>
         )}
-        <View style={{ flex: 1 }} />
-        {step < STEPS.length - 1 ? (
-          <Button
-            mode="contained"
-            onPress={() => setStep(step + 1)}
-            style={styles.nextBtn}
-            contentStyle={{ paddingVertical: 4 }}
-          >
-            {step === 0 ? 'Set up my kitchen' : 'Next'}
-          </Button>
+        {step === 1 ? (
+          <>
+            <Pressable onPress={() => setStep(2)} style={styles.obSkipBtn} accessibilityRole="button">
+              <Text style={styles.obSkipText}>Skip</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setStep(2)}
+              style={styles.obNextBtn}
+              accessibilityRole="button"
+            >
+              <Text style={styles.obNextText}>Continue →</Text>
+            </Pressable>
+          </>
         ) : (
-          <Button
-            mode="contained"
-            onPress={handleComplete}
-            loading={saving}
-            disabled={saving}
-            style={styles.nextBtn}
-            contentStyle={{ paddingVertical: 4 }}
-          >
-            {saving ? 'Setting up...' : `Finish Setup (${selectedCount} items)`}
-          </Button>
+          <>
+            <View style={{ flex: 1 }} />
+            {step < STEPS.length - 1 ? (
+              <Button
+                mode="contained"
+                onPress={() => setStep(step + 1)}
+                style={styles.nextBtn}
+                contentStyle={{ paddingVertical: 4 }}
+              >
+                {step === 0 ? 'Set up my kitchen' : 'Next'}
+              </Button>
+            ) : (
+              <Button
+                mode="contained"
+                onPress={handleComplete}
+                loading={saving}
+                disabled={saving}
+                style={styles.nextBtn}
+                contentStyle={{ paddingVertical: 4 }}
+              >
+                {saving ? 'Setting up...' : `Finish Setup (${totalInventoryCount} items)`}
+              </Button>
+            )}
+          </>
         )}
       </Surface>
     </View>
@@ -516,9 +408,34 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
   progressWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  progressBar: { height: 6, backgroundColor: '#E0E0E0', borderRadius: 3 },
-  progressFill: { height: 6, backgroundColor: '#2E7D32', borderRadius: 3 },
-  progressText: { color: '#999', fontSize: 12, marginTop: 6, textAlign: 'center' },
+  obProg: { flexDirection: 'row', gap: 6, marginBottom: 18 },
+  obProgSeg: { height: 5, borderRadius: 3, backgroundColor: '#E2E7E3', flex: 1 },
+  obProgSegOn: { backgroundColor: PREF.green },
+  obStepLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: PREF.green,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  obHd: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 4 },
+  obTitle: { fontSize: 25, fontWeight: '800', color: PREF.ink, lineHeight: 30, marginBottom: 6 },
+  obSub: { fontSize: 14, color: PREF.muted, lineHeight: 20 },
+  obSkipBtn: { paddingVertical: 14, paddingHorizontal: 8 },
+  obSkipText: { fontWeight: '700', color: PREF.muted, fontSize: 14 },
+  obNextBtn: {
+    flex: 1,
+    backgroundColor: PREF.green,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    shadowColor: PREF.greenDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  obNextText: { color: '#fff', fontWeight: '800', fontSize: 16 },
 
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
@@ -596,6 +513,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F2',
   },
   stapleThumbMuted: { opacity: 0.45 },
+  stapleThumbPlaceholder: { backgroundColor: '#E8E8E8' },
   stapleInfo: { flex: 1, marginLeft: 10 },
   stapleName: { fontWeight: '500', color: '#333' },
   stapleQty: { color: '#999', marginTop: 1 },
@@ -618,6 +536,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#fff',
     borderTopWidth: 0,
+  },
+  bottomBarPrefs: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: PREF.line,
+    gap: 12,
   },
   backBtn: { borderRadius: 12 },
   nextBtn: { borderRadius: 12, backgroundColor: '#2E7D32', minWidth: 140 },
@@ -649,4 +573,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#D8E8D8',
   },
+  autoStaplesBanner: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#C8E6C9',
+  },
+  autoStaplesTitle: { fontWeight: '700', color: '#1B5E20', marginBottom: 6 },
+  autoStaplesDesc: { color: '#2E7D32', lineHeight: 20 },
+  regionalHint: { color: '#666', marginBottom: 10, lineHeight: 18 },
+  perishableNote: { color: '#888', marginTop: 4, lineHeight: 18, fontStyle: 'italic' },
 });

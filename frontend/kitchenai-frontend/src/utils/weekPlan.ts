@@ -9,6 +9,7 @@ export function mapWeekPlanDayResponse(d: WeekPlanDayResponse): WeekPlanDay {
     date: d.date,
     meals: (cat?.meals ?? []).map((m) => ({
       meal_slot: m.meal_slot,
+      dish_id: m.dish_id,
       name: m.name,
       description: m.description ?? '',
       ingredients: m.ingredients ?? [],

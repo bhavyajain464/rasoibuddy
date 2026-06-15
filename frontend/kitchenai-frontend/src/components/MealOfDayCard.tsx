@@ -7,9 +7,11 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Text, Surface, ActivityIndicator, Icon } from 'react-native-paper';
+import { DishImage } from './DishImage';
 
 export interface MealOfDayMeal {
   meal_slot?: string;
+  dish_id?: string;
   name: string;
   description: string;
   why_this_meal?: string;
@@ -35,9 +37,10 @@ const COL_GAP = 8;
 const COL_COUNT = 3;
 const MIN_COL_WIDTH = 96;
 const SLOT_LABEL_HEIGHT = 16;
-const MEAL_NAME_LINES = 3;
+const MEAL_NAME_LINES = 2;
 const MEAL_NAME_LINE_HEIGHT = 17;
 const MEAL_NAME_BLOCK_HEIGHT = MEAL_NAME_LINES * MEAL_NAME_LINE_HEIGHT;
+const THUMB_WIDTH: number | `${number}%` = '100%';
 const TIME_ROW_HEIGHT = 16;
 
 type SlotEntry = { slot: (typeof SLOT_ORDER)[number]; meal?: MealOfDayMeal };
@@ -92,6 +95,15 @@ function MealColumn({
           {label}
         </Text>
       </View>
+      <DishImage
+        dishId={meal?.dish_id}
+        dishName={meal?.name}
+        variant="card"
+        width={THUMB_WIDTH}
+        borderRadius={10}
+        style={styles.mealThumb}
+        accessibilityLabel={meal?.name ? `${label}: ${meal.name}` : label}
+      />
       <View style={styles.mealNameBlock}>
         <Text variant="bodySmall" style={styles.mealName} numberOfLines={MEAL_NAME_LINES}>
           {meal?.name?.trim() || '—'}
@@ -282,8 +294,11 @@ const styles = StyleSheet.create({
   },
   column: {
     minWidth: 0,
-    minHeight:
-      SLOT_LABEL_HEIGHT + 6 + MEAL_NAME_BLOCK_HEIGHT + 6 + TIME_ROW_HEIGHT,
+    // Thumb height follows 3:2 from column width; name + meta below are fixed.
+    minHeight: SLOT_LABEL_HEIGHT + 6 + MEAL_NAME_BLOCK_HEIGHT + 6 + TIME_ROW_HEIGHT + 24,
+  },
+  mealThumb: {
+    marginBottom: 8,
   },
   slotLabelWrap: {
     height: SLOT_LABEL_HEIGHT,

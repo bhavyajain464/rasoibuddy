@@ -134,6 +134,11 @@ func applyUserStarsToCategory(db *sql.DB, userID string, cat *MealCategory) {
 		if userStarred != nil {
 			cat.Meals[i].UserStarred = userStarred[key]
 		}
+		if strings.TrimSpace(cat.Meals[i].DishID) == "" {
+			if dish, ok := services.FindCatalogDishByName(cat.Meals[i].Name); ok {
+				cat.Meals[i].DishID = dish.ID
+			}
+		}
 	}
 }
 
@@ -142,6 +147,7 @@ func mealCategoryFromCached(c services.CachedMealCategory) MealCategory {
 	for _, m := range c.Meals {
 		meals = append(meals, SmartMeal{
 			MealSlot:       m.MealSlot,
+			DishID:         m.DishID,
 			Name:           m.Name,
 			Description:    m.Description,
 			Ingredients:    m.Ingredients,
@@ -168,6 +174,7 @@ func cachedCategoryFromMeal(cat MealCategory) services.CachedMealCategory {
 	for _, m := range cat.Meals {
 		meals = append(meals, services.CachedSmartMeal{
 			MealSlot:       m.MealSlot,
+			DishID:         m.DishID,
 			Name:           m.Name,
 			Description:    m.Description,
 			Ingredients:    m.Ingredients,

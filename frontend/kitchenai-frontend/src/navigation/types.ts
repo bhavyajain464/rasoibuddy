@@ -20,3 +20,8 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   Profile: { upgradePlan?: boolean } | undefined;
 };
+
+export type PublicStackParamList = {
+  Landing: undefined;
+  Login: undefined;
+};

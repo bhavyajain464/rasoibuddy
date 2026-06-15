@@ -6,7 +6,7 @@ import {
   getLastNotificationResponse,
   isMealLogNotificationResponse,
   isMealLogNotificationSupported,
-  syncMealLogRemindersIfEnabled,
+  syncMealLogReminders,
 } from '../services/mealLogNotifications';
 
 type Props = {
@@ -20,7 +20,7 @@ export function MealLogNotificationProvider({ navigationRef, children }: Props) 
   useEffect(() => {
     if (!isMealLogNotificationSupported()) return;
 
-    void syncMealLogRemindersIfEnabled();
+    void syncMealLogReminders();
 
     const openMealLog = () => {
       const nav = navigationRef.current;

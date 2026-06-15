@@ -2,7 +2,9 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { ExpiringItem } from '../types';
-import { formatQtyWithUnit } from '../utils/units';
+import { resolveCatalogItem } from '../utils/ingredientUnits';
+import { formatPurchaseQty } from '../utils/purchaseUnits';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 
 interface ExpiringItemCardProps {
   item: ExpiringItem;
@@ -11,6 +13,12 @@ interface ExpiringItemCardProps {
 
 export function ExpiringItemCard({ item, horizontal }: ExpiringItemCardProps) {
   const isUrgent = item.days_until_expiry <= 1;
+  const { catalog } = useIngredientCatalog();
+  const catalogItem = React.useMemo(
+    () => resolveCatalogItem(catalog, undefined, item.canonical_name),
+    [catalog, item.canonical_name],
+  );
+  const qtyLabel = formatPurchaseQty(item.qty, item.unit, catalogItem);
 
   return (
     <Card
@@ -26,7 +34,7 @@ export function ExpiringItemCard({ item, horizontal }: ExpiringItemCardProps) {
           {item.canonical_name}
         </Text>
         <Text variant="bodySmall" style={styles.qty}>
-          {formatQtyWithUnit(item.qty, item.unit)}
+          {qtyLabel}
         </Text>
         <Text
           variant="labelSmall"

@@ -269,7 +269,7 @@ export function CookScreen() {
     <View style={styles.root}>
       <TabScreenHeader
         title="Cook Communication"
-        subtitle="Draft WhatsApp messages for your cook"
+        subtitle="Your cook, connected to the plan"
         decoration={
           <IconButton icon="chef-hat" iconColor="rgba(255,255,255,0.4)" size={40} style={styles.headerBg} />
         }

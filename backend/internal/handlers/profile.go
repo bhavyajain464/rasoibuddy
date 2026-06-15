@@ -10,6 +10,7 @@ import (
 
 	kafkalib "kitchenai-backend/internal/kafka"
 	"kitchenai-backend/internal/models"
+	"kitchenai-backend/internal/services/ingredients"
 	"kitchenai-backend/pkg/units"
 
 	"github.com/google/uuid"
@@ -140,12 +141,13 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 				continue
 			}
 			unit := units.Normalize(item.Unit)
+			canonicalName, foodGroup := ingredients.InventoryFieldsFromName(item.Name)
 			var itemID string
 			err := tx.QueryRow(`
 				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group)
-				VALUES ($1, $2, $3, TRUE, $4, $5, 'other')
+				VALUES ($1, $2, $3, TRUE, $4, $5, $6)
 				RETURNING item_id
-			`, item.Name, item.Qty, unit, userID, kitchen.KitchenID).Scan(&itemID)
+			`, canonicalName, item.Qty, unit, userID, kitchen.KitchenID, foodGroup).Scan(&itemID)
 			if err != nil {
 				log.Printf("Onboarding item add error (%s): %v", item.Name, err)
 				http.Error(w, "Failed to add inventory items", http.StatusInternalServerError)

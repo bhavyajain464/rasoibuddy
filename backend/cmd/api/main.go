@@ -195,6 +195,7 @@ func main() {
 	api.Handle("/meals/meal-of-day", middleware.RequireAuth(http.HandlerFunc(handlers.GetMealOfDay(mealOfDayCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/week-plan", middleware.RequireAuth(http.HandlerFunc(handlers.GetWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/week-plan/refresh", middleware.RequireAuth(http.HandlerFunc(handlers.PostRefreshWeekPlan(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
+	api.Handle("/meals/week-plan/set-dish", middleware.RequireAuth(http.HandlerFunc(handlers.PostSetWeekPlanDish(mealPlanCache, sqlDB, cfg, cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/cooked-history", middleware.RequireAuth(http.HandlerFunc(handlers.GetCookedHistory(cookedLogSvc)))).Methods("GET", "OPTIONS")
 	api.Handle("/meals/cooked", middleware.RequireAuth(http.HandlerFunc(handlers.LogCookedDish(cookedLogSvc)))).Methods("POST", "OPTIONS")
 	api.Handle("/meals/diet-analysis", middleware.RequireAuth(http.HandlerFunc(handlers.GetDietAnalysisSettings(dietDigestSvc)))).Methods("GET", "OPTIONS")

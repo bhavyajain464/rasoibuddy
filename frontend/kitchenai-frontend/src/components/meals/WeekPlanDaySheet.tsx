@@ -1,15 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, IconButton, Text } from 'react-native-paper';
+import { Button, Menu, Text } from 'react-native-paper';
 import { MealTagPill, mealTagPillRowStyle } from './MealTagPill';
 import { BottomSheet } from '../BottomSheet';
+import { DishSearchOverlay } from '../DishSearchOverlay';
 import type { MealOfDayMeal } from '../MealOfDayCard';
+import { DishImage } from '../DishImage';
 import { formatWeekPlanDayLabel, todayDateKey, type WeekPlanDay } from './WeekPlanCarousel';
 import * as api from '../../services/api';
+import type { WeekPlanDayResponse } from '../../services/api';
+import type { CatalogDishSearchItem } from '../../data/dishCatalogSearch';
 import { showAppError, showAppInfo, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
 import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { mealIngredientsMissingFromPantry } from '../../utils/ingredientPantryMatch';
+import { hiddenMajorIngredientCount, majorIngredients } from '../../utils/mealIngredients';
 import { normalizeSuggestedShoppingLine } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
@@ -28,6 +33,22 @@ function mealsInOrder(meals: MealOfDayMeal[]): MealOfDayMeal[] {
     if (slot) bySlot.set(slot, meal);
   }
   return SLOT_ORDER.map((slot) => bySlot.get(slot)).filter(Boolean) as MealOfDayMeal[];
+}
+
+function mealsFromDayResponse(res: WeekPlanDayResponse): MealOfDayMeal[] {
+  const cat = res.categories?.find((c) => c.id === 'meal_of_day') ?? res.categories?.[0];
+  return (cat?.meals ?? []).map((m) => ({
+    meal_slot: m.meal_slot,
+    dish_id: m.dish_id,
+    name: m.name,
+    description: m.description,
+    ingredients: m.ingredients ?? [],
+    items_to_order: m.items_to_order,
+    pairs_with: m.pairs_with,
+    cooking_time_mins: m.cooking_time_mins,
+    difficulty: m.difficulty,
+    why_this_meal: m.why_this_meal,
+  }));
 }
 
 type Props = {
@@ -52,6 +73,8 @@ export function WeekPlanDaySheet({
   const { bump } = useAppRefresh();
   const { catalog } = useIngredientCatalog();
   const [refreshingSlot, setRefreshingSlot] = useState<string | null>(null);
+  const [changeMenuSlot, setChangeMenuSlot] = useState<string | null>(null);
+  const [searchSlot, setSearchSlot] = useState<string | null>(null);
   const [addingShoppingSlot, setAddingShoppingSlot] = useState<string | null>(null);
   const [selectedPairsBySlot, setSelectedPairsBySlot] = useState<Record<string, string[]>>({});
   const [inventoryNames, setInventoryNames] = useState<string[]>([]);
@@ -81,27 +104,40 @@ export function WeekPlanDaySheet({
   const title = day ? formatWeekPlanDayLabel(day.date, today) : 'Day plan';
   const orderedMeals = useMemo(() => (day ? mealsInOrder(day.meals) : []), [day]);
 
-  const handleRefresh = async (mealSlot: string) => {
+  useEffect(() => {
+    setChangeMenuSlot(null);
+    if (!visible) setSearchSlot(null);
+  }, [day?.date, visible]);
+
+  const applyDayResponse = (res: WeekPlanDayResponse, successLabel: string) => {
+    if (!day) return;
+    onDayUpdated({ date: day.date, meals: mealsFromDayResponse(res) });
+    showAppSuccess(successLabel);
+  };
+
+  const handleRegenerateWithAI = async (mealSlot: string) => {
     if (!day || !mealSlot) return;
     setRefreshingSlot(mealSlot);
     try {
       const res = await api.refreshWeekPlanDay(day.date, mealSlot);
-      const cat = res.categories?.find((c) => c.id === 'meal_of_day') ?? res.categories?.[0];
-      const meals = (cat?.meals ?? []).map((m) => ({
-        meal_slot: m.meal_slot,
-        name: m.name,
-        description: m.description,
-        ingredients: m.ingredients ?? [],
-        items_to_order: m.items_to_order,
-        pairs_with: m.pairs_with,
-        cooking_time_mins: m.cooking_time_mins,
-        difficulty: m.difficulty,
-        why_this_meal: m.why_this_meal,
-      }));
-      onDayUpdated({ date: day.date, meals });
-      showAppSuccess(`${SLOT_LABELS[mealSlot] ?? mealSlot} refreshed`);
+      applyDayResponse(res, `${SLOT_LABELS[mealSlot] ?? mealSlot} updated`);
     } catch {
-      showAppError('Could not refresh this meal. Try again.');
+      showAppError('Could not regenerate this meal. Try again.');
+    } finally {
+      setRefreshingSlot(null);
+    }
+  };
+
+  const handleSelectCatalogDish = async (dish: CatalogDishSearchItem) => {
+    if (!day || !searchSlot) return;
+    const slot = searchSlot;
+    setSearchSlot(null);
+    setRefreshingSlot(slot);
+    try {
+      const res = await api.setWeekPlanDish(day.date, slot, dish.id);
+      applyDayResponse(res, `${SLOT_LABELS[slot] ?? slot} set to ${dish.name}`);
+    } catch {
+      showAppError('Could not update this meal. Try again.');
     } finally {
       setRefreshingSlot(null);
     }
@@ -155,8 +191,9 @@ export function WeekPlanDaySheet({
   };
 
   return (
+    <>
     <BottomSheet
-      visible={visible}
+      visible={visible && searchSlot === null}
       onDismiss={onDismiss}
       title={title}
       subtitle={day?.date}
@@ -172,6 +209,8 @@ export function WeekPlanDaySheet({
           const slot = meal.meal_slot?.toLowerCase() ?? '';
           const slotLabel = SLOT_LABELS[slot] ?? slot;
           const ingredients = meal.ingredients ?? [];
+          const displayIngredients = majorIngredients(ingredients);
+          const hiddenIngredientCount = hiddenMajorIngredientCount(ingredients);
           const pairsWith = meal.pairs_with?.filter((s) => s.trim()) ?? [];
           const shopItems = mealIngredientsMissingFromPantry(meal, inventoryNames);
           const selectedPairs = selectedPairsBySlot[slot] ?? [];
@@ -179,36 +218,79 @@ export function WeekPlanDaySheet({
           return (
             <View key={`${day.date}-${slot}`} style={styles.mealBlock}>
               <View style={styles.mealHeader}>
-                <View style={styles.mealTitleWrap}>
-                  <Text variant="labelLarge" style={styles.slotLabel}>{slotLabel}</Text>
-                  <Text variant="titleMedium" style={styles.mealName}>{meal.name}</Text>
-                  {meal.cooking_time_mins ? (
-                    <Text variant="bodySmall" style={styles.meta}>
-                      {meal.cooking_time_mins} min · {meal.difficulty ?? 'easy'}
-                    </Text>
-                  ) : null}
+                <Text variant="labelLarge" style={styles.slotLabel}>{slotLabel}</Text>
+                <View style={styles.mealNameRow}>
+                  <Text variant="titleMedium" style={styles.mealNameLine}>
+                    <Text style={styles.mealName}>{meal.name}</Text>
+                    {meal.cooking_time_mins ? (
+                      <Text style={styles.meta}>
+                        {' '}{meal.cooking_time_mins} min · {meal.difficulty ?? 'easy'}
+                      </Text>
+                    ) : null}
+                  </Text>
+                  <View style={styles.changeBtnWrap}>
+                    <Menu
+                      visible={changeMenuSlot === slot}
+                      onDismiss={() => setChangeMenuSlot(null)}
+                      anchor={
+                        <Button
+                          mode="text"
+                          compact
+                          onPress={() => setChangeMenuSlot(slot)}
+                          loading={refreshingSlot === slot}
+                          disabled={refreshingSlot !== null}
+                          style={styles.changeBtn}
+                          labelStyle={styles.changeBtnLabel}
+                          textColor={palette.primary}
+                          accessibilityLabel={`Change ${slotLabel}`}
+                        >
+                          Change
+                        </Button>
+                      }
+                    >
+                      <Menu.Item
+                        title="Regenerate with AI"
+                        leadingIcon="auto-fix"
+                        onPress={() => {
+                          setChangeMenuSlot(null);
+                          void handleRegenerateWithAI(slot);
+                        }}
+                      />
+                      <Menu.Item
+                        title="Choose from catalog"
+                        leadingIcon="magnify"
+                        onPress={() => {
+                          setChangeMenuSlot(null);
+                          setSearchSlot(slot);
+                        }}
+                      />
+                    </Menu>
+                  </View>
                 </View>
-                <IconButton
-                  icon="refresh"
-                  size={20}
-                  onPress={() => void handleRefresh(slot)}
-                  disabled={refreshingSlot !== null}
-                  loading={refreshingSlot === slot}
-                  accessibilityLabel={`Refresh ${slotLabel}`}
-                />
               </View>
+              <DishImage
+                dishId={meal.dish_id}
+                dishName={meal.name}
+                variant="card"
+                borderRadius={14}
+                style={styles.mealHero}
+                accessibilityLabel={`Photo of ${meal.name}`}
+              />
 
               {meal.description?.trim() ? (
                 <Text variant="bodySmall" style={styles.description}>{meal.description}</Text>
               ) : null}
 
-              {ingredients.length > 0 ? (
+              {displayIngredients.length > 0 ? (
                 <>
                   <Text variant="labelSmall" style={styles.ingLabel}>Ingredients</Text>
                   <View style={mealTagPillRowStyle.wrap}>
-                    {ingredients.map((ing, i) => (
+                    {displayIngredients.map((ing, i) => (
                       <MealTagPill key={i} label={ing} variant="ingredient" />
                     ))}
+                    {hiddenIngredientCount > 0 ? (
+                      <MealTagPill label={`+${hiddenIngredientCount} more`} variant="ingredient" />
+                    ) : null}
                   </View>
                 </>
               ) : null}
@@ -286,6 +368,14 @@ export function WeekPlanDaySheet({
         })
       )}
     </BottomSheet>
+
+    <DishSearchOverlay
+      visible={searchSlot !== null}
+      mealSlot={searchSlot ?? undefined}
+      onClose={() => setSearchSlot(null)}
+      onSelect={(dish) => void handleSelectCatalogDish(dish)}
+    />
+    </>
   );
 }
 
@@ -297,16 +387,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E8E8E8',
   },
+  mealHero: {
+    marginBottom: 12,
+  },
   mealHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
     marginBottom: 8,
   },
-  mealTitleWrap: { flex: 1, minWidth: 0, paddingRight: 4 },
+  mealNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  changeBtnWrap: {
+    flexShrink: 0,
+  },
+  changeBtn: {
+    margin: 0,
+  },
+  changeBtnLabel: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
   slotLabel: { color: palette.primary, fontWeight: '700', marginBottom: 2 },
+  mealNameLine: { flex: 1, minWidth: 0, lineHeight: 24 },
   mealName: { fontWeight: '700', color: '#333' },
-  meta: { color: '#888', marginTop: 4 },
+  meta: { color: '#888', fontWeight: '400' },
   description: { color: '#666', marginBottom: 10, lineHeight: 18 },
   ingLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },
   pairsLabel: { color: '#333', fontWeight: '700', marginBottom: 6 },

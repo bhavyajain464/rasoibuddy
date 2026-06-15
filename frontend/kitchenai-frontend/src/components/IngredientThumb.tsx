@@ -1,0 +1,57 @@
+import React, { useMemo } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
+import { Icon } from 'react-native-paper';
+import { getIngredientStapleImageSource } from '../data/ingredientImages';
+import { resolveCatalogItem } from '../utils/ingredientUnits';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
+
+type Props = {
+  name: string;
+  ingredientId?: string | null;
+  size?: number;
+};
+
+export function IngredientThumb({ name, ingredientId, size = 40 }: Props) {
+  const { catalog } = useIngredientCatalog();
+
+  const source = useMemo(() => {
+    const match = resolveCatalogItem(catalog, ingredientId ?? undefined, name);
+    return getIngredientStapleImageSource(name, match?.ingredient_id ?? ingredientId);
+  }, [catalog, ingredientId, name]);
+
+  const frameStyle = useMemo(
+    () => [styles.frame, { width: size, height: size, borderRadius: Math.round(size * 0.24) }],
+    [size],
+  );
+
+  if (source) {
+    return (
+      <Image
+        source={source}
+        style={frameStyle}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+
+  return (
+    <View style={[frameStyle, styles.placeholder]} accessibilityRole="image">
+      <Icon source="food-apple" size={Math.round(size * 0.45)} color="#81C784" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  frame: {
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F2',
+    flexShrink: 0,
+  },
+  placeholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E0E8E0',
+  },
+});

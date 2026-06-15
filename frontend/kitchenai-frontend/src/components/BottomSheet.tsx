@@ -161,7 +161,6 @@ export function BottomSheet({
       visible={mounted}
       animationType="none"
       onRequestClose={requestDismiss}
-      statusBarTranslucent
     >
       <Portal.Host>
         <View style={styles.root}>

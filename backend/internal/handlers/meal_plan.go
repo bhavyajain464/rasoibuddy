@@ -599,6 +599,204 @@ func RefreshWeekPlanDay(
 	return &newDay, nil
 }
 
+// WeekPlanSetDishRequest is the body for POST /meals/week-plan/set-dish.
+type WeekPlanSetDishRequest struct {
+	Date     string `json:"date"`
+	MealSlot string `json:"meal_slot"`
+	DishID   string `json:"dish_id"`
+}
+
+// SetWeekPlanCatalogDish replaces one slot in the kitchen week plan with a catalog dish.
+func SetWeekPlanCatalogDish(
+	ctx context.Context,
+	db *sql.DB,
+	cfg *config.Config,
+	cookedLog *services.CookedLogService,
+	cache *services.MealPlanCache,
+	kitchenID string,
+	primaryUserID string,
+	dateKey string,
+	mealSlot string,
+	dishID string,
+) (*services.WeekPlanDay, error) {
+	if cache == nil || !cache.Enabled() {
+		return nil, fmt.Errorf("redis not configured")
+	}
+	dateKey = strings.TrimSpace(dateKey)
+	mealSlot = strings.ToLower(strings.TrimSpace(mealSlot))
+	dishID = strings.TrimSpace(dishID)
+	if dateKey == "" {
+		return nil, fmt.Errorf("date is required")
+	}
+	if mealSlot == "" {
+		return nil, fmt.Errorf("meal_slot is required")
+	}
+	if dishID == "" {
+		return nil, fmt.Errorf("dish_id is required")
+	}
+	validSlot := false
+	for _, s := range mealOfDaySlots {
+		if s.Slot == mealSlot {
+			validSlot = true
+			break
+		}
+	}
+	if !validSlot {
+		return nil, fmt.Errorf("invalid meal_slot")
+	}
+
+	dish, ok := services.FindCatalogDishByID(dishID)
+	if !ok {
+		return nil, fmt.Errorf("dish not found")
+	}
+
+	entry, ok, err := cache.Get(ctx, kitchenID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || entry == nil {
+		today := services.TodayDateKey(time.Now())
+		if err := GenerateAndCacheWeekPlanForKitchen(ctx, db, cfg, cookedLog, cache, kitchenID, primaryUserID, today); err != nil {
+			return nil, err
+		}
+		entry, ok, err = cache.Get(ctx, kitchenID)
+		if err != nil || !ok || entry == nil {
+			return nil, fmt.Errorf("week plan not found")
+		}
+	}
+
+	var existingDay *services.WeekPlanDay
+	for i := range entry.Days {
+		if entry.Days[i].Date == dateKey {
+			existingDay = &entry.Days[i]
+			break
+		}
+	}
+
+	inventory := fetchUserInventory(db, primaryUserID)
+	invNames := inventoryNames(inventory)
+	expiringNames := expiringInventoryNames(inventory, time.Now())
+	globalStars, _ := services.LoadGlobalStarCounts(db)
+	userStarred, _ := services.LoadUserStarredDishes(db, primaryUserID)
+
+	meal := smartMealFromCatalog(dish, invNames, expiringNames, services.MealOfDayCategoryID, globalStars, userStarred)
+	meal.MealSlot = mealSlot
+	meal.WhyThisMeal = fmt.Sprintf("You chose this for %s (%s).", dateKey, slotLabel(mealSlot))
+
+	var meals []SmartMeal
+	if existingDay != nil {
+		for _, m := range existingDay.Category.Meals {
+			if strings.ToLower(strings.TrimSpace(m.MealSlot)) == mealSlot {
+				continue
+			}
+			meals = append(meals, SmartMeal{
+				MealSlot:       m.MealSlot,
+				DishID:         m.DishID,
+				Name:           m.Name,
+				Description:    m.Description,
+				Ingredients:    m.Ingredients,
+				ItemsToOrder:   m.ItemsToOrder,
+				CookingTime:    m.CookingTime,
+				Difficulty:     m.Difficulty,
+				WhyThisMeal:    m.WhyThisMeal,
+				PairsWith:      m.PairsWith,
+				NutritionNotes: m.NutritionNotes,
+				StarCount:      m.StarCount,
+				UserStarred:    m.UserStarred,
+			})
+		}
+	}
+	meals = append(meals, meal)
+
+	slotOrder := map[string]int{"breakfast": 0, "lunch": 1, "dinner": 2}
+	for i := 0; i < len(meals); i++ {
+		for j := i + 1; j < len(meals); j++ {
+			a := slotOrder[strings.ToLower(meals[i].MealSlot)]
+			b := slotOrder[strings.ToLower(meals[j].MealSlot)]
+			if b < a {
+				meals[i], meals[j] = meals[j], meals[i]
+			}
+		}
+	}
+
+	meta := categoryMeta[services.MealOfDayCategoryID]
+	newDay := services.WeekPlanDay{
+		Date: dateKey,
+		Category: cachedCategoryFromMeal(MealCategory{
+			ID:          services.MealOfDayCategoryID,
+			Title:       meta.Title,
+			Description: meta.Desc,
+			Meals:       meals,
+		}),
+	}
+
+	updated := false
+	for i := range entry.Days {
+		if entry.Days[i].Date == dateKey {
+			entry.Days[i] = newDay
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		entry.Days = append(entry.Days, newDay)
+	}
+	entry.GeneratedAt = time.Now().Format(time.RFC3339)
+	if err := cache.Set(ctx, kitchenID, *entry); err != nil {
+		return nil, err
+	}
+	return &newDay, nil
+}
+
+func PostSetWeekPlanDish(
+	cache *services.MealPlanCache,
+	db *sql.DB,
+	cfg *config.Config,
+	cookedLog *services.CookedLogService,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		w.Header().Set("Content-Type", "application/json")
+		if cache == nil || !cache.Enabled() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]string{"error": "week_plan_unavailable"})
+			return
+		}
+		var req WeekPlanSetDishRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		kitchen, err := resolveKitchenForUser(db, userID)
+		if err != nil || kitchen == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "kitchen_not_found"})
+			return
+		}
+		primaryUser, pErr := primaryUserForKitchen(db, kitchen.KitchenID)
+		if pErr != nil || primaryUser == "" {
+			primaryUser = userID
+		}
+		day, err := SetWeekPlanCatalogDish(r.Context(), db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser, req.Date, req.MealSlot, req.DishID)
+		if err != nil {
+			log.Printf("[meal-plan] set-dish kitchen=%s date=%s slot=%s dish=%s: %v", kitchen.KitchenID, req.Date, req.MealSlot, req.DishID, err)
+			status := http.StatusInternalServerError
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "required") {
+				status = http.StatusBadRequest
+			}
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		cat := mealCategoryFromCached(day.Category)
+		applyUserStarsToCategory(db, userID, &cat)
+		json.NewEncoder(w).Encode(WeekPlanDayResponse{
+			Date:       day.Date,
+			Categories: []MealCategory{cat},
+		})
+	}
+}
+
 func PostRefreshWeekPlan(
 	cache *services.MealPlanCache,
 	db *sql.DB,

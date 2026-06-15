@@ -28,6 +28,7 @@ type MealCategory struct {
 
 type SmartMeal struct {
 	MealSlot       string   `json:"meal_slot,omitempty"` // breakfast | lunch | dinner (meal of the day)
+	DishID         string   `json:"dish_id,omitempty"`
 	Name           string   `json:"name"`
 	Description    string   `json:"description"`
 	Ingredients    []string `json:"ingredients"`
@@ -307,6 +308,7 @@ func relabelAsGlobalMealOfDay(categories []MealCategory, globalStars map[string]
 			cat.Meals[i].StarCount = globalStars[key]
 		}
 		cat.Meals[i].UserStarred = false
+		enrichSmartMealDishID(&cat.Meals[i])
 	}
 	return []MealCategory{*cat}
 }
@@ -816,6 +818,9 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 			}
 		}
 		cat.Meals = meals
+		for i := range cat.Meals {
+			enrichSmartMealDishID(&cat.Meals[i])
+		}
 		out = append(out, cat)
 	}
 	return out
@@ -963,6 +968,7 @@ func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []stri
 		pairs = pairs[:6]
 	}
 	return SmartMeal{
+		DishID:      d.ID,
 		Name:        d.DisplayLabel(),
 		Description: "",
 		Ingredients: ing,
@@ -973,6 +979,15 @@ func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []stri
 		WhyThisMeal: why,
 		StarCount:   d.GlobalStarCount(globalStars),
 		UserStarred: userStarred[key],
+	}
+}
+
+func enrichSmartMealDishID(meal *SmartMeal) {
+	if meal == nil || strings.TrimSpace(meal.DishID) != "" {
+		return
+	}
+	if dish, ok := services.FindCatalogDishByName(meal.Name); ok && strings.TrimSpace(dish.ID) != "" {
+		meal.DishID = dish.ID
 	}
 }
 

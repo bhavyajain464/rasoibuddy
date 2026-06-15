@@ -30,6 +30,9 @@ import { palette } from '../theme';
 import { MealOfDayCard, MealOfDayMeal } from '../components/MealOfDayCard';
 import { todayDateKey } from '../components/meals/WeekPlanCarousel';
 import { parseWeekPlanDays, todayMealsFromWeekPlanDays } from '../utils/weekPlan';
+import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
+import { resolveCatalogItem } from '../utils/ingredientUnits';
+import { formatPurchaseQty } from '../utils/purchaseUnits';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -71,6 +74,7 @@ export function HomeScreen({ navigation }: any) {
   const [mealOfDayLoading, setMealOfDayLoading] = useState(false);
   const [mealOfDayNotReady, setMealOfDayNotReady] = useState(false);
   const skipMountLoadData = useRef(true);
+  const { catalog } = useIngredientCatalog();
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope } = useAppRefresh();
   const loadMealOfDay = useCallback(async () => {
@@ -259,7 +263,11 @@ export function HomeScreen({ navigation }: any) {
                             {formatItemName(item.canonical_name)}
                           </Text>
                           <Text variant="bodySmall" style={styles.expiringRowQty} numberOfLines={1}>
-                            {item.qty} {item.unit}
+                            {formatPurchaseQty(
+                              item.qty,
+                              item.unit,
+                              resolveCatalogItem(catalog, undefined, item.canonical_name),
+                            )}
                           </Text>
                         </View>
                         <View

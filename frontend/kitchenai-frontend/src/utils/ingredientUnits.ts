@@ -1,5 +1,6 @@
 import type { CatalogIngredient } from '../types';
 import { DEFAULT_UNIT, UNIT_OPTIONS, normalizeUnit } from './units';
+import { defaultPurchaseQty } from './purchaseUnits';
 
 function normKey(s: string): string {
   return s.trim().toLowerCase();
@@ -53,12 +54,8 @@ export function coerceUnit(unit: string, allowed: readonly string[]): string {
 }
 
 /** Default qty when adding a catalog-backed suggestion to the shopping list. */
-export function defaultSuggestQty(unit: string): number {
-  const u = normalizeUnit(unit);
-  if (u === 'g') return 250;
-  if (u === 'ml') return 500;
-  if (u === 'pcs') return 10;
-  return 1;
+export function defaultSuggestQty(unit: string, item?: CatalogIngredient | null): number {
+  return defaultPurchaseQty(item, unit);
 }
 
 /** Resolve catalog name/unit before persisting a suggested line to shopping. */
@@ -77,7 +74,7 @@ export function normalizeSuggestedShoppingLine(
   }
   const allowed = unitsForCatalogItem(match);
   const unit = coerceUnit(line.unit, allowed);
-  const qty = line.qty > 0 ? line.qty : defaultSuggestQty(unit);
+  const qty = line.qty > 0 ? line.qty : defaultSuggestQty(unit, match);
   return { name: match.name, qty, unit };
 }
 

@@ -6,7 +6,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { AuthUser } from '../types';
 import { googleLogin, logoutApi, setAuthToken, setOnUnauthorized } from '../services/api';
 import { clearOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
-import { resetWebAppHomePath } from '../navigation/webHomePath';
+import { resetWebAppHomePath, resetWebPublicPath } from '../navigation/webHomePath';
 
 function getRequiredEnv(value: string | undefined, name: 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID') {
   const trimmedValue = value?.trim();
@@ -269,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       await AsyncStorage.multiRemove(['authToken', 'authUser']);
       await clearOrderSuggestionsCache();
-      resetWebAppHomePath();
+      resetWebPublicPath();
       setToken(null);
       setUser(null);
       setAuthToken(null);

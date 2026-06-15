@@ -22,6 +22,7 @@ const (
 // CachedSmartMeal mirrors handlers.SmartMeal JSON for Redis storage.
 type CachedSmartMeal struct {
 	MealSlot       string   `json:"meal_slot,omitempty"`
+	DishID         string   `json:"dish_id,omitempty"`
 	Name           string   `json:"name"`
 	Description    string   `json:"description"`
 	Ingredients    []string `json:"ingredients"`
