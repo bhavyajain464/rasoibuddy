@@ -1,5 +1,5 @@
 #!/bin/bash
-# End-to-end API test script for Kitchmate backend
+# End-to-end API test script for Rasoibuddy backend
 # Usage: ./test_api.sh [BASE_URL]
 #   BASE_URL defaults to http://localhost:8080
 
@@ -23,7 +23,7 @@ check() {
   fi
 }
 
-bold "=== Kitchmate API Tests ==="
+bold "=== Rasoibuddy API Tests ==="
 bold "Target: $BASE_URL"
 echo ""
 

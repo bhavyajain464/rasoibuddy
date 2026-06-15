@@ -157,7 +157,7 @@ func (s *BillingService) CreateSubscriptionOrder(userID, email, name string, in 
 		return CheckoutOrderResponse{}, err
 	}
 
-	title := fmt.Sprintf("Kitchmate %s", product.DisplayName)
+	title := fmt.Sprintf("Rasoibuddy %s", product.DisplayName)
 	desc := product.Description
 	if quote.CreditPaise > 0 {
 		desc = fmt.Sprintf("%s — %s", product.Description, quote.CreditSummary)

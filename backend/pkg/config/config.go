@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // DefaultGroqModel is used for meals, bill scan, shelf-life, WhatsApp NLU, and diet analysis.
@@ -65,6 +66,8 @@ type Config struct {
 
 	// Redis (optional): caches per-user cooked dish history (last 15 days).
 	RedisURL string
+	// MealPlanCacheTTL is how long kitchen week plans stay in Redis (default 4h).
+	MealPlanCacheTTL time.Duration
 
 	// Razorpay premium checkout (RAZORPAY_ENV=staging|production selects key pair).
 	Razorpay RazorpayConfig
@@ -263,6 +266,10 @@ func Load() (*Config, error) {
 		kafkaConsumerPauseBetweenBatchesMs = 0
 	}
 	redisURL := getEnv("REDIS_URL", "")
+	mealPlanTTLHours := getEnvInt("MEAL_PLAN_CACHE_TTL_HOURS", 4)
+	if mealPlanTTLHours < 1 {
+		mealPlanTTLHours = 4
+	}
 	razorpay := loadRazorpayConfig()
 	adminAPIKey := getEnv("ADMIN_API_KEY", "")
 	smtpPort := getEnvInt("SMTP_PORT", 587)
@@ -315,6 +322,7 @@ func Load() (*Config, error) {
 		KafkaConsumerGeminiBatchSize:       kafkaConsumerGeminiBatch,
 		KafkaConsumerPauseBetweenBatchesMs: kafkaConsumerPauseBetweenBatchesMs,
 		RedisURL:                           redisURL,
+		MealPlanCacheTTL:                   time.Duration(mealPlanTTLHours) * time.Hour,
 		Razorpay:                           razorpay,
 		Commerce:                           loadCommerceConfig(),
 		AdminAPIKey:                        adminAPIKey,
@@ -327,7 +335,7 @@ func Load() (*Config, error) {
 		MinIOSVersion:                      strings.TrimSpace(getEnv("MIN_IOS_VERSION", "")),
 		MinAndroidBuild:                    getEnvInt("MIN_ANDROID_BUILD", 0),
 		MinIOSBuild:                        getEnvInt("MIN_IOS_BUILD", 0),
-		AppUpdateMessage:                   strings.TrimSpace(getEnv("APP_UPDATE_MESSAGE", "A new version of Kitchmate is required. Please update from the store to continue.")),
+		AppUpdateMessage:                   strings.TrimSpace(getEnv("APP_UPDATE_MESSAGE", "A new version of Rasoibuddy is required. Please update from the store to continue.")),
 		PlayStoreURL:                       strings.TrimSpace(getEnv("PLAY_STORE_URL", "")),
 		AppStoreURL:                        strings.TrimSpace(getEnv("APP_STORE_URL", "")),
 	}, nil

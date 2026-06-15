@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { BRAND_DISPLAY_NAME } from '../constants/brand';
 import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
 import {
   clampWhatsAppMessageText,
@@ -93,7 +94,7 @@ function notifyUpdateRequiredIfNeeded(res: Response) {
     return;
   }
   _updateRequiredFired = true;
-  let message = 'A new version of Kitchmate is required. Please update from the store to continue.';
+  let message = `A new version of ${BRAND_DISPLAY_NAME} is required. Please update from the store to continue.`;
   res.clone().json().then(body => {
     if (typeof body.message === 'string' && body.message.trim()) {
       message = body.message.trim();
@@ -583,7 +584,7 @@ export async function parseWhatsAppMessage(text: string): Promise<WhatsAppParseR
   }
   const action = normalizeParsedAction(data?.action) ?? unknownWhatsAppAction();
   if (__DEV__) {
-    console.log('[KITCHMATE import/parse] ok', {
+    console.log('[RASOIBUDDY import/parse] ok', {
       intent: action.intent,
       confidence: action.confidence,
       summary: action.summary,

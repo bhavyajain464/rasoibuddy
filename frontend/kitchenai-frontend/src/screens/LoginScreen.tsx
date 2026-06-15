@@ -99,7 +99,10 @@ function WebLoginBackButton({ topInset }: { topInset: number }) {
     <IconButton
       icon="arrow-left"
       size={22}
-      onPress={() => navigation.navigate('Landing')}
+      onPress={() => {
+        if (navigation.canGoBack()) navigation.goBack();
+        else navigation.navigate('Landing');
+      }}
       style={[styles.backBtn, { top: topInset + 4 }]}
       accessibilityLabel="Back to home"
     />
@@ -114,9 +117,15 @@ export function LoginScreen() {
   const headerTop = Math.max(insets.top, 12);
 
   return (
-    <View style={styles.root}>
-      {/* Inset header — background matches flattened logo matte */}
-      <View style={[styles.header, { paddingTop: headerTop }]}>
+    <View
+      style={styles.root}
+      {...(Platform.OS === 'web' ? { className: 'login-screen-root' as any } : {})}
+    >
+      {/* Inset header — background matches logo matte (#FFFFFF) */}
+      <View
+        style={[styles.header, { paddingTop: headerTop }]}
+        {...(Platform.OS === 'web' ? { className: 'login-header' as any } : {})}
+      >
         {Platform.OS === 'web' ? <WebLoginBackButton topInset={headerTop} /> : null}
         <View
           style={[styles.logoSlot, { width: LOGO_WIDTH, height: logoHeight }]}
@@ -189,7 +198,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.borderLight,
+    borderBottomColor: '#F0F0F0',
     position: 'relative',
     ...Platform.select({
       ios: {

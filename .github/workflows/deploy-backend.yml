@@ -82,7 +82,7 @@ jobs:
             SMTP_HOST=smtp.gmail.com#
             SMTP_PORT=587#
             SMTP_USER=kitchmateai@gmail.com#
-            SMTP_FROM=Kitchmate <kitchmateai@gmail.com>#
+            SMTP_FROM=Rasoibuddy <kitchmateai@gmail.com>#
             WHATSAPP_TEST_MODE=true#
             GOOGLE_WEB_CLIENT_ID=208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com#
             GOOGLE_IOS_CLIENT_ID=208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com#

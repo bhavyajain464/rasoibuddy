@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Open the Kitchmate *development build* and point it at Metro on this machine.
+# Open the Rasoibuddy *development build* and point it at Metro on this machine.
 # Use after: npm run start   (Metro must be running on port 8082)
 set -euo pipefail
 
@@ -42,8 +42,8 @@ fi
 echo "Launching ${PACKAGE} -> ${URL}"
 if ! adb shell am start -a android.intent.action.VIEW -d "${DEEP_LINK}" 2>&1; then
   echo ""
-  echo "Deep link failed. Open the Kitchmate app on the device, shake for dev menu, and enter:"
+  echo "Deep link failed. Open the Rasoibuddy app on the device, shake for dev menu, and enter:"
   echo "  ${URL}"
   exit 1
 fi
-echo "Done. If you see ExpoCamera errors, you opened Expo Go — use the Kitchmate dev build icon only."
+echo "Done. If you see ExpoCamera errors, you opened Expo Go — use the Rasoibuddy dev build icon only."

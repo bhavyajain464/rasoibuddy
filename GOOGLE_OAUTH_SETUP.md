@@ -1,6 +1,6 @@
 # Google OAuth Multi-Platform Setup Guide
 
-This guide explains how to configure Google OAuth for multi-platform support (Web, iOS, Android) in the Kitchmate application.
+This guide explains how to configure Google OAuth for multi-platform support (Web, iOS, Android) in the Rasoibuddy application.
 
 ## Ports and env (current app)
 

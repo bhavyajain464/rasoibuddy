@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Copy transparent logo PNG into assets/logo.png and public/logo.png."""
+"""Fit logo PNG into assets/logo.png (1173×912 with margins) and public/logo.png."""
 from __future__ import annotations
 
-import shutil
+import subprocess
 import sys
 from pathlib import Path
-
-from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,14 +17,8 @@ def main() -> None:
     if not src.is_file():
         raise SystemExit(f"Not found: {src}")
 
-    logo = Image.open(src)
-    if logo.mode != "RGBA":
-        logo = logo.convert("RGBA")
-
-    dest = ROOT / "assets" / "logo.png"
-    logo.save(dest, "PNG", optimize=True)
-    shutil.copy(dest, ROOT / "public" / "logo.png")
-    print(f"Installed {dest} ({logo.size[0]}×{logo.size[1]} RGBA) — used as-is everywhere via app.json")
+    script = ROOT / "scripts" / "fit-brand-logo.mjs"
+    subprocess.run(["node", str(script), str(src)], cwd=str(ROOT), check=True)
 
 
 if __name__ == "__main__":

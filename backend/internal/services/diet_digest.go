@@ -120,10 +120,10 @@ func (s *CookedLogService) ListEatenForDate(ctx context.Context, userID, dateISO
 }
 
 func (s *DietDigestService) BuildDigestBody(dateISO string, entries []CookedLogEntry, report *DietDayReport) (subject, plain, html string) {
-	subject = fmt.Sprintf("Kitchmate — diet report for %s", dateISO)
+	subject = fmt.Sprintf("Rasoibuddy — diet report for %s", dateISO)
 	if len(entries) == 0 {
-		plain = fmt.Sprintf("You did not log any meals for %s.\n\nLog meals in Kitchmate → Meals → History & Diet to receive a detailed PDF nutrition report.\n", dateISO)
-		html = fmt.Sprintf("<p>You did not log any meals for <strong>%s</strong>.</p><p>Log meals in <strong>Kitchmate → Meals → History &amp; Diet</strong> to receive your PDF nutrition report.</p>", dateISO)
+		plain = fmt.Sprintf("You did not log any meals for %s.\n\nLog meals in Rasoibuddy → Meals → History & Diet to receive a detailed PDF nutrition report.\n", dateISO)
+		html = fmt.Sprintf("<p>You did not log any meals for <strong>%s</strong>.</p><p>Log meals in <strong>Rasoibuddy → Meals → History &amp; Diet</strong> to receive your PDF nutrition report.</p>", dateISO)
 		return subject, plain, html
 	}
 
@@ -203,7 +203,7 @@ func (s *DietDigestService) SendDigestEmail(to, subject, plain, html string, pdf
 	return smtp.SendMail(addr, auth, envelopeFrom, []string{to}, []byte(msg))
 }
 
-// formatRFC5322From quotes display names that contain spaces (Gmail rejects bare "Kitchmate <...>").
+// formatRFC5322From quotes display names that contain spaces (Gmail rejects bare "Rasoibuddy <...>").
 func formatRFC5322From(from string) string {
 	from = strings.TrimSpace(from)
 	if from == "" {

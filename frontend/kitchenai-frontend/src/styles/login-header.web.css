@@ -1,4 +1,13 @@
-/* Prevent sub-pixel gap under scaled logo on web */
+/* Login header — same pure white as logo.png matte (#FFFFFF) */
+.login-screen-root {
+  background-color: #ffffff;
+}
+
+.login-screen-root .login-header,
+.login-screen-root .login-logo-slot {
+  background-color: #ffffff;
+}
+
 .login-logo-slot img {
   display: block;
   background-color: #ffffff;

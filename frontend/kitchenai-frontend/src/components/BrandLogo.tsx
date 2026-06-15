@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, ImageStyle, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { brandLogo, BRAND_HEADER_BG } from '../constants/brand';
+import { brandLogo, BRAND_DISPLAY_NAME, BRAND_HEADER_BG } from '../constants/brand';
 
 type BrandLogoProps = {
   width?: number;
@@ -11,7 +11,7 @@ type BrandLogoProps = {
   onHeaderMatte?: boolean;
 };
 
-/** Full Kitchmate logo (chef + cart + wordmark). */
+/** Full Rasoi Buddy logo (chef + cart + wordmark). */
 export function BrandLogo({
   width = 280,
   height = 218,
@@ -28,7 +28,7 @@ export function BrandLogo({
         style={[styles.image, matte, { width, height }, imageStyle]}
         resizeMode="contain"
         accessibilityRole="image"
-        accessibilityLabel="Kitchmate logo"
+        accessibilityLabel={`${BRAND_DISPLAY_NAME} logo`}
       />
     </View>
   );

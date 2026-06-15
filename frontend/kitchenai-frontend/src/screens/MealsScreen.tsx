@@ -149,8 +149,9 @@ export function MealsScreen() {
   const [weekPlanAnchor, setWeekPlanAnchor] = useState(todayDateKey());
   const [selectedPlanDate, setSelectedPlanDate] = useState(todayDateKey());
   const [sheetDate, setSheetDate] = useState<string | null>(null);
-  const loadWeekPlan = useCallback(async () => {
-    setWeekPlanLoading(true);
+  const loadWeekPlan = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) setWeekPlanLoading(true);
     try {
       const res = await api.getWeekPlan();
       const today = todayDateKey();
@@ -169,7 +170,7 @@ export function MealsScreen() {
     } catch {
       setWeekPlanDays([]);
     } finally {
-      setWeekPlanLoading(false);
+      if (!silent) setWeekPlanLoading(false);
     }
   }, []);
 
@@ -279,10 +280,10 @@ export function MealsScreen() {
   useFocusEffect(
     useCallback(() => {
       if (mealsTab !== 'suggest') return undefined;
-      void loadWeekPlan();
+      void loadWeekPlan({ silent: weekPlanDays.length > 0 });
       refreshCookProfileReady();
       return undefined;
-    }, [mealsTab, loadWeekPlan, refreshCookProfileReady]),
+    }, [mealsTab, loadWeekPlan, refreshCookProfileReady, weekPlanDays.length]),
   );
 
   const sheetDay = weekPlanDays.find((d) => d.date === sheetDate) ?? null;

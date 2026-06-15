@@ -1,9 +1,8 @@
 import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
+import { ANDROID_PACKAGE, BRAND_DISPLAY_NAME, PLAY_STORE_URL } from '../constants/brand';
 import { fetchAppConfig, type AppConfigResponse } from '../services/api';
-
-const ANDROID_PACKAGE = 'com.kitchenai.app';
 
 function envStoreUrl(key: 'EXPO_PUBLIC_PLAY_STORE_URL' | 'EXPO_PUBLIC_APP_STORE_URL'): string {
   const v = process.env[key]?.trim();
@@ -72,8 +71,7 @@ export function isNativeUpdateRequired(config: AppConfigResponse): boolean {
   return false;
 }
 
-const DEFAULT_UPDATE_MESSAGE =
-  'A new version of Kitchmate is required. Please update from the store to continue.';
+const DEFAULT_UPDATE_MESSAGE = `A new version of ${BRAND_DISPLAY_NAME} is required. Please update from the store to continue.`;
 
 /** Returns whether the installed native build is below server minimums. Web always passes. */
 export async function checkForceUpdate(): Promise<{ required: boolean; message: string }> {
@@ -115,9 +113,7 @@ export async function openAppStoreForUpdate(storeUrls?: {
   appStoreUrl?: string;
 }): Promise<{ ok: boolean; message?: string }> {
   if (Platform.OS === 'android') {
-    const web = storeUrls?.playStoreUrl?.trim() ||
-      envStoreUrl('EXPO_PUBLIC_PLAY_STORE_URL') ||
-      `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
+    const web = storeUrls?.playStoreUrl?.trim() || PLAY_STORE_URL;
     const market = `market://details?id=${ANDROID_PACKAGE}`;
     try {
       if (await Linking.canOpenURL(market)) {
@@ -127,7 +123,7 @@ export async function openAppStoreForUpdate(storeUrls?: {
       await Linking.openURL(web);
       return { ok: true };
     } catch {
-      return { ok: false, message: 'Could not open Google Play. Try searching for Kitchmate in the Play Store.' };
+      return { ok: false, message: `Could not open Google Play. Try searching for ${BRAND_DISPLAY_NAME} in the Play Store.` };
     }
   }
 

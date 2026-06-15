@@ -67,7 +67,7 @@ curl -X POST http://localhost:8080/api/v1/admin/subscriptions/cancel \
   -d '{"email":"user@example.com","reason":"support request"}'
 ```
 
-Use `user_id` instead of `email` if you have the UUID. Razorpay is not auto-refunded; this only updates Kitchmate entitlements.
+Use `user_id` instead of `email` if you have the UUID. Razorpay is not auto-refunded; this only updates Rasoibuddy entitlements.
 
 Refresh **per-user** Meal of the Day in Redis (respects dietary prefs; free tier reads `GET /meals/meal-of-day`). Requires `REDIS_URL`:
 
@@ -140,7 +140,7 @@ Expected output:
 1. Open Expo Go app on your phone
 2. Scan QR code from terminal
 3. App should show:
-   - Kitchmate header
+   - Rasoibuddy header
    - Inventory stats
    - Expiring items (sample data)
    - Quick action buttons
@@ -258,5 +258,5 @@ For issues or questions:
 
 ---
 
-**🎉 Your Kitchmate foundation is now set up!** 
+**🎉 Your Rasoibuddy foundation is now set up!** 
 Proceed to Week 2 implementation as per the project plan.

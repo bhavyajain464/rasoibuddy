@@ -82,7 +82,7 @@ func main() {
 	defer redisClient.Close()
 	cookedLogSvc := services.NewCookedLogService(sqlDB, redisClient)
 	mealOfDayCache := services.NewMealOfDayCache(redisClient)
-	mealPlanCache := services.NewMealPlanCache(redisClient)
+	mealPlanCache := services.NewMealPlanCache(redisClient, cfg.MealPlanCacheTTL)
 	dietDigestSvc := services.NewDietDigestService(sqlDB, cookedLogSvc, cfg)
 	services.StartNightlyDigestScheduler(dietDigestSvc)
 	handlers.StartMealOfDayScheduler(sqlDB, cfg, cookedLogSvc, mealOfDayCache)

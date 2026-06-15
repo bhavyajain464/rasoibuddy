@@ -17,7 +17,7 @@ After 1,000 units/month, text detection is about **$1.50 per 1,000 images** ([pr
 
 ## One-time GCP setup
 
-Project used for Kitchmate: **`kitchmate-495620`** (same as Cloud Run).
+Project used for Rasoibuddy: **`kitchmate-495620`** (same as Cloud Run).
 
 ### 1. Enable the API
 

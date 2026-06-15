@@ -1,4 +1,4 @@
-# 🍳 Kitchmate - AI-powered Kitchen Operating System
+# 🍳 Rasoibuddy - AI-powered Kitchen Operating System
 
 An intelligent kitchen management system tailored for the Indian context (specifically Bengaluru) that bridges household inventory, meal planning, and cook management.
 
@@ -598,11 +598,11 @@ MIT License - See LICENSE file for details
 
 ## 👥 Team
 
-Kitchmate Team - Building intelligent kitchen management for Indian households
+Rasoibuddy Team - Building intelligent kitchen management for Indian households
 
 ## 🔐 Google OAuth Setup (Week 6 - Authentication)
 
-To enable Google OAuth authentication for your Kitchmate application, follow these steps:
+To enable Google OAuth authentication for your Rasoibuddy application, follow these steps:
 
 ### 1. Create Google OAuth Credentials
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
@@ -611,7 +611,7 @@ To enable Google OAuth authentication for your Kitchmate application, follow the
 4. Click **Create Credentials** → **OAuth 2.0 Client ID**
 5. Configure the consent screen:
    - Application type: **Web application**
-   - Name: "Kitchmate"
+   - Name: "Rasoibuddy"
    - Authorized JavaScript origins: e.g. `http://localhost:8082` (Expo web), `http://localhost:19006` (legacy Expo), plus your LAN URL if needed
    - Authorized redirect URIs: `http://localhost:8080/api/v1/auth/google-login` (backend callback)
 6. Click **Create** and note your **Client ID**

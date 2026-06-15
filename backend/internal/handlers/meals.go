@@ -301,7 +301,7 @@ func relabelAsGlobalMealOfDay(categories []MealCategory, globalStars map[string]
 	cat.Description = meta.Desc
 	for i := range cat.Meals {
 		if cat.Meals[i].WhyThisMeal == "" {
-			cat.Meals[i].WhyThisMeal = "Today's pick for every Kitchmate home."
+			cat.Meals[i].WhyThisMeal = "Today's pick for every Rasoibuddy home."
 		}
 		key := services.NormalizeDishName(cat.Meals[i].Name)
 		if globalStars != nil {
@@ -530,7 +530,7 @@ func buildGroqFilterPrompt(inventory []inventoryRow, prefs *services.UserPrefsDa
 	} else {
 		sb.WriteString("Context: weekend — slightly more ambitious dishes are OK.\n")
 	}
-	sb.WriteString("Use the exact shortlist dish name in JSON. Star counts are global (all Kitchmate users). Prefer dishes with more stars when the request is vague.\n")
+	sb.WriteString("Use the exact shortlist dish name in JSON. Star counts are global (all Rasoibuddy users). Prefer dishes with more stars when the request is vague.\n")
 
 	appendHardConstraints(&sb, prefs)
 

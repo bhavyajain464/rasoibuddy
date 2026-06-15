@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Google sign-in error:', e);
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
-        showAppError('Cannot reach Kitchmate servers. Check your internet connection.');
+        showAppError('Cannot reach Rasoibuddy servers. Check your internet connection.');
       } else if (msg.includes('401') || msg.includes('invalid audience') || msg.includes('verification failed')) {
         showAppError('Server rejected this Google account. Contact support if this persists.');
       } else {

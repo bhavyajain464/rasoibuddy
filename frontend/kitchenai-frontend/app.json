@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Kitchmate",
+    "name": "Rasoi Buddy",
     "slug": "kitchenai-frontend",
     "version": "1.0.0",
     "orientation": "default",
@@ -21,8 +21,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kitchenai.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Kitchmate needs camera access to scan grocery bills.",
-        "NSPhotoLibraryUsageDescription": "Kitchmate needs photo library access to select grocery bill images.",
+        "NSCameraUsageDescription": "Rasoi Buddy needs camera access to scan grocery bills.",
+        "NSPhotoLibraryUsageDescription": "Rasoi Buddy needs photo library access to select grocery bill images.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "tez",
@@ -69,7 +69,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Kitchmate needs camera access to scan grocery bills."
+          "cameraPermission": "Rasoi Buddy needs camera access to scan grocery bills."
         }
       ],
       [

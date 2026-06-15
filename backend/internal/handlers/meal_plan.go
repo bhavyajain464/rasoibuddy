@@ -18,6 +18,8 @@ import (
 var (
 	mealPlanLastRunDate string
 	mealPlanRunMu       sync.Mutex
+	mealPlanGenMu       sync.Mutex
+	mealPlanGenInFlight = map[string]struct{}{}
 )
 
 // WeekPlanDayResponse is one day in GET /meals/week-plan.
@@ -44,6 +46,7 @@ func GetWeekPlan(
 	cookedLog *services.CookedLogService,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		userID := getUserID(r)
 		w.Header().Set("Content-Type", "application/json")
 		if cache == nil || !cache.Enabled() {
@@ -63,6 +66,9 @@ func GetWeekPlan(
 			})
 			return
 		}
+		logWeekPlan := func(path string) {
+			log.Printf("[meal-plan] GET kitchen=%s path=%s ms=%d", kitchen.KitchenID, path, time.Since(start).Milliseconds())
+		}
 		today := services.TodayDateKey(time.Now())
 		entry, ok, err := cache.Get(r.Context(), kitchen.KitchenID)
 		if err != nil {
@@ -70,55 +76,72 @@ func GetWeekPlan(
 			http.Error(w, "Failed to load meal plan", http.StatusInternalServerError)
 			return
 		}
+		var normalized *services.WeekPlanEntry
+		needsFill := false
 		if ok && entry != nil {
-			normalized, needsFill, normErr := services.NormalizeWeekPlan(entry, today)
+			var normErr error
+			normalized, needsFill, normErr = services.NormalizeWeekPlan(entry, today)
 			if normErr != nil {
 				http.Error(w, "Failed to normalize meal plan", http.StatusInternalServerError)
 				return
 			}
-			if needsFill || len(normalized.Days) < services.MealPlanDaysCount() {
-				entry = normalized
-				ok = false
-			} else {
-				entry = normalized
-			}
 		}
-		if !ok || entry == nil || len(entry.Days) < services.MealPlanDaysCount() {
+		complete := normalized != nil && !needsFill && len(normalized.Days) >= services.MealPlanDaysCount()
+		if complete {
+			resp := weekPlanResponseFromEntry(normalized, userID, db, today)
+			json.NewEncoder(w).Encode(resp)
+			logWeekPlan("redis-hit")
+			return
+		}
+		if normalized != nil && len(normalized.Days) > 0 {
 			primaryUser, pErr := primaryUserForKitchen(db, kitchen.KitchenID)
 			if pErr != nil || primaryUser == "" {
 				primaryUser = userID
 			}
-			if err := GenerateAndCacheWeekPlanForKitchen(r.Context(), db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser, today); err != nil {
-				log.Printf("[meal-plan] on-demand generate kitchen=%s: %v", kitchen.KitchenID, err)
-				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error":   "week_plan_not_ready",
-					"message": "Could not prepare your meal plan. Try again in a moment.",
-					"date":    today,
-				})
-				return
-			}
-			entry, ok, err = cache.Get(r.Context(), kitchen.KitchenID)
-			if err != nil || !ok || entry == nil {
-				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error":   "week_plan_not_ready",
-					"message": "Your meal plan is prepared at midnight. Check back soon.",
-					"date":    today,
-				})
-				return
-			}
+			scheduleWeekPlanFill(db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser, today)
+			resp := weekPlanResponseFromEntry(normalized, userID, db, today)
+			resp.CacheStale = true
+			json.NewEncoder(w).Encode(resp)
+			logWeekPlan("redis-partial")
+			return
+		}
+		primaryUser, pErr := primaryUserForKitchen(db, kitchen.KitchenID)
+		if pErr != nil || primaryUser == "" {
+			primaryUser = userID
+		}
+		if err := GenerateAndCacheWeekPlanForKitchen(r.Context(), db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser, today); err != nil {
+			log.Printf("[meal-plan] on-demand generate kitchen=%s: %v", kitchen.KitchenID, err)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "week_plan_not_ready",
+				"message": "Could not prepare your meal plan. Try again in a moment.",
+				"date":    today,
+			})
+			return
+		}
+		entry, ok, err = cache.Get(r.Context(), kitchen.KitchenID)
+		if err != nil || !ok || entry == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error":   "week_plan_not_ready",
+				"message": "Your meal plan is prepared at midnight. Check back soon.",
+				"date":    today,
+			})
+			return
 		}
 		resp := weekPlanResponseFromEntry(entry, userID, db, today)
 		json.NewEncoder(w).Encode(resp)
+		logWeekPlan("generated")
 	}
 }
 
 func weekPlanResponseFromEntry(entry *services.WeekPlanEntry, userID string, db *sql.DB, today string) WeekPlanResponse {
+	globalStars, _ := services.LoadGlobalStarCounts(db)
+	userStarred, _ := services.LoadUserStarredDishes(db, userID)
 	days := make([]WeekPlanDayResponse, 0, len(entry.Days))
 	for _, d := range entry.Days {
 		cat := mealCategoryFromCached(d.Category)
-		applyUserStarsToCategory(db, userID, &cat)
+		applyUserStarsToCategoryWithMaps(&cat, globalStars, userStarred)
 		days = append(days, WeekPlanDayResponse{
 			Date:       d.Date,
 			Categories: []MealCategory{cat},
@@ -133,6 +156,41 @@ func weekPlanResponseFromEntry(entry *services.WeekPlanEntry, userID string, db 
 		CacheAvailable: true,
 		CacheStale:     entry.AnchorDate != today,
 	}
+}
+
+func scheduleWeekPlanFill(
+	db *sql.DB,
+	cfg *config.Config,
+	cookedLog *services.CookedLogService,
+	cache *services.MealPlanCache,
+	kitchenID string,
+	primaryUserID string,
+	anchorDate string,
+) {
+	kitchenID = strings.TrimSpace(kitchenID)
+	if kitchenID == "" {
+		return
+	}
+	mealPlanGenMu.Lock()
+	if _, busy := mealPlanGenInFlight[kitchenID]; busy {
+		mealPlanGenMu.Unlock()
+		return
+	}
+	mealPlanGenInFlight[kitchenID] = struct{}{}
+	mealPlanGenMu.Unlock()
+
+	go func() {
+		defer func() {
+			mealPlanGenMu.Lock()
+			delete(mealPlanGenInFlight, kitchenID)
+			mealPlanGenMu.Unlock()
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Minute)
+		defer cancel()
+		if err := GenerateAndCacheWeekPlanForKitchen(ctx, db, cfg, cookedLog, cache, kitchenID, primaryUserID, anchorDate); err != nil {
+			log.Printf("[meal-plan] background fill kitchen=%s: %v", kitchenID, err)
+		}
+	}()
 }
 
 func primaryUserForKitchen(db *sql.DB, kitchenID string) (string, error) {
@@ -406,7 +464,7 @@ func StartWeekPlanScheduler(
 			RunMidnightWeekPlanRollover(context.Background(), db, cfg, cookedLog, cache)
 		}
 	}()
-	log.Printf("[meal-plan] scheduler started (00:00 %s daily, per-kitchen Redis cache)", services.MealOfDayTimezone)
+	log.Printf("[meal-plan] scheduler started (00:00 %s daily, per-kitchen Redis cache, TTL=%s)", services.MealOfDayTimezone, cache.TTL())
 }
 
 // WeekPlanRefreshRequest is the body for POST /meals/week-plan/refresh.

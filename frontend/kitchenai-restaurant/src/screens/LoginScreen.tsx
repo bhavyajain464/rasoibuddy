@@ -41,7 +41,7 @@ export default function LoginScreen() {
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Surface style={styles.card} elevation={2}>
         <Text variant="headlineMedium" style={styles.title}>
-          Kitchmate Partner
+          Rasoibuddy Partner
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
           Restaurant inventory, menu & orders. Sign in with your Gmail account to continue.

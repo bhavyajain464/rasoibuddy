@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BrandLogo } from '../components/BrandLogo';
+import { BRAND_DISPLAY_NAME, PLAY_STORE_URL, PRIVACY_URL } from '../constants/brand';
 import type { PublicStackParamList } from '../navigation/types';
 
 if (Platform.OS === 'web') {
@@ -74,37 +76,47 @@ const PLANS: Plan[] = [
   },
 ];
 
+const GOOGLE_PLAY_BADGE =
+  'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png';
+
+function LandingBrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <>
+      <span className={`brand-mark${compact ? ' brand-mark--compact' : ''}`}>
+        <img
+          className={`brand-icon${compact ? ' brand-icon--compact' : ''}`}
+          src="/icon-mark.png"
+          alt=""
+          decoding="async"
+        />
+      </span>
+      <span className="brand-name">
+        Rasoi <span className="brand-name-accent">Buddy</span>
+      </span>
+    </>
+  );
+}
+
+function GooglePlayBadge({ height = 48, className = 'play-badge' }: { height?: number; className?: string }) {
+  return (
+    <a
+      className={className}
+      href={PLAY_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Get ${BRAND_DISPLAY_NAME} on Google Play`}
+    >
+      <img src={GOOGLE_PLAY_BADGE} alt="Get it on Google Play" height={height} />
+    </a>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
     </svg>
   );
-}
-
-function BrandLogo({ size = 20 }: { size?: number }) {
-  return (
-    <span className="logo">
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <path d="M12 3c4 0 7 3 7 7 0 5-5 9-7 11-2-2-7-6-7-11 0-4 3-7 7-7Z" fill="#fff" opacity=".95" />
-        <path
-          d="M12 7v8M12 10c-1.4-1.1-2.8-1.1-3.7 0M12 12c1.4-1.1 2.8-1.1 3.7 0"
-          stroke="#15803D"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
-  );
-}
-
-function scrollTo(id: string) {
-  if (Platform.OS !== 'web') return;
-  const target = document.getElementById(id);
-  const scroller = document.querySelector('.landing-page');
-  if (!target || !scroller) return;
-  const top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
-  scroller.scrollTo({ top, behavior: 'smooth' });
 }
 
 function planPrice(plan: Plan, mode: BillingMode) {
@@ -121,19 +133,52 @@ function planPrice(plan: Plan, mode: BillingMode) {
   return { amount: String(plan.monthly), period: ' /month', billed: '' };
 }
 
+const LANDING_HEADER_OFFSET = 84;
+
 function LandingPageWeb() {
   const navigation = useNavigation<NativeStackNavigationProp<PublicStackParamList>>();
   const [billing, setBilling] = useState<BillingMode>('monthly');
   const [carouselIndex, setCarouselIndex] = useState(1);
   const trackRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = useCallback((id: string) => {
+    const scroller = pageRef.current;
+    const target = scroller?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+    if (!scroller || !target) return;
+    const top =
+      scroller.scrollTop +
+      target.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top -
+      LANDING_HEADER_OFFSET;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Stack transitions apply transform to the screen; wait for layout before scrolling.
+      const frame = requestAnimationFrame(() => {
+        const hash = window.location.hash.replace(/^#/, '');
+        if (hash) scrollToSection(hash);
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [scrollToSection]),
+  );
 
   const goLogin = useCallback(() => {
     navigation.navigate('Login');
   }, [navigation]);
 
+  const scrollToTop = useCallback(() => {
+    pageRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const openPrivacy = useCallback(() => {
-    if (Platform.OS === 'web') window.location.href = '/privacy';
-    else void Linking.openURL('/privacy');
+    if (Platform.OS === 'web') {
+      window.location.assign(PRIVACY_URL);
+      return;
+    }
+    void Linking.openURL(PRIVACY_URL);
   }, []);
 
   const syncCarousel = useCallback(() => {
@@ -153,12 +198,12 @@ function LandingPageWeb() {
   }, []);
 
   useEffect(() => {
-    document.title = 'Kitchmate — The AI Kitchen OS for Indian homes';
+    document.title = `${BRAND_DISPLAY_NAME} — The AI Kitchen OS for Indian homes`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) {
       meta.setAttribute(
         'content',
-        'Kitchmate scans your grocery bills, suggests meals from what you already have, plans your week, and coordinates with your cook — so you waste less and never wonder what to cook again.',
+        `${BRAND_DISPLAY_NAME} scans your grocery bills, suggests meals from what you already have, plans your week, and coordinates with your cook — so you waste less and never wonder what to cook again.`,
       );
     }
   }, []);
@@ -175,26 +220,32 @@ function LandingPageWeb() {
   }, [scrollToPlan, syncCarousel]);
 
   return (
-    <div className="landing-page">
+    <div className="landing-screen-root">
+    <div ref={pageRef} className="landing-page">
       <header>
         <div className="wrap nav">
-          <div className="brand">
-            <BrandLogo />
-            Kitchmate
-          </div>
+          <button type="button" className="brand" onClick={scrollToTop} aria-label={`${BRAND_DISPLAY_NAME} home`}>
+            <LandingBrandMark />
+          </button>
           <nav className="nav-links">
-            <button type="button" onClick={() => scrollTo('features')}>
+            <button type="button" onClick={() => scrollToSection('features')}>
               Features
             </button>
-            <button type="button" onClick={() => scrollTo('how')}>
+            <button type="button" onClick={() => scrollToSection('how')}>
               How it works
             </button>
-            <button type="button" onClick={() => scrollTo('pricing')}>
+            <button type="button" onClick={() => scrollToSection('pricing')}>
               Pricing
             </button>
-            <button type="button" className="btn btn-primary" style={{ padding: '9px 18px' }} onClick={goLogin}>
+            <a
+              className="btn btn-primary"
+              style={{ padding: '9px 18px' }}
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Get the app
-            </button>
+            </a>
           </nav>
         </div>
       </header>
@@ -211,7 +262,7 @@ function LandingPageWeb() {
               <span className="hl">&ldquo;what to cook?&rdquo;</span> again.
             </h1>
             <p>
-              Kitchmate scans your grocery bills, suggests meals from what&apos;s already in your kitchen, plans your
+              {BRAND_DISPLAY_NAME} scans your grocery bills, suggests meals from what&apos;s already in your kitchen, plans your
               week, and even messages your cook — so you waste less and eat better.
             </p>
             <div className="cta-row">
@@ -221,7 +272,8 @@ function LandingPageWeb() {
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </button>
-              <button type="button" className="btn btn-ghost" onClick={() => scrollTo('how')}>
+              <GooglePlayBadge />
+              <button type="button" className="btn btn-ghost" onClick={() => scrollToSection('how')}>
                 See how it works
               </button>
             </div>
@@ -382,7 +434,7 @@ function LandingPageWeb() {
           <div className="head">
             <span className="eyebrow">Everything in one app</span>
             <h2>Everything your kitchen needs, in your pocket.</h2>
-            <p className="sub">From the bill to the table — Kitchmate handles inventory, ideas, planning, and shopping.</p>
+            <p className="sub">From the bill to the table — {BRAND_DISPLAY_NAME} handles inventory, ideas, planning, and shopping.</p>
           </div>
           <div className="feat-grid">
             <div className="feat">
@@ -393,7 +445,7 @@ function LandingPageWeb() {
                 </svg>
               </div>
               <h3>Scan your bill</h3>
-              <p>Snap a grocery bill and Kitchmate auto-fills your pantry with items, quantities, and estimated expiry.</p>
+              <p>Snap a grocery bill and {BRAND_DISPLAY_NAME} auto-fills your pantry with items, quantities, and estimated expiry.</p>
             </div>
             <div className="feat">
               <div className="ic">
@@ -577,33 +629,62 @@ function LandingPageWeb() {
           <div className="final-card">
             <h2>Your kitchen, intelligently run.</h2>
             <p>Join the households turning grocery chaos into easy, waste-free home cooking.</p>
-            <button type="button" className="btn btn-primary" onClick={goLogin}>
-              Get started with Kitchmate
-            </button>
-            <small>Available on Android, iOS &amp; web</small>
+            <div className="final-cta-row">
+              <button type="button" className="btn btn-primary" onClick={goLogin}>
+                Get started with {BRAND_DISPLAY_NAME}
+              </button>
+              <GooglePlayBadge height={48} className="play-badge play-badge--on-dark" />
+            </div>
+            <small>
+              Free on Android · sign in on web · iOS coming soon ·{' '}
+              <a
+                href={PRIVACY_URL}
+                onClick={(e) => {
+                  e.preventDefault();
+                  openPrivacy();
+                }}
+              >
+                Privacy Policy
+              </a>
+            </small>
           </div>
         </div>
       </section>
 
       <footer>
         <div className="wrap foot">
-          <div className="brand" style={{ fontSize: 17 }}>
-            <BrandLogo size={16} /> Kitchmate
-          </div>
-          <div>© {new Date().getFullYear()} Kitchmate · Made for Indian kitchens</div>
+          <button
+            type="button"
+            className="brand brand--footer"
+            onClick={scrollToTop}
+            aria-label={`${BRAND_DISPLAY_NAME} home`}
+          >
+            <LandingBrandMark compact />
+          </button>
+          <div>© {new Date().getFullYear()} {BRAND_DISPLAY_NAME} · Made for Indian kitchens</div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <button type="button" onClick={openPrivacy}>
+            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
+              Google Play
+            </a>
+            <a
+              href={PRIVACY_URL}
+              onClick={(e) => {
+                e.preventDefault();
+                openPrivacy();
+              }}
+            >
               Privacy
-            </button>
-            <button type="button" onClick={() => scrollTo('features')}>
+            </a>
+            <button type="button" onClick={() => scrollToSection('features')}>
               Features
             </button>
-            <button type="button" onClick={() => scrollTo('pricing')}>
+            <button type="button" onClick={() => scrollToSection('pricing')}>
               Pricing
             </button>
           </div>
         </div>
       </footer>
+    </div>
     </div>
   );
 }
@@ -613,10 +694,14 @@ function LandingPageNative() {
 
   return (
     <ScrollView contentContainerStyle={nativeStyles.container}>
-      <Text style={nativeStyles.title}>Kitchmate</Text>
+      <BrandLogo width={240} height={187} />
+      <Text style={nativeStyles.title}>{BRAND_DISPLAY_NAME}</Text>
       <Text style={nativeStyles.subtitle}>The AI Kitchen OS for Indian homes</Text>
       <Pressable style={nativeStyles.button} onPress={() => navigation.navigate('Login')}>
         <Text style={nativeStyles.buttonText}>Get started</Text>
+      </Pressable>
+      <Pressable style={nativeStyles.linkButton} onPress={() => void Linking.openURL(PLAY_STORE_URL)}>
+        <Text style={nativeStyles.linkButtonText}>Get it on Google Play</Text>
       </Pressable>
     </ScrollView>
   );
@@ -641,6 +726,7 @@ const nativeStyles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     color: '#0C1611',
+    marginTop: 16,
     marginBottom: 8,
   },
   subtitle: {
@@ -659,5 +745,15 @@ const nativeStyles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  linkButton: {
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  linkButtonText: {
+    color: '#15803D',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });

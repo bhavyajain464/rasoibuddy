@@ -15,7 +15,7 @@ const {
   AndroidConfig,
 } = require('expo/config-plugins');
 
-const MARKER = '// @kitchmate edge-to-edge release fixes';
+const MARKER = '// @rasoibuddy edge-to-edge release fixes';
 const PREVIEW_ACTIVITY = 'androidx.compose.ui.tooling.PreviewActivity';
 
 /** Theme attrs that map to deprecated Window.setStatusBarColor / setNavigationBarColor. */

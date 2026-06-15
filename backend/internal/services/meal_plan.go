@@ -14,7 +14,7 @@ import (
 
 const (
 	mealPlanKeyPrefix = "mealplan:"
-	mealPlanCacheTTL  = 8 * 24 * time.Hour
+	defaultMealPlanCacheTTL = 4 * time.Hour
 	mealPlanDays      = 7
 )
 
@@ -40,14 +40,26 @@ type WeekPlanEntry struct {
 // MealPlanCache reads and writes kitchen week plans in Redis.
 type MealPlanCache struct {
 	redis *redis.Client
+	ttl   time.Duration
 }
 
-func NewMealPlanCache(r *redis.Client) *MealPlanCache {
-	return &MealPlanCache{redis: r}
+func NewMealPlanCache(r *redis.Client, ttl time.Duration) *MealPlanCache {
+	if ttl <= 0 {
+		ttl = defaultMealPlanCacheTTL
+	}
+	return &MealPlanCache{redis: r, ttl: ttl}
 }
 
 func (c *MealPlanCache) Enabled() bool {
 	return c != nil && c.redis != nil && c.redis.Enabled()
+}
+
+// TTL reports the Redis expiry for kitchen week plans.
+func (c *MealPlanCache) TTL() time.Duration {
+	if c == nil || c.ttl <= 0 {
+		return defaultMealPlanCacheTTL
+	}
+	return c.ttl
 }
 
 func (c *MealPlanCache) cacheKey(kitchenID string) string {
@@ -94,7 +106,7 @@ func (c *MealPlanCache) Set(ctx context.Context, kitchenID string, entry WeekPla
 	if err != nil {
 		return err
 	}
-	return c.redis.Raw().Set(ctx, c.cacheKey(kitchenID), b, mealPlanCacheTTL).Err()
+	return c.redis.Raw().Set(ctx, c.cacheKey(kitchenID), b, c.ttl).Err()
 }
 
 // ParseDateKey parses YYYY-MM-DD in IST context.

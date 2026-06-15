@@ -1,16 +1,16 @@
-# Kitchmate — App Product Guide
+# Rasoibuddy — App Product Guide
 
-A single reference for how **Kitchmate** looks, flows, and behaves across web and mobile. Written for product, design, and engineering.
+A single reference for how **Rasoibuddy** looks, flows, and behaves across web and mobile. Written for product, design, and engineering.
 
 ---
 
-## 1. What Kitchmate is
+## 1. What Rasoibuddy is
 
-**Kitchmate** is an all-in-one kitchen assistant for Indian homes. It connects meal planning, pantry tracking, grocery shopping, and cook coordination in one calm app — so families stop juggling notes, spreadsheets, WhatsApp threads, and recipe searches.
+**Rasoibuddy** is an all-in-one kitchen assistant for Indian homes. It connects meal planning, pantry tracking, grocery shopping, and cook coordination in one calm app — so families stop juggling notes, spreadsheets, WhatsApp threads, and recipe searches.
 
 | | |
 |---|---|
-| **Brand name** | Kitchmate |
+| **Brand name** | Rasoibuddy |
 | **Motto** | *Less waste. Smarter meals. Calmer evenings.* |
 | **USP** | All-in-one kitchen assistant |
 | **Repo / package name** | Kitchenai (`com.kitchenai.app`, `kitchenai://` deep links) |
@@ -153,7 +153,7 @@ Completing onboarding seeds the pantry and unlocks the main app.
 - Scrolling marquee of capabilities
 - Stats strip (1 app, 500+ recipes, pantry-aware AI)
 - **All-in-one hub** diagram: Meal plans · Pantry · Shopping · Rescue meals · WhatsApp for cook
-- Before/after comparison (scattered tools vs Kitchmate)
+- Before/after comparison (scattered tools vs Rasoibuddy)
 - Feature grid, app showcase carousel, 3-step how-it-works
 - Green gradient CTA band → Sign in with Google
 - Footer: privacy policy

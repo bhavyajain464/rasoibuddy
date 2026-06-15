@@ -1,6 +1,6 @@
-# Kitchmate Partner (Expo)
+# Rasoibuddy Partner (Expo)
 
-Restaurant staff app — POS, menu, stock, procurement. **Separate UI** from the consumer Kitchmate app (dark ops theme vs consumer green home app).
+Restaurant staff app — POS, menu, stock, procurement. **Separate UI** from the consumer Rasoibuddy app (dark ops theme vs consumer green home app).
 
 Runs on **web, iOS, and Android** (same Expo stack as `kitchenai-frontend`).
 

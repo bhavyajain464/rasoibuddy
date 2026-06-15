@@ -15,8 +15,11 @@ def circularize(path: Path) -> None:
     src = Image.open(path).convert("RGBA")
     w, h = src.size
     side = max(w, h)
-    square = Image.new("RGBA", (side, side), (255, 255, 255, 255))
-    square.paste(src, ((side - w) // 2, (side - h) // 2))
+    # Cover-crop to square so non-square sources don't get white letterbox bands.
+    scale = side / min(w, h)
+    resized = src.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
+    rw, rh = resized.size
+    square = resized.crop(((rw - side) // 2, (rh - side) // 2, (rw + side) // 2, (rh + side) // 2))
 
     mask = Image.new("L", (side, side), 0)
     draw = ImageDraw.Draw(mask)

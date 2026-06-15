@@ -126,6 +126,13 @@ func applyUserStarsToCategory(db *sql.DB, userID string, cat *MealCategory) {
 	}
 	globalStars, _ := services.LoadGlobalStarCounts(db)
 	userStarred, _ := services.LoadUserStarredDishes(db, userID)
+	applyUserStarsToCategoryWithMaps(cat, globalStars, userStarred)
+}
+
+func applyUserStarsToCategoryWithMaps(cat *MealCategory, globalStars map[string]int, userStarred map[string]bool) {
+	if cat == nil {
+		return
+	}
 	for i := range cat.Meals {
 		key := services.NormalizeDishName(cat.Meals[i].Name)
 		if globalStars != nil {

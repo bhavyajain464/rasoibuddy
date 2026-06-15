@@ -1,5 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
+.landing-screen-root {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 .landing-page {
   --green: #16a34a;
   --green-d: #15803d;
@@ -26,9 +35,11 @@
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.005em;
-  /* RN Web roots use overflow:hidden — own the viewport scroll here */
-  position: fixed;
+  /* RN Web roots use overflow:hidden — fill the stack screen and scroll inside */
+  position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -149,35 +160,151 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(251, 252, 251, 0.72);
-  backdrop-filter: saturate(180%) blur(16px);
-  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .landing-page .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 70px;
+  height: 84px;
 }
 
 .landing-page .brand {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 8px;
   font-family: 'Sora', sans-serif;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 22px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
 }
 
-.landing-page .logo {
-  width: 36px;
-  height: 36px;
+.landing-page .brand-mark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+}
+
+.landing-page .brand-mark::before {
+  content: '';
+  position: absolute;
+  width: 46px;
+  height: 46px;
   border-radius: 11px;
   background: var(--grad);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 6px 16px -6px rgba(21, 128, 61, 0.6);
+  box-shadow: 0 5px 14px -6px rgba(21, 128, 61, 0.5);
+}
+
+.landing-page .brand-mark--compact {
+  width: 40px;
+  height: 40px;
+}
+
+.landing-page .brand-mark--compact::before {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.landing-page .brand-name {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1.15em;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  height: 72px;
+}
+
+.landing-page .brand-name-accent {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-page .brand--footer {
+  font-size: 17px;
+}
+
+.landing-page .brand--footer .brand-name {
+  height: 40px;
+}
+
+.landing-page .brand-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.landing-page .brand-icon--compact {
+  width: 40px;
+  height: 40px;
+}
+
+.landing-page .play-badge {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.18s;
+  line-height: 0;
+}
+
+.landing-page .play-badge img {
+  display: block;
+  height: 48px;
+  width: auto;
+}
+
+.landing-page .play-badge:hover {
+  transform: translateY(-2px);
+  opacity: 0.94;
+}
+
+.landing-page .play-badge--on-dark img {
+  height: 48px;
+}
+
+.landing-page .final-cta-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 30px;
+}
+
+.landing-page .final-cta-row .btn-primary {
+  margin-top: 0;
+  min-height: 48px;
+  padding: 11px 22px;
+  box-sizing: border-box;
+}
+
+.landing-page .final-cta-row .play-badge {
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-page .final-cta-row .play-badge img {
+  height: 48px;
+  width: auto;
 }
 
 .landing-page .nav-links {
@@ -205,7 +332,7 @@
 
 .landing-page .hero {
   position: relative;
-  padding: 84px 0 56px;
+  padding: 36px 0 56px;
   overflow: hidden;
 }
 
@@ -225,7 +352,7 @@
   display: grid;
   grid-template-columns: 1.06fr 0.94fr;
   gap: 56px;
-  align-items: center;
+  align-items: start;
 }
 
 .landing-page .hero h1 {
@@ -279,6 +406,7 @@
 .landing-page .phone-wrap {
   position: relative;
   justify-self: center;
+  align-self: center;
 }
 
 .landing-page .glow {
@@ -824,7 +952,6 @@
 .landing-page .final .btn-primary {
   background: #fff;
   color: var(--green-dk);
-  margin-top: 30px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 
@@ -833,6 +960,17 @@
   margin-top: 16px;
   color: rgba(255, 255, 255, 0.65);
   font-size: 13px;
+}
+
+.landing-page .final small a {
+  color: rgba(255, 255, 255, 0.88);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.18s;
+}
+
+.landing-page .final small a:hover {
+  color: #fff;
 }
 
 .landing-page footer {
@@ -866,9 +1004,18 @@
 }
 
 @media (max-width: 880px) {
+  .landing-page .hero {
+    padding-top: 28px;
+  }
+
   .landing-page .hero-grid {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+
+  .landing-page .phone-wrap {
+    align-self: center;
+    margin-top: 8px;
   }
 
   .landing-page .hero p {

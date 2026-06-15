@@ -36,7 +36,7 @@ export function logImportError(
     apiBase?.includes('localhost') || apiBase?.includes('127.0.0.1')
       ? 'On a physical device or emulator, localhost is the phone itself — use your computer IP (e.g. http://192.168.x.x:8080/api/v1) or Android emulator http://10.0.2.2:8080/api/v1'
       : undefined;
-  console.error(`[KITCHMATE import/${step}]`, {
+  console.error(`[RASOIBUDDY import/${step}]`, {
     apiBase,
     hint,
     status: details.status,

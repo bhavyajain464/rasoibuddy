@@ -45,7 +45,7 @@ export function MessageImportCard() {
 
       {!isWeb && (
         <Text variant="labelSmall" style={styles.footerHint}>
-          Or Share → KITCHMATE from any app
+          Or Share → RASOIBUDDY from any app
         </Text>
       )}
     </Surface>

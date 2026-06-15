@@ -74,22 +74,26 @@ export function HomeScreen({ navigation }: any) {
   const [mealOfDayLoading, setMealOfDayLoading] = useState(false);
   const [mealOfDayNotReady, setMealOfDayNotReady] = useState(false);
   const skipMountLoadData = useRef(true);
+  const hasMealOfDay = useRef(false);
   const { catalog } = useIngredientCatalog();
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope } = useAppRefresh();
-  const loadMealOfDay = useCallback(async () => {
-    setMealOfDayLoading(true);
+  const loadMealOfDay = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) setMealOfDayLoading(true);
     try {
       const res = await api.getWeekPlan();
       const planDays = parseWeekPlanDays(res?.days);
       const withNames = todayMealsFromWeekPlanDays(planDays);
       setMealOfDayMeals(withNames);
       setMealOfDayNotReady(withNames.length === 0);
+      hasMealOfDay.current = withNames.length > 0;
     } catch {
       setMealOfDayMeals([]);
       setMealOfDayNotReady(true);
+      hasMealOfDay.current = false;
     } finally {
-      setMealOfDayLoading(false);
+      if (!silent) setMealOfDayLoading(false);
     }
   }, []);
 
@@ -110,7 +114,7 @@ export function HomeScreen({ navigation }: any) {
 
   const loadData = useCallback(async () => {
     await loadInventorySummary();
-    void loadMealOfDay();
+    void loadMealOfDay({ silent: hasMealOfDay.current });
   }, [loadInventorySummary, loadMealOfDay]);
 
   useFocusEffect(
