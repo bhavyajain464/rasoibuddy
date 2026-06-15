@@ -103,6 +103,8 @@ jobs:
             COMMERCE_ENABLED_PARTNERS=blinkit,zepto#
             COMMERCE_MAX_PARTNERS=2
         run: |
+          # YAML >- folding turns newlines into spaces after each # delimiter.
+          RUN_ENV_VARS="$(printf '%s' "${RUN_ENV_VARS}" | tr -d '\n' | sed 's/# */#/g')"
           gcloud run deploy "${SERVICE}" \
             --image "${IMAGE_SHA}" \
             --project "${PROJECT_ID}" \
