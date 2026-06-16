@@ -3,6 +3,7 @@ package ingredients
 import "testing"
 
 func TestNormalizeShoppingLineBayLeaf(t *testing.T) {
+	requireSeededCatalog(t)
 	name, qty, unit := NormalizeShoppingLine("Bay leaf", 0, "pcs")
 	if name != "Bay Leaf" {
 		t.Fatalf("name = %q, want Bay Leaf", name)
@@ -16,6 +17,7 @@ func TestNormalizeShoppingLineBayLeaf(t *testing.T) {
 }
 
 func TestNormalizeShoppingLineLemon(t *testing.T) {
+	requireSeededCatalog(t)
 	name, qty, unit := NormalizeShoppingLine("lemon", 0, "pcs")
 	if name != "Lemon" {
 		t.Fatalf("name = %q, want Lemon", name)

@@ -3,6 +3,7 @@ package services
 import "testing"
 
 func TestGroceryIngredientLines_dropsDishTitles(t *testing.T) {
+	requireSeededCatalog(t)
 	lines := GroceryIngredientLines([]string{"onion", "Jeera Rice", "tomato"})
 	if len(lines) != 2 {
 		t.Fatalf("got %v", lines)
@@ -10,6 +11,7 @@ func TestGroceryIngredientLines_dropsDishTitles(t *testing.T) {
 }
 
 func TestGroceryIngredientLines_keepsSingleIngredientDish(t *testing.T) {
+	requireSeededCatalog(t)
 	lines := GroceryIngredientLines([]string{"papad", "onion"})
 	if len(lines) != 2 {
 		t.Fatalf("got %v", lines)

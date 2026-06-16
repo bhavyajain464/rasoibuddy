@@ -55,6 +55,7 @@ func TestDishMatchesSuggestionContext(t *testing.T) {
 }
 
 func TestRetrieveDishesUsesWeekdayContext(t *testing.T) {
+	requireSeededCatalog(t)
 	loc, _ := time.LoadLocation(suggestTimezone)
 	tue := time.Date(2026, 5, 19, 18, 0, 0, 0, loc)
 	in := DishRetrieveInput{

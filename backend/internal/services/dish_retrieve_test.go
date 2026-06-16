@@ -3,6 +3,7 @@ package services
 import "testing"
 
 func TestRetrieveDishesVegetarianFiltersNonVeg(t *testing.T) {
+	requireSeededCatalog(t)
 	in := DishRetrieveInput{
 		Category:    "daily",
 		DietaryTags: []string{"vegetarian"},
@@ -22,6 +23,7 @@ func TestRetrieveDishesVegetarianFiltersNonVeg(t *testing.T) {
 }
 
 func TestRetrieveDishesMealOfDayUsesMealType(t *testing.T) {
+	requireSeededCatalog(t)
 	in := DishRetrieveInput{
 		Category:    "meal_of_day",
 		DietaryTags: []string{"vegetarian"},
@@ -56,6 +58,7 @@ func TestGlobalStarCountAndRetrievalScore(t *testing.T) {
 }
 
 func TestRetrieveDishesSparseInputPrefersGlobalStars(t *testing.T) {
+	requireSeededCatalog(t)
 	var pick CatalogDish
 	for _, d := range DishCatalog() {
 		if d.NormalizedDiet() == "vegetarian" &&

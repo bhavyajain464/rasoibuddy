@@ -6,6 +6,7 @@ import (
 )
 
 func TestSuggestOrderItemsFromWeekPlan_TopMissingIngredients(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{
@@ -67,6 +68,7 @@ func TestSuggestOrderItemsFromWeekPlan_TopMissingIngredients(t *testing.T) {
 }
 
 func TestSuggestOrderItemsFromWeekPlan_CacheCapAt12(t *testing.T) {
+	requireSeededCatalog(t)
 	ings := []string{
 		"paneer", "cream", "capsicum", "coriander leaves", "onion", "tomato",
 		"potato", "green peas", "cauliflower", "spinach", "ginger", "garlic",
@@ -102,6 +104,7 @@ func TestSuggestOrderItemsFromWeekPlan_NoPlan(t *testing.T) {
 }
 
 func TestSuggestOrderItemsFromWeekPlan_UsesItemsToOrder(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{
@@ -148,6 +151,7 @@ func TestSuggestOrderItemsFromWeekPlan_UsesItemsToOrder(t *testing.T) {
 }
 
 func TestSuggestOrderItemsFromWeekPlan_CatalogUnits(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{

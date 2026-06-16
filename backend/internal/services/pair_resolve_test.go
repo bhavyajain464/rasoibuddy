@@ -6,6 +6,7 @@ import (
 )
 
 func TestFindCatalogDishByPairLabel_rotiChapati(t *testing.T) {
+	requireSeededCatalog(t)
 	d, ok := FindCatalogDishByPairLabel("roti / chapati")
 	if !ok {
 		t.Fatal("expected match for roti / chapati")
@@ -27,6 +28,7 @@ func TestFindCatalogDishByPairLabel_rotiChapati(t *testing.T) {
 }
 
 func TestFindCatalogDishByPairLabel_slug(t *testing.T) {
+	requireSeededCatalog(t)
 	d, ok := FindCatalogDishByPairLabel("dal-tadka")
 	if !ok {
 		t.Fatal("expected dal-tadka match")
@@ -37,6 +39,7 @@ func TestFindCatalogDishByPairLabel_slug(t *testing.T) {
 }
 
 func TestCatalogIngredientsForPairLabel_papad(t *testing.T) {
+	requireSeededCatalog(t)
 	ings := CatalogIngredientsForPairLabel("papad")
 	if len(ings) != 1 || !strings.EqualFold(ings[0], "papad") {
 		t.Fatalf("got %v", ings)
@@ -44,6 +47,7 @@ func TestCatalogIngredientsForPairLabel_papad(t *testing.T) {
 }
 
 func TestPairIngredientsMap(t *testing.T) {
+	requireSeededCatalog(t)
 	m := PairIngredientsMap([]string{"roti / chapati", "papad"})
 	if len(m) != 2 {
 		t.Fatalf("got %d entries", len(m))
