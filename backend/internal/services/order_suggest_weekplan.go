@@ -1,12 +1,14 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	"kitchenai-backend/internal/services/catalogdb"
 	"kitchenai-backend/internal/services/ingredients"
 )
 
@@ -24,6 +26,8 @@ func SuggestOrderItemsFromWeekPlan(in OrderSuggestInput) (OrderSuggestResult, er
 
 	inv := append([]string{}, in.Inventory...)
 	shopping := append([]string{}, in.ShoppingList...)
+	have := BuildHaveIngredientSet(in.InventoryIngredientIDs, inv)
+	dishLines := loadOrderSuggestDishLines(in.WeekPlan)
 
 	ingScores := map[string]*scoredStaple{}
 	for _, day := range in.WeekPlan.Days {
@@ -37,7 +41,7 @@ func SuggestOrderItemsFromWeekPlan(in OrderSuggestInput) (OrderSuggestResult, er
 			if dishLabel != "" {
 				source = fmt.Sprintf("%s (%s)", name, dishLabel)
 			}
-			for _, ing := range orderSuggestIngredientsForMeal(meal, inv) {
+			for _, ing := range orderSuggestIngredientsForMeal(meal, have, dishLines) {
 				if onShoppingList(ing, shopping) {
 					continue
 				}
@@ -81,20 +85,90 @@ func SuggestOrderItemsFromWeekPlan(in OrderSuggestInput) (OrderSuggestResult, er
 	}, nil
 }
 
-// orderSuggestIngredientsForMeal mirrors week-plan UI: prefer items_to_order, else missing from ingredients / catalog.
-func orderSuggestIngredientsForMeal(meal CachedSmartMeal, invNames []string) []string {
-	if len(meal.ItemsToOrder) > 0 {
-		d := CatalogDish{KeyIngredients: meal.ItemsToOrder}
-		return MatchDishToInventory(d, invNames).Missing
+func collectWeekPlanDishIDs(plan *WeekPlanEntry) []string {
+	if plan == nil {
+		return nil
 	}
-	if len(meal.Ingredients) > 0 {
-		d := CatalogDish{KeyIngredients: meal.Ingredients}
-		return MatchDishToInventory(d, invNames).Missing
+	seen := map[string]struct{}{}
+	var ids []string
+	for _, day := range plan.Days {
+		for _, meal := range day.Category.Meals {
+			id := strings.TrimSpace(meal.DishID)
+			if id == "" {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func loadOrderSuggestDishLines(plan *WeekPlanEntry) map[string][]catalogdb.DishIngredientRow {
+	conn := catalogdb.DB()
+	if conn == nil {
+		return nil
+	}
+	ids := collectWeekPlanDishIDs(plan)
+	if len(ids) == 0 {
+		return nil
+	}
+	lines, err := catalogdb.LoadDishIngredientsByIDs(context.Background(), conn, ids)
+	if err != nil {
+		return nil
+	}
+	return lines
+}
+
+// orderSuggestIngredientsForMeal mirrors week-plan UI: missing recipe ingredients only (not dish titles).
+func orderSuggestIngredientsForMeal(
+	meal CachedSmartMeal,
+	have map[string]bool,
+	dishLines map[string][]catalogdb.DishIngredientRow,
+) []string {
+	if dishID := strings.TrimSpace(meal.DishID); dishID != "" {
+		if rows, ok := dishLines[dishID]; ok && len(rows) > 0 {
+			return catalogdb.MatchDishIngredientRowsToInventory(rows, have).Missing
+		}
+		if dish, ok := FindCatalogDishByID(dishID); ok {
+			return MatchDishToInventory(dish, have).Missing
+		}
 	}
 	if dish, ok := FindCatalogDishByName(meal.Name); ok {
-		return MatchDishToInventory(dish, invNames).Missing
+		return MatchDishToInventory(dish, have).Missing
 	}
-	return nil
+	source := meal.Ingredients
+	if len(source) == 0 {
+		source = GroceryIngredientLines(meal.ItemsToOrder)
+	}
+	return missingIngredientsByName(source, have)
+}
+
+func missingIngredientsByName(names []string, have map[string]bool) []string {
+	if len(names) == 0 {
+		return nil
+	}
+	conn := catalogdb.DB()
+	if conn == nil {
+		return names
+	}
+	var missing []string
+	ctx := context.Background()
+	for _, raw := range names {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		hit, ok, err := catalogdb.LookupIngredient(ctx, conn, raw)
+		if err == nil && ok && have[hit.IngredientID] {
+			continue
+		}
+		missing = append(missing, raw)
+	}
+	return missing
 }
 
 func onShoppingList(item string, listNames []string) bool {

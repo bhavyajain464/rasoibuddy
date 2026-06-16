@@ -1,28 +1,26 @@
 package services
 
 import (
+	"context"
 	"strings"
 
+	"kitchenai-backend/internal/services/catalogdb"
 	"kitchenai-backend/internal/services/ingredients"
 )
 
-// commonPantryStaples are assumed to be on hand in any Indian kitchen, so they are not
-// reported as "missing" for the shopping-list gap (you don't add salt/water/oil to a cart).
-var commonPantryStaples = map[string]bool{
-	"salt": true, "water": true, "cooking oil": true, "oil": true, "sugar": true,
-	"turmeric powder": true, "red chilli powder": true, "coriander powder": true,
-	"cumin powder": true, "garam masala": true, "mustard seeds": true, "cumin seeds": true,
-	"asafoetida": true, "black pepper": true, "ghee": true,
+// DishIngredientMatch is the inventory coverage of a dish's ingredient list.
+type DishIngredientMatch struct {
+	Have     []string
+	Missing  []string
+	Staples  []string
+	Coverage float64
 }
 
 func normIngredient(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-// ingredientInInventory reports whether a dish ingredient is covered by any inventory name.
-// Match is word-aware and bidirectional: "onion" matches inventory "Onion", and
-// "red chilli powder" matches inventory "chilli powder" (and vice-versa).
-// IngredientsMatch reports whether two grocery names refer to the same ingredient.
+// IngredientsMatch reports whether two grocery names refer to the same ingredient (display-level).
 func IngredientsMatch(a, b string) bool {
 	left := normIngredient(a)
 	right := normIngredient(b)
@@ -32,24 +30,7 @@ func IngredientsMatch(a, b string) bool {
 	return left == right || strings.Contains(left, right) || strings.Contains(right, left)
 }
 
-func ingredientInInventory(ingredient string, invTokens map[string]bool, invNames []string) bool {
-	ing := normIngredient(ingredient)
-	if ing == "" {
-		return false
-	}
-	if invTokens[ing] {
-		return true
-	}
-	for _, raw := range invNames {
-		if IngredientsMatch(ingredient, raw) {
-			return true
-		}
-	}
-	return false
-}
-
-// InventoryItemsUsedByDish returns pantry item names (from inventoryNames) that the dish
-// recipe can use, based on full key_ingredients matching.
+// InventoryItemsUsedByDish returns pantry item names that overlap dish key_ingredients (display).
 func InventoryItemsUsedByDish(dish CatalogDish, inventoryNames []string) []string {
 	if len(inventoryNames) == 0 {
 		return nil
@@ -72,44 +53,68 @@ func InventoryItemsUsedByDish(dish CatalogDish, inventoryNames []string) []strin
 	return used
 }
 
-// DishIngredientMatch is the inventory coverage of a dish's ingredient list.
-type DishIngredientMatch struct {
-	Have     []string // dish ingredients found in inventory
-	Missing  []string // dish ingredients not in inventory and not a common staple
-	Staples  []string // missing-but-assumed-present (salt/oil/etc.), not shopping-worthy
-	Coverage float64  // Have / (Have + Missing), ignoring staples; 1.0 = fully cookable now
-}
-
-// MatchDishToInventory splits a dish's key_ingredients into have / missing / staples against
-// the user's inventory names. This is the shared primitive for (a) ranking dishes by how
-// cookable-now they are and (b) building a shopping list of only the ingredients you lack.
-func MatchDishToInventory(dish CatalogDish, inventoryNames []string) DishIngredientMatch {
-	invTokens := map[string]bool{}
-	for _, n := range inventoryNames {
-		invTokens[normIngredient(n)] = true
+// BuildHaveIngredientSet collects ingredient ids from pantry rows and/or names (via DB lookup).
+func BuildHaveIngredientSet(ingredientIDs []string, inventoryNames []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range ingredientIDs {
+		if id = strings.TrimSpace(id); id != "" {
+			out[id] = true
+		}
 	}
-	var res DishIngredientMatch
-	for _, ing := range dish.CatalogIngredients() {
-		ni := normIngredient(ing)
-		if ni == "" {
+	conn := catalogdb.DB()
+	if conn == nil {
+		return out
+	}
+	ctx := context.Background()
+
+	uniqNames := make([]string, 0, len(inventoryNames))
+	seenNames := map[string]bool{}
+	for _, name := range inventoryNames {
+		name = strings.TrimSpace(name)
+		if name == "" || seenNames[name] {
 			continue
 		}
-		switch {
-		case ingredientInInventory(ni, invTokens, inventoryNames):
-			res.Have = append(res.Have, ni)
-		case commonPantryStaples[ni]:
-			res.Staples = append(res.Staples, ni)
-		default:
-			res.Missing = append(res.Missing, ni)
+		seenNames[name] = true
+		uniqNames = append(uniqNames, name)
+	}
+	if len(uniqNames) == 0 {
+		return out
+	}
+
+	exactFound := map[string]bool{}
+	if hits, err := catalogdb.LookupIngredientsByExactNames(ctx, conn, uniqNames); err == nil {
+		for name, hit := range hits {
+			out[hit.IngredientID] = true
+			exactFound[name] = true
 		}
 	}
-	denom := len(res.Have) + len(res.Missing)
-	if denom > 0 {
-		res.Coverage = float64(len(res.Have)) / float64(denom)
-	} else {
-		res.Coverage = 1.0
+	for _, name := range uniqNames {
+		if exactFound[name] {
+			continue
+		}
+		hit, ok, err := catalogdb.LookupIngredient(ctx, conn, name)
+		if err == nil && ok {
+			out[hit.IngredientID] = true
+		}
 	}
-	return res
+	return out
+}
+
+// MatchDishToInventory compares dish_ingredients in Postgres against kitchen ingredient ids.
+func MatchDishToInventory(dish CatalogDish, haveIngredientIDs map[string]bool) DishIngredientMatch {
+	if dish.ID == "" || catalogdb.DB() == nil {
+		return DishIngredientMatch{Coverage: 1.0}
+	}
+	dbMatch, err := catalogdb.MatchDishToInventory(context.Background(), catalogdb.DB(), dish.ID, haveIngredientIDs)
+	if err != nil {
+		return DishIngredientMatch{Coverage: 1.0}
+	}
+	return DishIngredientMatch{
+		Have:     dbMatch.Have,
+		Missing:  dbMatch.Missing,
+		Staples:  dbMatch.Staples,
+		Coverage: dbMatch.Coverage,
+	}
 }
 
 // ShoppingListHasItem reports whether item matches any name on the active shopping list.

@@ -3,6 +3,7 @@ package services
 import "testing"
 
 func TestApplyCatalogMapping(t *testing.T) {
+	requireSeededCatalog(t)
 	items := []BillItem{
 		{Name: "Tomatoes", Quantity: 2, Unit: "kg", ShelfLifeDays: 7},
 		{Name: "Dishwasher Tablets", Quantity: 1, Unit: "pcs", ShelfLifeDays: 365},
@@ -28,6 +29,7 @@ func TestApplyCatalogMapping(t *testing.T) {
 }
 
 func TestApplyCatalogMappingWesternBill(t *testing.T) {
+	requireSeededCatalog(t)
 	items := []BillItem{
 		{Name: "Large Eggs", Quantity: 6, Unit: "pcs", ShelfLifeDays: 14},
 		{Name: "Milk", Quantity: 1, Unit: "L", ShelfLifeDays: 7},
@@ -39,20 +41,21 @@ func TestApplyCatalogMappingWesternBill(t *testing.T) {
 	}
 
 	matched, skipped := ApplyCatalogMapping(items)
-	if len(skipped) != 1 || skipped[0] != "Natural Yogurt" {
-		t.Fatalf("expected Natural Yogurt skipped, got skipped=%v", skipped)
+	if len(skipped) != 0 {
+		t.Fatalf("expected no skipped items, got skipped=%v", skipped)
 	}
-	if len(matched) != 6 {
-		t.Fatalf("expected 6 matched, got %d: %+v", len(matched), matched)
+	if len(matched) != 7 {
+		t.Fatalf("expected 7 matched, got %d: %+v", len(matched), matched)
 	}
 
-	want := map[string]string{
-		"Large Eggs":      "Egg",
-		"Milk":            "Milk",
-		"Cottage Cheese":  "Paneer",
-		"Cherry Tomatoes": "Cherry",
-		"Bananas":         "Banana",
-		"Aubergine":       "Brinjal",
+	want := map[string]bool{
+		"Egg":     true,
+		"Milk":    true,
+		"Paneer":  true,
+		"Curd":    true,
+		"Tomato":  true,
+		"Banana":  true,
+		"Brinjal": true,
 	}
 	got := map[string]string{}
 	for _, m := range matched {
@@ -61,7 +64,7 @@ func TestApplyCatalogMappingWesternBill(t *testing.T) {
 			t.Fatalf("%q missing ingredient_id", m.Name)
 		}
 	}
-	for _, wantName := range want {
+	for wantName := range want {
 		if _, ok := got[wantName]; !ok {
 			t.Fatalf("missing canonical %q in %+v", wantName, got)
 		}

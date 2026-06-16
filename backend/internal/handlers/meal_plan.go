@@ -66,11 +66,13 @@ func GetWeekPlan(
 			})
 			return
 		}
-		logWeekPlan := func(path string) {
-			log.Printf("[meal-plan] GET kitchen=%s path=%s ms=%d", kitchen.KitchenID, path, time.Since(start).Milliseconds())
-		}
 		today := services.TodayDateKey(time.Now())
+		tRedis := time.Now()
 		entry, ok, err := cache.Get(r.Context(), kitchen.KitchenID)
+		redisMs := time.Since(tRedis).Milliseconds()
+		logWeekPlan := func(path string) {
+			log.Printf("[meal-plan] GET kitchen=%s path=%s redis_ms=%d ms=%d", kitchen.KitchenID, path, redisMs, time.Since(start).Milliseconds())
+		}
 		if err != nil {
 			log.Printf("[meal-plan] cache read kitchen=%s: %v", kitchen.KitchenID, err)
 			http.Error(w, "Failed to load meal plan", http.StatusInternalServerError)
@@ -136,16 +138,26 @@ func GetWeekPlan(
 }
 
 func weekPlanResponseFromEntry(entry *services.WeekPlanEntry, userID string, db *sql.DB, today string) WeekPlanResponse {
+	t0 := time.Now()
 	globalStars, _ := services.LoadGlobalStarCounts(db)
+	starsLoadMs := time.Since(t0).Milliseconds()
+	t1 := time.Now()
 	userStarred, _ := services.LoadUserStarredDishes(db, userID)
+	userStarsLoadMs := time.Since(t1).Milliseconds()
+	t2 := time.Now()
 	days := make([]WeekPlanDayResponse, 0, len(entry.Days))
 	for _, d := range entry.Days {
-		cat := mealCategoryFromCached(d.Category)
+		cat := mealCategoryFromCachedReadOnly(d.Category)
 		applyUserStarsToCategoryWithMaps(&cat, globalStars, userStarred)
 		days = append(days, WeekPlanDayResponse{
 			Date:       d.Date,
 			Categories: []MealCategory{cat},
 		})
+	}
+	enrichMs := time.Since(t2).Milliseconds()
+	if starsLoadMs+userStarsLoadMs+enrichMs > 500 {
+		log.Printf("[meal-plan] response build stars_ms=%d user_stars_ms=%d enrich_ms=%d days=%d",
+			starsLoadMs, userStarsLoadMs, enrichMs, len(entry.Days))
 	}
 	return WeekPlanResponse{
 		KitchenID:      entry.KitchenID,
@@ -607,8 +619,9 @@ func RefreshWeekPlanDay(
 				CookingTime:    m.CookingTime,
 				Difficulty:     m.Difficulty,
 				WhyThisMeal:    m.WhyThisMeal,
-				PairsWith:      m.PairsWith,
-				NutritionNotes: m.NutritionNotes,
+				PairsWith:       m.PairsWith,
+				PairIngredients: m.PairIngredients,
+				NutritionNotes:  m.NutritionNotes,
 			})
 		}
 	}
@@ -732,12 +745,11 @@ func SetWeekPlanCatalogDish(
 	}
 
 	inventory := fetchUserInventory(db, primaryUserID)
-	invNames := inventoryNames(inventory)
 	expiringNames := expiringInventoryNames(inventory, time.Now())
 	globalStars, _ := services.LoadGlobalStarCounts(db)
 	userStarred, _ := services.LoadUserStarredDishes(db, primaryUserID)
 
-	meal := smartMealFromCatalog(dish, invNames, expiringNames, services.MealOfDayCategoryID, globalStars, userStarred)
+	meal := smartMealFromCatalog(dish, inventory, expiringNames, services.MealOfDayCategoryID, globalStars, userStarred)
 	meal.MealSlot = mealSlot
 	meal.WhyThisMeal = fmt.Sprintf("You chose this for %s (%s).", dateKey, slotLabel(mealSlot))
 
@@ -757,10 +769,11 @@ func SetWeekPlanCatalogDish(
 				CookingTime:    m.CookingTime,
 				Difficulty:     m.Difficulty,
 				WhyThisMeal:    m.WhyThisMeal,
-				PairsWith:      m.PairsWith,
-				NutritionNotes: m.NutritionNotes,
-				StarCount:      m.StarCount,
-				UserStarred:    m.UserStarred,
+				PairsWith:       m.PairsWith,
+				PairIngredients: m.PairIngredients,
+				NutritionNotes:  m.NutritionNotes,
+				StarCount:       m.StarCount,
+				UserStarred:     m.UserStarred,
 			})
 		}
 	}
@@ -846,7 +859,7 @@ func PostSetWeekPlanDish(
 			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
-		cat := mealCategoryFromCached(day.Category)
+		cat := mealCategoryFromCachedReadOnly(day.Category)
 		applyUserStarsToCategory(db, userID, &cat)
 		json.NewEncoder(w).Encode(WeekPlanDayResponse{
 			Date:       day.Date,
@@ -891,7 +904,7 @@ func PostRefreshWeekPlan(
 			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
-		cat := mealCategoryFromCached(day.Category)
+		cat := mealCategoryFromCachedReadOnly(day.Category)
 		applyUserStarsToCategory(db, userID, &cat)
 		json.NewEncoder(w).Encode(WeekPlanDayResponse{
 			Date:       day.Date,

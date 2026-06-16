@@ -28,16 +28,17 @@ type OrderSuggestResult struct {
 
 // OrderSuggestInput gathers household context for order suggestions.
 type OrderSuggestInput struct {
-	WeekPlan     *WeekPlanEntry
-	EatenLog     []CookedLogEntry
-	Inventory    []string
-	ShoppingList []string
-	DietaryTags  []string
-	Allergies    []string
-	Dislikes     []string
-	FavCuisines  []string
-	Memories     []string
-	ExcludeItems []string
+	WeekPlan               *WeekPlanEntry
+	EatenLog               []CookedLogEntry
+	Inventory              []string
+	InventoryIngredientIDs []string
+	ShoppingList           []string
+	DietaryTags            []string
+	Allergies              []string
+	Dislikes               []string
+	FavCuisines            []string
+	Memories               []string
+	ExcludeItems           []string
 }
 
 type frequentDish struct {

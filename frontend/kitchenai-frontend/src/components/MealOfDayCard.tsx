@@ -18,8 +18,12 @@ export interface MealOfDayMeal {
   cooking_time_mins?: number;
   difficulty?: string;
   ingredients?: string[];
+  ingredient_ids?: string[];
   items_to_order?: string[];
   pairs_with?: string[];
+  pair_ingredients?: Record<string, { ingredient_id: string; name: string }[] | string[]>;
+  star_count?: number;
+  user_starred?: boolean;
 }
 
 const SLOT_ORDER = ['breakfast', 'lunch', 'dinner'] as const;

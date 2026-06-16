@@ -21,6 +21,7 @@ func GetAppConfig(cfg *config.Config) http.HandlerFunc {
 			"update_message":      cfg.AppUpdateMessage,
 			"play_store_url":      cfg.PlayStoreURL,
 			"app_store_url":       cfg.AppStoreURL,
+			"dish_images_cdn_url": cfg.DishImagesCDNURL,
 		})
 	}
 }

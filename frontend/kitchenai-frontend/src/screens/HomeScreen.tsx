@@ -30,9 +30,7 @@ import { palette } from '../theme';
 import { MealOfDayCard, MealOfDayMeal } from '../components/MealOfDayCard';
 import { todayDateKey } from '../components/meals/WeekPlanCarousel';
 import { parseWeekPlanDays, todayMealsFromWeekPlanDays } from '../utils/weekPlan';
-import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
-import { resolveCatalogItem } from '../utils/ingredientUnits';
-import { formatPurchaseQty } from '../utils/purchaseUnits';
+import { pantryQtyLabel } from '../utils/inventoryBuckets';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -75,7 +73,6 @@ export function HomeScreen({ navigation }: any) {
   const [mealOfDayNotReady, setMealOfDayNotReady] = useState(false);
   const skipMountLoadData = useRef(true);
   const hasMealOfDay = useRef(false);
-  const { catalog } = useIngredientCatalog();
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope } = useAppRefresh();
   const loadMealOfDay = useCallback(async (opts?: { silent?: boolean }) => {
@@ -267,11 +264,7 @@ export function HomeScreen({ navigation }: any) {
                             {formatItemName(item.canonical_name)}
                           </Text>
                           <Text variant="bodySmall" style={styles.expiringRowQty} numberOfLines={1}>
-                            {formatPurchaseQty(
-                              item.qty,
-                              item.unit,
-                              resolveCatalogItem(catalog, undefined, item.canonical_name),
-                            )}
+                            {pantryQtyLabel(item)}
                           </Text>
                         </View>
                         <View

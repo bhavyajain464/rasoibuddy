@@ -138,12 +138,17 @@ func CompleteOnboarding(db *sql.DB, producer *kafkalib.Producer) http.HandlerFun
 			}
 			unit := units.Normalize(item.Unit)
 			canonicalName, foodGroup := ingredients.InventoryFieldsFromName(item.Name)
+			link := ingredients.LinkForWrite(r.Context(), item.Name, "onboarding")
+			if link.IngredientID != "" {
+				canonicalName = link.CanonicalName
+				foodGroup = link.FoodGroup
+			}
 			var itemID string
 			err := tx.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group)
-				VALUES ($1, $2, $3, TRUE, $4, $5, $6)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group, ingredient_id)
+				VALUES ($1, $2, $3, TRUE, $4, $5, $6, $7)
 				RETURNING item_id
-			`, canonicalName, item.Qty, unit, userID, kitchen.KitchenID, foodGroup).Scan(&itemID)
+			`, canonicalName, item.Qty, unit, userID, kitchen.KitchenID, foodGroup, link.IngredientIDParam()).Scan(&itemID)
 			if err != nil {
 				log.Printf("Onboarding item add error (%s): %v", item.Name, err)
 				http.Error(w, "Failed to add inventory items", http.StatusInternalServerError)

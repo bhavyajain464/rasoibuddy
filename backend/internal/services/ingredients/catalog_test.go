@@ -3,6 +3,7 @@ package ingredients
 import "testing"
 
 func TestCatalogLoads(t *testing.T) {
+	requireSeededCatalog(t)
 	items := Catalog()
 	if len(items) < 500 {
 		t.Fatalf("expected at least 500 ingredients, got %d", len(items))
@@ -10,6 +11,7 @@ func TestCatalogLoads(t *testing.T) {
 }
 
 func TestSearchBySynonym(t *testing.T) {
+	requireSeededCatalog(t)
 	items := Search("tej patta")
 	if len(items) == 0 {
 		t.Fatal("expected match for tej patta")
@@ -27,6 +29,7 @@ func TestSearchBySynonym(t *testing.T) {
 }
 
 func TestCatalogIngredientUnits(t *testing.T) {
+	requireSeededCatalog(t)
 	var potato CatalogIngredient
 	for _, item := range Search("potato") {
 		if item.IngredientID == "potato" {

@@ -19,6 +19,8 @@ import (
 	restaurantsvc "kitchenai-backend/internal/restaurant/services"
 	redislib "kitchenai-backend/internal/redis"
 	"kitchenai-backend/internal/services"
+	"kitchenai-backend/internal/services/catalogdb"
+	"kitchenai-backend/internal/services/ingredients"
 	"kitchenai-backend/pkg/config"
 
 	"github.com/gorilla/mux"
@@ -74,6 +76,15 @@ func main() {
 
 	sqlDB := database.GetDB()
 
+	ingredients.InitCatalog(sqlDB)
+	catalogdb.Init(sqlDB)
+	if n, err := catalogdb.BootstrapPairLabelAliases(context.Background(), sqlDB); err != nil {
+		log.Printf("pair label alias bootstrap: %v", err)
+	} else if n > 0 {
+		log.Printf("bootstrapped %d pair label aliases", n)
+	}
+	log.Printf("Catalog: Postgres (seed from JSON via cmd/seedcatalog; register via /admin/catalog/*)")
+
 	if err := handlers.EnsureCookedLogSchema(sqlDB); err != nil {
 		log.Printf("cooked_log schema ensure failed: %v", err)
 	}
@@ -116,6 +127,8 @@ func main() {
 	api.Handle("/kitchen/join", middleware.RequireAuth(http.HandlerFunc(handlers.JoinKitchenByInviteCode(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/kitchen/leave", middleware.RequireAuth(http.HandlerFunc(handlers.LeaveKitchen(sqlDB)))).Methods("POST", "OPTIONS")
 	api.Handle("/ingredients", middleware.RequireAuth(http.HandlerFunc(handlers.GetIngredientsCatalog()))).Methods("GET", "OPTIONS")
+	api.Handle("/dishes", middleware.RequireAuth(http.HandlerFunc(handlers.GetDishesCatalog()))).Methods("GET", "OPTIONS")
+	api.Handle("/dishes/lookup", middleware.RequireAuth(http.HandlerFunc(handlers.GetDishLookup(cfg)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")
@@ -170,10 +183,28 @@ func main() {
 	admin.HandleFunc("/meal-of-day/clear-cache", handlers.AdminClearMealOfDayCache(mealOfDayCache)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/inventory/backfill-food-groups", handlers.AdminBackfillInventoryFoodGroups(sqlDB, cfg)).Methods("POST", "OPTIONS")
 	admin.HandleFunc("/inventory/backfill-catalog", handlers.AdminBackfillInventoryCatalog(sqlDB)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/catalog/pair-aliases", handlers.AdminListPairLabelAliases(sqlDB)).Methods("GET", "OPTIONS")
+	admin.HandleFunc("/catalog/pair-aliases", handlers.AdminRegisterPairLabelAlias(sqlDB)).Methods("POST", "OPTIONS")
+	admin.HandleFunc("/catalog/pair-aliases", handlers.AdminDeletePairLabelAlias(sqlDB)).Methods("DELETE", "OPTIONS")
+	admin.HandleFunc("/catalog/dishes", handlers.AdminUpsertCatalogDish(sqlDB)).Methods("POST", "OPTIONS")
 	if cfg.AdminAPIKey != "" {
 		log.Printf("Admin API enabled at /api/v1/admin/*")
 	} else {
 		log.Printf("Admin API disabled (set ADMIN_API_KEY to enable)")
+	}
+
+	// Ops panel (session auth + email allowlist; 404 for everyone else).
+	panelGuard := middleware.RequirePanelAdmin(cfg.AdminPanelEmails)
+	panel := api.PathPrefix("/panel").Subrouter()
+	panel.Handle("/access", panelGuard(http.HandlerFunc(handlers.PanelAccess()))).Methods("GET", "OPTIONS")
+	panel.Handle("/catalog/pair-aliases", panelGuard(handlers.AdminListPairLabelAliases(sqlDB))).Methods("GET", "OPTIONS")
+	panel.Handle("/catalog/pair-aliases", panelGuard(handlers.AdminRegisterPairLabelAlias(sqlDB))).Methods("POST", "OPTIONS")
+	panel.Handle("/catalog/pair-aliases", panelGuard(handlers.AdminDeletePairLabelAlias(sqlDB))).Methods("DELETE", "OPTIONS")
+	panel.Handle("/catalog/dishes", panelGuard(handlers.AdminUpsertCatalogDish(sqlDB))).Methods("POST", "OPTIONS")
+	if len(cfg.AdminPanelEmails) > 0 {
+		log.Printf("Ops panel API enabled at /api/v1/panel/* (%d allowlisted emails)", len(cfg.AdminPanelEmails))
+	} else {
+		log.Printf("Ops panel API disabled (set ADMIN_PANEL_EMAILS to enable)")
 	}
 
 	// Bill scanning

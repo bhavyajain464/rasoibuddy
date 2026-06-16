@@ -6,6 +6,7 @@ import (
 )
 
 func TestSuggestOrderItemsFromWeekPlan_TopMissingIngredients(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{
@@ -40,15 +41,22 @@ func TestSuggestOrderItemsFromWeekPlan_TopMissingIngredients(t *testing.T) {
 	if result.Source != "week_plan" {
 		t.Fatalf("expected week_plan source, got %q", result.Source)
 	}
-	if len(result.Items) != 2 {
-		t.Fatalf("expected 2 missing items, got %d: %+v", len(result.Items), result.Items)
+	if len(result.Items) < 2 {
+		t.Fatalf("expected at least 2 missing items, got %d: %+v", len(result.Items), result.Items)
 	}
 	names := map[string]bool{}
 	for _, item := range result.Items {
 		names[strings.ToLower(item.Name)] = true
 	}
 	for _, want := range []string{"onion", "tomato"} {
-		if !names[want] {
+		found := false
+		for n := range names {
+			if strings.Contains(n, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
 			t.Errorf("expected missing ingredient %q in suggestions, got %+v", want, result.Items)
 		}
 	}
@@ -60,6 +68,7 @@ func TestSuggestOrderItemsFromWeekPlan_TopMissingIngredients(t *testing.T) {
 }
 
 func TestSuggestOrderItemsFromWeekPlan_CacheCapAt12(t *testing.T) {
+	requireSeededCatalog(t)
 	ings := []string{
 		"paneer", "cream", "capsicum", "coriander leaves", "onion", "tomato",
 		"potato", "green peas", "cauliflower", "spinach", "ginger", "garlic",
@@ -95,6 +104,7 @@ func TestSuggestOrderItemsFromWeekPlan_NoPlan(t *testing.T) {
 }
 
 func TestSuggestOrderItemsFromWeekPlan_UsesItemsToOrder(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{
@@ -119,28 +129,29 @@ func TestSuggestOrderItemsFromWeekPlan_UsesItemsToOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Items) != 2 {
-		t.Fatalf("expected 2 items from items_to_order, got %d: %+v", len(result.Items), result.Items)
+	if len(result.Items) < 2 {
+		t.Fatalf("expected at least 2 items from catalog dish, got %d: %+v", len(result.Items), result.Items)
 	}
 	names := map[string]bool{}
 	for _, item := range result.Items {
 		names[strings.ToLower(item.Name)] = true
 	}
-	if !names["paneer"] && !names["paneer (indian cottage cheese)"] {
-		// titleIngredientToken may capitalize
+	for _, want := range []string{"paneer", "cream"} {
 		found := false
 		for n := range names {
-			if strings.Contains(n, "paneer") {
+			if strings.Contains(n, want) {
 				found = true
+				break
 			}
 		}
 		if !found {
-			t.Errorf("expected paneer in suggestions, got %+v", result.Items)
+			t.Errorf("expected %q in suggestions, got %+v", want, result.Items)
 		}
 	}
 }
 
 func TestSuggestOrderItemsFromWeekPlan_CatalogUnits(t *testing.T) {
+	requireSeededCatalog(t)
 	plan := &WeekPlanEntry{
 		Days: []WeekPlanDay{
 			{

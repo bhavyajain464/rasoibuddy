@@ -1,11 +1,9 @@
-import type { ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import { DISH_CARD_IMAGES } from './dishCardImages';
-import { resolveDishId } from './dishCatalogIndex';
+import { getDishImagesCdnBase } from './dishImageConfig';
 
 /** Delivery size variants for photorealistic dish photos (see scripts/optimize-dish-images.mjs). */
 export type DishImageVariant = 'hero' | 'card' | 'thumb';
-
-const CDN_BASE = (process.env.EXPO_PUBLIC_DISH_IMAGES_CDN_URL ?? '').replace(/\/$/, '');
 
 /** Path segment per variant under the CDN / dishes bucket. */
 function variantPath(id: string, variant: DishImageVariant): string {
@@ -20,10 +18,11 @@ function variantPath(id: string, variant: DishImageVariant): string {
 }
 
 /**
- * Remote URL for a catalog dish image. Set EXPO_PUBLIC_DISH_IMAGES_CDN_URL to your
- * blob/CDN root (e.g. https://cdn.example.com/dishes). Returns null when unset.
+ * Remote URL for a catalog dish image using the server-provided CDN base.
+ * Returns null when CDN is unset.
  */
 export function getDishImageUrl(id: string, variant: DishImageVariant = 'hero'): string | null {
+  const CDN_BASE = getDishImagesCdnBase();
   if (!CDN_BASE || !id) return null;
   return `${CDN_BASE}/${variantPath(id, variant)}`;
 }
@@ -38,14 +37,17 @@ export const DISH_IMAGE_SIZES: Record<DishImageVariant, { width: number; height:
 /** Width ÷ height for all dish delivery assets (landscape 3:2). */
 export const DISH_IMAGE_ASPECT_RATIO = DISH_IMAGE_SIZES.card.width / DISH_IMAGE_SIZES.card.height;
 
-/** Resolve bundled or CDN image source for a dish. */
+/** Resolve bundled or CDN image source for a dish id from the catalog DB. */
 export function getDishImageSource(
-  dishName?: string | null,
   dishId?: string | null,
   variant: DishImageVariant = 'card',
+  remoteUrls?: Partial<Record<DishImageVariant, string>>,
 ): ImageSourcePropType | null {
-  const id = resolveDishId(dishName, dishId);
+  const id = dishId?.trim();
   if (!id) return null;
+
+  const remoteFromLookup = remoteUrls?.[variant];
+  if (remoteFromLookup) return { uri: remoteFromLookup };
 
   const remote = getDishImageUrl(id, variant);
   if (remote) return { uri: remote };
@@ -58,14 +60,14 @@ export function getDishImageSource(
   return null;
 }
 
-export type DishImageProps = {
-  dishName?: string | null;
-  dishId?: string | null;
-  variant?: DishImageVariant;
-  width?: number | `${number}%`;
-  borderRadius?: number;
-  style?: StyleProp<ViewStyle>;
-  accessibilityLabel?: string;
-};
-
-export { resolveDishId };
+/** Best available source for full-screen preview (hero → card → thumb). */
+export function getDishPreviewImageSource(
+  dishId?: string | null,
+  remoteUrls?: Partial<Record<DishImageVariant, string>>,
+): ImageSourcePropType | null {
+  for (const variant of ['hero', 'card', 'thumb'] as const) {
+    const source = getDishImageSource(dishId, variant, remoteUrls);
+    if (source) return source;
+  }
+  return null;
+}

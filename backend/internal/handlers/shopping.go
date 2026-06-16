@@ -22,14 +22,17 @@ import (
 )
 
 type ShoppingItem struct {
-	ID        string     `json:"id"`
-	UserID    string     `json:"user_id,omitempty"`
-	Name      string     `json:"name"`
-	Qty       float64    `json:"qty"`
-	Unit      string     `json:"unit"`
-	Bought    bool       `json:"bought"`
-	CreatedAt time.Time  `json:"created_at"`
-	BoughtAt  *time.Time `json:"bought_at,omitempty"`
+	ID           string              `json:"id"`
+	UserID       string              `json:"user_id,omitempty"`
+	Name         string              `json:"name"`
+	IngredientID string              `json:"ingredient_id,omitempty"`
+	Qty          float64             `json:"qty"`
+	Unit         string              `json:"unit"`
+	DisplayQty   string              `json:"display_qty,omitempty"`
+	Catalog      *models.ItemCatalog `json:"catalog,omitempty"`
+	Bought       bool                `json:"bought"`
+	CreatedAt    time.Time           `json:"created_at"`
+	BoughtAt     *time.Time          `json:"bought_at,omitempty"`
 }
 
 type AddShoppingItemReq struct {
@@ -45,6 +48,7 @@ func normalizeShoppingReq(req *AddShoppingItemReq) error {
 
 func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		userID := getUserID(r)
 		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
@@ -55,12 +59,14 @@ func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "kitchen not found", http.StatusNotFound)
 			return
 		}
+		tQuery := time.Now()
 		rows, err := db.Query(`
-			SELECT id, name, qty, unit, bought, created_at, bought_at
+			SELECT id, name, qty, unit, ingredient_id, bought, created_at, bought_at
 			FROM shopping_items
 			WHERE kitchen_id = $1 AND bought = FALSE
 			ORDER BY created_at DESC
 		`, kitchen.KitchenID)
+		queryMs := time.Since(tQuery).Milliseconds()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -70,19 +76,30 @@ func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 		items := []ShoppingItem{}
 		for rows.Next() {
 			var item ShoppingItem
-			if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt, &item.BoughtAt); err != nil {
+			var ingredientID sql.NullString
+			if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &ingredientID, &item.Bought, &item.CreatedAt, &item.BoughtAt); err != nil {
 				log.Printf("scan shopping item: %v", err)
 				continue
 			}
 			item.Unit = units.Normalize(item.Unit)
+			if ingredientID.Valid {
+				item.IngredientID = ingredientID.String
+			}
 			items = append(items, item)
 		}
+		tEnrich := time.Now()
+		enrichShoppingItems(items)
+		enrichMs := time.Since(tEnrich).Milliseconds()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"items": items,
 			"count": len(items),
 		})
+		if ms := time.Since(start).Milliseconds(); ms > 300 {
+			log.Printf("[shopping] GET kitchen=%s items=%d query_ms=%d enrich_ms=%d ms=%d",
+				kitchen.KitchenID, len(items), queryMs, enrichMs, ms)
+		}
 	}
 }
 
@@ -117,18 +134,21 @@ func AddShoppingItem(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		link := ingredients.LinkForWrite(r.Context(), req.Name, "shopping")
 		var item ShoppingItem
 		err = db.QueryRow(`
-			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit, ingredient_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, name, qty, unit, bought, created_at
-		`, userID, kitchen.KitchenID, req.Name, req.Qty, req.Unit).Scan(
+		`, userID, kitchen.KitchenID, link.CanonicalName, req.Qty, req.Unit, link.IngredientIDParam()).Scan(
 			&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt,
 		)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		item.IngredientID = link.IngredientID
+		applyShoppingDisplay(&item)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
@@ -168,21 +188,24 @@ func AddBulkShoppingItems(db *sql.DB) http.HandlerFunc {
 			if services.ShoppingListHasItem(req.Name, pending) {
 				continue
 			}
+			link := ingredients.LinkForWrite(r.Context(), req.Name, "shopping")
 			var item ShoppingItem
 			err := db.QueryRow(`
-				INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
-				VALUES ($1, $2, $3, $4, $5)
+				INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit, ingredient_id)
+				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING id, name, qty, unit, bought, created_at
-			`, userID, kitchen.KitchenID, req.Name, req.Qty, req.Unit).Scan(
+			`, userID, kitchen.KitchenID, link.CanonicalName, req.Qty, req.Unit, link.IngredientIDParam()).Scan(
 				&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt,
 			)
 			if err != nil {
 				log.Printf("bulk add shopping item error: %v", err)
 				continue
 			}
+			item.IngredientID = link.IngredientID
 			pending = append(pending, req.Name)
 			added = append(added, item)
 		}
+		enrichShoppingItems(added)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(201)
@@ -262,6 +285,7 @@ func UpdateShoppingItem(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		applyShoppingDisplay(&item)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(item)
@@ -469,14 +493,15 @@ func PurchaseShoppingItems(db *sql.DB, producer *kafkalib.Producer) http.Handler
 			}
 			unit := units.Normalize(shop.Unit)
 
+			link := ingredients.LinkForWrite(r.Context(), shop.Name, "shopping_purchase")
 			var itemID string
 			var createdAt, updatedAt time.Time
 			var dbExpiry sql.NullTime
 			err = tx.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
-				VALUES ($1, $2, $3, TRUE, $4, $5)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, ingredient_id)
+				VALUES ($1, $2, $3, TRUE, $4, $5, $6)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, shop.Name, qty, unit, userID, kitchen.KitchenID).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, link.CanonicalName, qty, unit, userID, kitchen.KitchenID, link.IngredientIDParam()).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
 				tx.Rollback()
 				log.Printf("purchase shopping inventory %s: %v", shop.Name, err)
@@ -602,7 +627,7 @@ func findActiveShoppingItemExcluding(db *sql.DB, kitchenID, name, excludeID stri
 		return ShoppingItem{}, false
 	}
 	rows, err := db.Query(`
-		SELECT id, name, qty, unit, bought, created_at
+		SELECT id, name, qty, unit, ingredient_id, bought, created_at
 		FROM shopping_items
 		WHERE kitchen_id = $1 AND bought = FALSE
 	`, kitchenID)
@@ -613,14 +638,19 @@ func findActiveShoppingItemExcluding(db *sql.DB, kitchenID, name, excludeID stri
 	defer rows.Close()
 	for rows.Next() {
 		var item ShoppingItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &item.Bought, &item.CreatedAt); err != nil {
+		var ingredientID sql.NullString
+		if err := rows.Scan(&item.ID, &item.Name, &item.Qty, &item.Unit, &ingredientID, &item.Bought, &item.CreatedAt); err != nil {
 			continue
 		}
 		if excludeID != "" && item.ID == excludeID {
 			continue
 		}
 		item.Unit = units.Normalize(item.Unit)
+		if ingredientID.Valid {
+			item.IngredientID = ingredientID.String
+		}
 		if ingredients.SameIngredient(name, item.Name) {
+			applyShoppingDisplay(&item)
 			return item, true
 		}
 	}
@@ -655,6 +685,7 @@ func fetchActiveShoppingNames(db *sql.DB, kitchenID string) []string {
 
 func GetOrderSuggestions(db *sql.DB, mealPlanCache *services.MealPlanCache, cfg *config.Config, cookedLog *services.CookedLogService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		userID := getUserID(r)
 		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
@@ -666,21 +697,29 @@ func GetOrderSuggestions(db *sql.DB, mealPlanCache *services.MealPlanCache, cfg 
 			return
 		}
 
-		inventory := fetchUserInventory(db, userID)
+		tInv := time.Now()
+		inventory := fetchUserInventoryForKitchen(db, kitchen.KitchenID)
 		invNames := inventoryNames(inventory)
+		invIDs := inventoryIngredientIDs(inventory)
+		invMs := time.Since(tInv).Milliseconds()
 
+		tPlan := time.Now()
 		weekPlan, planErr := LoadKitchenWeekPlanEntry(r.Context(), db, cfg, cookedLog, mealPlanCache, kitchen.KitchenID, userID)
+		planMs := time.Since(tPlan).Milliseconds()
 		if planErr != nil {
 			log.Printf("order suggestions week plan: %v", planErr)
 		}
 
+		tSuggest := time.Now()
 		suggestIn := services.OrderSuggestInput{
-			WeekPlan:     weekPlan,
-			Inventory:    invNames,
-			ShoppingList: fetchActiveShoppingNames(db, kitchen.KitchenID),
+			WeekPlan:               weekPlan,
+			Inventory:              invNames,
+			InventoryIngredientIDs: invIDs,
+			ShoppingList:           fetchActiveShoppingNames(db, kitchen.KitchenID),
 		}
 
 		result, err := services.SuggestOrderItems(suggestIn)
+		suggestMs := time.Since(tSuggest).Milliseconds()
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
 			log.Printf("order suggestions: %v", err)
@@ -699,6 +738,10 @@ func GetOrderSuggestions(db *sql.DB, mealPlanCache *services.MealPlanCache, cfg 
 		}
 
 		json.NewEncoder(w).Encode(result)
+		if ms := time.Since(start).Milliseconds(); ms > 300 {
+			log.Printf("[order-suggest] GET kitchen=%s inv_ms=%d plan_ms=%d suggest_ms=%d items=%d ms=%d",
+				kitchen.KitchenID, invMs, planMs, suggestMs, len(result.Items), ms)
+		}
 	}
 }
 

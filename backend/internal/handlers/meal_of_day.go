@@ -85,7 +85,7 @@ func GetMealOfDay(cache *services.MealOfDayCache, db *sql.DB, cfg *config.Config
 				return
 			}
 		}
-		cat := mealCategoryFromCached(entry.Category)
+		cat := mealCategoryFromCachedReadOnly(entry.Category)
 		applyUserStarsToCategory(db, userID, &cat)
 		today := services.TodayDateKey(time.Now())
 		json.NewEncoder(w).Encode(MealOfDayResponse{
@@ -141,32 +141,47 @@ func applyUserStarsToCategoryWithMaps(cat *MealCategory, globalStars map[string]
 		if userStarred != nil {
 			cat.Meals[i].UserStarred = userStarred[key]
 		}
-		if strings.TrimSpace(cat.Meals[i].DishID) == "" {
-			if dish, ok := services.FindCatalogDishByName(cat.Meals[i].Name); ok {
-				cat.Meals[i].DishID = dish.ID
-			}
-		}
+		enrichSmartMealDishID(&cat.Meals[i])
 	}
 }
 
 func mealCategoryFromCached(c services.CachedMealCategory) MealCategory {
+	return mealCategoryFromCachedOpts(c, true)
+}
+
+// mealCategoryFromCachedReadOnly maps Redis payload to API types without re-enrichment.
+// Week plans are fully resolved at cache write time; re-running pair/grocery enrichment
+// on every GET triggers hundreds of catalog DB lookups.
+func mealCategoryFromCachedReadOnly(c services.CachedMealCategory) MealCategory {
+	return mealCategoryFromCachedOpts(c, false)
+}
+
+func mealCategoryFromCachedOpts(c services.CachedMealCategory, enrich bool) MealCategory {
 	meals := make([]SmartMeal, 0, len(c.Meals))
 	for _, m := range c.Meals {
-		meals = append(meals, SmartMeal{
-			MealSlot:       m.MealSlot,
-			DishID:         m.DishID,
-			Name:           m.Name,
-			Description:    m.Description,
-			Ingredients:    m.Ingredients,
-			ItemsToOrder:   m.ItemsToOrder,
-			CookingTime:    m.CookingTime,
-			Difficulty:     m.Difficulty,
-			WhyThisMeal:    m.WhyThisMeal,
-			PairsWith:      m.PairsWith,
-			NutritionNotes: m.NutritionNotes,
-			StarCount:      m.StarCount,
-			UserStarred:    m.UserStarred,
-		})
+		meal := SmartMeal{
+			MealSlot:        m.MealSlot,
+			DishID:          m.DishID,
+			Name:            m.Name,
+			Description:     m.Description,
+			Ingredients:     m.Ingredients,
+			IngredientIDs:   m.IngredientIDs,
+			ItemsToOrder:    m.ItemsToOrder,
+			CookingTime:     m.CookingTime,
+			Difficulty:      m.Difficulty,
+			WhyThisMeal:     m.WhyThisMeal,
+			PairsWith:       m.PairsWith,
+			PairIngredients: m.PairIngredients,
+			NutritionNotes:  m.NutritionNotes,
+			StarCount:       m.StarCount,
+			UserStarred:     m.UserStarred,
+		}
+		if enrich {
+			enrichSmartMealPairIngredients(&meal)
+			enrichSmartMealIngredientIDs(&meal)
+			enrichSmartMealGroceryLines(&meal)
+		}
+		meals = append(meals, meal)
 	}
 	return MealCategory{
 		ID:          c.ID,
@@ -180,19 +195,21 @@ func cachedCategoryFromMeal(cat MealCategory) services.CachedMealCategory {
 	meals := make([]services.CachedSmartMeal, 0, len(cat.Meals))
 	for _, m := range cat.Meals {
 		meals = append(meals, services.CachedSmartMeal{
-			MealSlot:       m.MealSlot,
-			DishID:         m.DishID,
-			Name:           m.Name,
-			Description:    m.Description,
-			Ingredients:    m.Ingredients,
-			ItemsToOrder:   m.ItemsToOrder,
+			MealSlot:        m.MealSlot,
+			DishID:          m.DishID,
+			Name:            m.Name,
+			Description:     m.Description,
+			Ingredients:     m.Ingredients,
+			IngredientIDs:   m.IngredientIDs,
+			ItemsToOrder:    m.ItemsToOrder,
 			CookingTime:    m.CookingTime,
 			Difficulty:     m.Difficulty,
 			WhyThisMeal:    m.WhyThisMeal,
-			PairsWith:      m.PairsWith,
-			NutritionNotes: m.NutritionNotes,
-			StarCount:      m.StarCount,
-			UserStarred:    false,
+			PairsWith:       m.PairsWith,
+			PairIngredients: m.PairIngredients,
+			NutritionNotes:  m.NutritionNotes,
+			StarCount:       m.StarCount,
+			UserStarred:     false,
 		})
 	}
 	return services.CachedMealCategory{

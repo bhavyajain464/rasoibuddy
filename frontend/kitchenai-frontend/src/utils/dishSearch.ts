@@ -1,4 +1,4 @@
-import type { CatalogDishSearchItem } from '../data/dishCatalogSearch';
+import type { CatalogDishSearchItem } from '../types';
 
 export const MAX_DISH_SEARCH_RESULTS = 120;
 export const DISH_ROW_MIN_HEIGHT = 56;
@@ -16,10 +16,11 @@ function dishMatchesQuery(item: CatalogDishSearchItem, q: string): boolean {
 
 function dishesForSlot(catalog: CatalogDishSearchItem[], mealSlot: string): CatalogDishSearchItem[] {
   const slot = norm(mealSlot);
-  const matches = catalog.filter((d) => d.mealTypes.some((t) => norm(t) === slot));
+  const matches = catalog.filter((d) => d.meal_types.some((t) => norm(t) === slot));
   return matches.length ? matches : catalog;
 }
 
+/** Client-side filter for already-fetched API results (e.g. while debouncing). */
 export function filterDishCatalog(
   catalog: CatalogDishSearchItem[],
   query: string,

@@ -1,18 +1,12 @@
 import { UserShoppingItem } from '../types';
 import { parseQtyInput } from './qty';
-import { resolveCatalogItem } from './ingredientUnits';
-import { formatPurchaseQty } from './purchaseUnits';
-import type { CatalogIngredient } from '../types';
+import { pantryQtyLabel } from './inventoryBuckets';
 
-/** Quantity line for list UI — purchase-style (e.g. "2" lemons, "1 kg" rice). */
+/** Quantity line for list UI — uses server display_qty when present. */
 export function formatShoppingQty(
-  item: Pick<UserShoppingItem, 'name' | 'qty' | 'unit'>,
-  catalog?: CatalogIngredient[],
+  item: Pick<UserShoppingItem, 'name' | 'qty' | 'unit' | 'display_qty'>,
 ): string {
-  const match = catalog?.length
-    ? resolveCatalogItem(catalog, undefined, item.name)
-    : undefined;
-  return formatPurchaseQty(item.qty, item.unit, match);
+  return pantryQtyLabel(item);
 }
 
 export function parseShoppingQtyInput(raw: string): number {
