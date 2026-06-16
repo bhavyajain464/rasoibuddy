@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { normalizeNativeFileUri } from './imageToBase64';
 
 const MAX_BILL_IMAGE_WIDTH = 1600;
 const BILL_JPEG_QUALITY = 0.72;
@@ -17,7 +18,7 @@ export async function prepareBillImageForScan(
   uri: string,
   mimeHint?: string,
 ): Promise<{ uri: string; mimeType: string }> {
-  const trimmed = uri.trim();
+  const trimmed = normalizeNativeFileUri(uri.trim());
   if (!trimmed || isPdfUri(trimmed, mimeHint)) {
     return { uri: trimmed, mimeType: mimeHint?.trim() || 'application/pdf' };
   }
@@ -36,7 +37,10 @@ export async function prepareBillImageForScan(
         format: ImageManipulator.SaveFormat.JPEG,
       },
     );
-    return { uri: result.uri, mimeType: 'image/jpeg' };
+    return {
+      uri: normalizeNativeFileUri(result.uri),
+      mimeType: 'image/jpeg',
+    };
   } catch (e) {
     console.warn('Bill image prepare failed, using original:', e);
     return { uri: trimmed, mimeType: mimeHint?.trim() || 'image/jpeg' };

@@ -8,6 +8,7 @@ import {
   DietFields,
   NotesField,
 } from './PrefFields';
+import { preferenceStyles as s } from './preferenceStyles';
 
 export interface OnboardingPreferencesFormProps {
   householdSize: number;
@@ -34,7 +35,7 @@ export interface OnboardingPreferencesFormProps {
 
 export function OnboardingPreferencesForm(props: OnboardingPreferencesFormProps) {
   return (
-    <View>
+    <View style={s.onboardingForm}>
       <BasicsFields
         householdSize={props.householdSize}
         onHouseholdSize={props.onHouseholdSize}
@@ -42,12 +43,18 @@ export function OnboardingPreferencesForm(props: OnboardingPreferencesFormProps)
         onSpiceLevel={props.onSpiceLevel}
         cookingSkill={props.cookingSkill}
         onCookingSkill={props.onCookingSkill}
+        variant="onboarding"
       />
-      <DietFields dietaryTags={props.dietaryTags} onDietaryTags={props.onDietaryTags} />
+      <DietFields
+        dietaryTags={props.dietaryTags}
+        onDietaryTags={props.onDietaryTags}
+        variant="onboarding"
+      />
       <CuisineFields
         cuisines={props.favCuisines}
         options={ONBOARDING_CUISINE_OPTIONS}
         onToggle={props.onToggleCuisine}
+        variant="onboarding"
       />
       <AllergiesDislikesFields
         allergies={props.allergies}
@@ -58,8 +65,9 @@ export function OnboardingPreferencesForm(props: OnboardingPreferencesFormProps)
         onNewAllergy={props.onNewAllergy}
         newDislike={props.newDislike}
         onNewDislike={props.onNewDislike}
+        variant="onboarding"
       />
-      <NotesField value={props.note} onChangeText={props.onNote} />
+      <NotesField value={props.note} onChangeText={props.onNote} variant="onboarding" />
     </View>
   );
 }

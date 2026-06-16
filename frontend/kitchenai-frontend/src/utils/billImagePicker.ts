@@ -1,4 +1,5 @@
 import { Alert, Platform } from 'react-native';
+import { normalizeNativeFileUri } from './imageToBase64';
 
 /** Allowed bill scan uploads — images and PDF only (no video). */
 const BILL_FILE_TYPES: string[] = ['image/*', 'application/pdf'];
@@ -14,8 +15,9 @@ function isVideoMime(mime: string): boolean {
 }
 
 function normalizePick(asset: { uri: string; mimeType?: string | null; name?: string | null }): BillScanPick | null {
-  const uri = asset.uri?.trim();
-  if (!uri) return null;
+  const rawUri = asset.uri?.trim();
+  if (!rawUri) return null;
+  const uri = Platform.OS === 'web' ? rawUri : normalizeNativeFileUri(rawUri);
 
   let mimeType = (asset.mimeType || '').trim().toLowerCase();
   const name = asset.name || undefined;

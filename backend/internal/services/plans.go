@@ -55,11 +55,10 @@ func PlanCatalog() []PlanProduct {
 		{
 			Tier: TierElite, Interval: IntervalMonthly, AmountPaise: 19900, Currency: CurrencyINR,
 			DisplayName: "Elite", PriceLabel: "₹199/month",
-			Description: "Pro plus nightly diet digest and nutrition insights",
+			Description: "Pro plus daily nutrition insights",
 			Features: []string{
 				"Everything in Pro",
-				"Nightly diet email from your meal log",
-				"AI nutrition insights",
+				"Daily nutrition insights",
 			},
 			AvailableForPurchase: true,
 		},

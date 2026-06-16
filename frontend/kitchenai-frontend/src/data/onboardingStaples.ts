@@ -212,5 +212,27 @@ export function getOnboardingStapleImage(id: string): number | undefined {
 
 export function summarizeAutoStaples(autoStaples: OnboardingStaple[]): string {
   if (autoStaples.length === 0) return '';
-  return 'masalas, atta, rice, dals, oil & more';
+  return 'Masalas, atta, rice, dals, oil & more';
+}
+
+/** Category chips for the onboarding kitchen summary banner. */
+export function getAutoStapleCategoryPills(autoStaples: OnboardingStaple[]): string[] {
+  const ids = new Set(autoStaples.map((s) => s.id));
+  const spiceCount = AUTO_STAPLE_TEMPLATES.filter(
+    (t) => t.scaleKind === 'spice' && ids.has(t.id),
+  ).length;
+  const dalCount = autoStaples.filter((s) => s.id.endsWith('_dal')).length;
+  const flourCount = autoStaples.filter(
+    (s) => s.id.includes('flour') || s.id === 'semolina',
+  ).length;
+  const pills: string[] = [];
+  if (spiceCount > 0) pills.push(`${spiceCount} spices`);
+  if (dalCount > 0) pills.push(`${dalCount} dals`);
+  if (flourCount > 0) pills.push(`${flourCount} flours`);
+  if (autoStaples.some((s) => s.id.includes('oil') || s.id === 'ghee')) {
+    pills.push('oil & ghee');
+  }
+  if (autoStaples.some((s) => s.id.includes('rice'))) pills.push('rice');
+  if (ids.has('tea')) pills.push('tea');
+  return pills;
 }

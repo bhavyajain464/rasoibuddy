@@ -459,7 +459,11 @@ export async function scanBillUpload(fileUri: string, mimeHint?: string): Promis
   }
 
   if (!res.ok || body.success === false) {
-    throw new Error(BILL_SCAN_ALERT_MESSAGE);
+    const message =
+      typeof body.message === 'string' && body.message.trim()
+        ? body.message.trim()
+        : BILL_SCAN_ALERT_MESSAGE;
+    throw new Error(message);
   }
 
   return body;

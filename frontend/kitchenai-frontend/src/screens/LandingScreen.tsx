@@ -4,7 +4,16 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BrandLogo } from '../components/BrandLogo';
 import { BRAND_DISPLAY_NAME, PLAY_STORE_URL, PRIVACY_URL } from '../constants/brand';
+import {
+  PLAN_PRICING_INR,
+  PLAN_TIER_FEATURES,
+  PLAN_TIER_WHY,
+  planYearlyMonthlyEquivalent,
+  planYearlySavingsPercent,
+} from '../constants/planTiers';
 import type { PublicStackParamList } from '../navigation/types';
+import { AppShowcaseCarousel, HeroHomePhone, StepScreenshotPhone } from '../components/landing/PlayScreenshotPhone';
+import { PLAY_SETUP_STEPS } from '../constants/playScreenshots';
 
 if (Platform.OS === 'web') {
   require('../styles/landing.web.css');
@@ -29,52 +38,42 @@ const PLANS: Plan[] = [
   {
     id: 'free',
     name: 'Free',
-    why: 'For getting started',
+    why: PLAN_TIER_WHY.free,
     monthly: 0,
     yearly: 0,
     cta: 'Get started',
     variant: 'ghost',
-    features: [
-      '2 bill scans / day',
-      'Daily & meal-of-the-day ideas',
-      'Pantry & expiry tracking',
-      'Shopping list + order online',
-    ],
+    features: [...PLAN_TIER_FEATURES.free],
   },
   {
     id: 'pro',
     name: 'Pro',
-    why: 'For everyday home cooks',
-    monthly: 99,
-    yearly: 83,
-    yearlyTotal: 990,
+    why: PLAN_TIER_WHY.pro,
+    monthly: PLAN_PRICING_INR.pro.monthly,
+    yearly: planYearlyMonthlyEquivalent(PLAN_PRICING_INR.pro.yearlyTotal),
+    yearlyTotal: PLAN_PRICING_INR.pro.yearlyTotal,
     popular: true,
     cta: 'Go Pro',
     variant: 'primary',
-    features: [
-      'Unlimited bill scans',
-      'All meal categories — healthy, tasty, rescue, meal-prep',
-      '7-day meal planning',
-      'WhatsApp cook coordination',
-    ],
+    features: [...PLAN_TIER_FEATURES.pro],
   },
   {
     id: 'elite',
     name: 'Elite',
-    why: 'For the health-focused',
-    monthly: 199,
-    yearly: 166,
-    yearlyTotal: 1990,
+    why: PLAN_TIER_WHY.elite,
+    monthly: PLAN_PRICING_INR.elite.monthly,
+    yearly: planYearlyMonthlyEquivalent(PLAN_PRICING_INR.elite.yearlyTotal),
+    yearlyTotal: PLAN_PRICING_INR.elite.yearlyTotal,
     cta: 'Go Elite',
     variant: 'ghost',
-    features: [
-      'Everything in Pro',
-      'Nightly diet analysis & reports',
-      'Shared family kitchen',
-      'Priority support',
-    ],
+    features: [...PLAN_TIER_FEATURES.elite],
   },
 ];
+
+const YEARLY_SAVINGS_PERCENT = planYearlySavingsPercent(
+  PLAN_PRICING_INR.pro.monthly,
+  PLAN_PRICING_INR.pro.yearlyTotal,
+);
 
 const GOOGLE_PLAY_BADGE =
   'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png';
@@ -299,72 +298,7 @@ function LandingPageWeb() {
             </div>
           </div>
 
-          <div className="phone-wrap">
-            <div className="glow" />
-            <div className="phone">
-              <div className="screen">
-                <div className="s-top">
-                  <div className="s-hi">Good evening</div>
-                  <div className="s-q">Tonight&apos;s dinner</div>
-                </div>
-                <div className="s-card">
-                  <div className="s-tag">Meal of the day</div>
-                  <div className="s-dish">Palak Paneer</div>
-                  <div className="s-meta">25 min · uses 6 items from your pantry</div>
-                  <div className="s-pills">
-                    <span className="s-pill">High protein</span>
-                    <span className="s-pill">Medium spice</span>
-                    <span className="s-pill">North Indian</span>
-                  </div>
-                </div>
-                <div className="s-list">
-                  <div className="s-row">
-                    <div className="s-dot">
-                      <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8">
-                        <circle cx="12" cy="13" r="7" />
-                        <path d="M12 6c0-2 1-3 3-3" />
-                      </svg>
-                    </div>
-                    <div className="s-rt">
-                      <div className="s-rn">Tomatoes</div>
-                    </div>
-                    <div className="s-rs warn">2 days left</div>
-                  </div>
-                  <div className="s-row">
-                    <div className="s-dot">
-                      <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8">
-                        <path d="M12 20c-5-2-8-7-6-13 5-1 9 2 9 7" />
-                        <path d="M12 20c5-2 7-6 6-11" />
-                      </svg>
-                    </div>
-                    <div className="s-rt">
-                      <div className="s-rn">Spinach</div>
-                    </div>
-                    <div className="s-rs warn">Use today</div>
-                  </div>
-                  <div className="s-row">
-                    <div className="s-dot">
-                      <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8">
-                        <rect x="4" y="7" width="16" height="11" rx="2" />
-                        <path d="M8 7V5h8v2" />
-                      </svg>
-                    </div>
-                    <div className="s-rt">
-                      <div className="s-rn">Paneer</div>
-                    </div>
-                    <div className="s-rs ok">Fresh</div>
-                  </div>
-                </div>
-                <div className="s-tab">
-                  <i className="on" />
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroHomePhone />
         </div>
 
         <div className="wrap">
@@ -389,7 +323,7 @@ function LandingPageWeb() {
         </div>
       </section>
 
-      <section>
+      <section id="why">
         <div className="wrap">
           <div className="head">
             <span className="eyebrow">Sound familiar?</span>
@@ -427,6 +361,17 @@ function LandingPageWeb() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section id="app-showcase" className="showcase-section">
+        <div className="wrap">
+          <div className="head">
+            <span className="eyebrow">In the app</span>
+            <h2>Your kitchen, on your phone</h2>
+            <p className="sub">Swipe through how {BRAND_DISPLAY_NAME} helps you plan, shop, cook, and scan.</p>
+          </div>
+        </div>
+        <AppShowcaseCarousel />
       </section>
 
       <section id="features">
@@ -506,24 +451,37 @@ function LandingPageWeb() {
           <div className="head" style={{ marginBottom: 0 }}>
             <span className="eyebrow">How it works</span>
             <h2>Set up in minutes. Save time every day.</h2>
-            <p className="sub">No spreadsheets, no manual entry — just point your camera and cook.</p>
+            <p className="sub">A quick setup once, then everything runs smoother every day.</p>
           </div>
           <div className="steps">
-            <div className="step">
-              <div className="n">1</div>
-              <h3>Scan &amp; stock</h3>
-              <p>Photograph your grocery bill. Your pantry fills itself with items and expiry dates.</p>
-            </div>
-            <div className="step">
-              <div className="n">2</div>
-              <h3>Get your meals</h3>
-              <p>Open the app to fresh, personalized meal ideas built around what you already own.</p>
-            </div>
-            <div className="step">
-              <div className="n">3</div>
-              <h3>Cook or delegate</h3>
-              <p>Cook it yourself, or send the menu to your cook on WhatsApp — and reorder what&apos;s running low.</p>
-            </div>
+            {PLAY_SETUP_STEPS.map((item, idx) => (
+              <div
+                className={`step${'secondaryScreenshotIndex' in item ? ' step-wide' : ''}`}
+                key={item.title}
+              >
+                {'secondaryScreenshotIndex' in item ? (
+                  <div className="step-phone-dual">
+                    <StepScreenshotPhone
+                      screenshotIndex={item.screenshotIndex}
+                      alt={`${item.title} - start fresh`}
+                    />
+                    <div className="step-phone-or">OR</div>
+                    <StepScreenshotPhone
+                      screenshotIndex={item.secondaryScreenshotIndex}
+                      alt={`${item.title} - join kitchen`}
+                    />
+                  </div>
+                ) : (
+                  <StepScreenshotPhone
+                    screenshotIndex={item.screenshotIndex}
+                    alt={item.title}
+                  />
+                )}
+                <div className="n">{idx + 1}</div>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -546,7 +504,7 @@ function LandingPageWeb() {
                 className={`bt${billing === 'yearly' ? ' active' : ''}`}
                 onClick={() => setBilling('yearly')}
               >
-                Yearly <em>save 17%</em>
+                Yearly <em>save {YEARLY_SAVINGS_PERCENT}%</em>
               </button>
             </div>
           </div>

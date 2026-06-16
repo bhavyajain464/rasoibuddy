@@ -10,19 +10,23 @@ import {
 } from '../../constants/userPreferences';
 import { preferenceStyles as s } from './preferenceStyles';
 
+export type PrefVariant = 'default' | 'onboarding';
+
 export function PrefCard({
   title,
   hint,
   children,
   style,
+  variant = 'default',
 }: {
   title: string;
   hint?: string;
   children: React.ReactNode;
   style?: object;
+  variant?: PrefVariant;
 }) {
   return (
-    <View style={[s.card, style]}>
+    <View style={[s.card, variant === 'onboarding' && s.cardOnboarding, style]}>
       <Text style={s.cardTitle}>{title}</Text>
       {hint ? <Text style={s.cardHint}>{hint}</Text> : null}
       {children}
@@ -35,15 +39,18 @@ export function PrefField({
   labelSuffix,
   first,
   children,
+  variant = 'default',
 }: {
   label: string;
   labelSuffix?: string;
   first?: boolean;
   children: React.ReactNode;
+  variant?: PrefVariant;
 }) {
+  const labelStyle = variant === 'onboarding' ? s.fieldLabelOnboarding : s.fieldLabel;
   return (
     <View style={first ? s.fieldFirst : s.field}>
-      <Text style={s.fieldLabel}>
+      <Text style={labelStyle}>
         {label}
         {labelSuffix ? (
           <Text style={s.fieldLabelMuted}> {labelSuffix}</Text>
@@ -58,16 +65,18 @@ export function PrefStepper({
   value,
   onChange,
   min = 1,
+  variant = 'default',
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
+  variant?: PrefVariant;
 }) {
   return (
-    <View style={s.stepper}>
+    <View style={[s.stepper, variant === 'onboarding' && s.stepperOnboarding]}>
       <Pressable
         onPress={() => onChange(Math.max(min, value - 1))}
-        style={s.stepBtn}
+        style={variant === 'onboarding' ? undefined : s.stepBtn}
         accessibilityLabel="Decrease household size"
       >
         <Text style={s.stepBtnText}>−</Text>
@@ -75,7 +84,7 @@ export function PrefStepper({
       <Text style={s.stepValue}>{value}</Text>
       <Pressable
         onPress={() => onChange(value + 1)}
-        style={s.stepBtn}
+        style={variant === 'onboarding' ? undefined : s.stepBtn}
         accessibilityLabel="Increase household size"
       >
         <Text style={s.stepBtnText}>+</Text>
@@ -115,14 +124,47 @@ export function PrefSegment<T extends string>({
   );
 }
 
+export function PrefPillSelect<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { id: T; label: string; emoji?: string }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <View style={s.pillRow}>
+      {options.map(opt => {
+        const on = value === opt.id;
+        return (
+          <Pressable
+            key={opt.id}
+            onPress={() => onChange(opt.id)}
+            style={[s.pill, on && s.pillOn]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+          >
+            <Text style={[s.pillText, on && s.pillTextOn]} numberOfLines={1}>
+              {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function PrefChips({
   options,
   selected,
   onToggle,
+  variant = 'default',
 }: {
   options: readonly { id: string; label: string }[] | readonly string[];
   selected: string[];
   onToggle: (id: string) => void;
+  variant?: PrefVariant;
 }) {
   const normalized = options.map(o =>
     typeof o === 'string' ? { id: o, label: o } : o,
@@ -135,7 +177,11 @@ export function PrefChips({
           <Pressable
             key={opt.id}
             onPress={() => onToggle(opt.id)}
-            style={[s.chip, on && s.chipOn]}
+            style={[
+              s.chip,
+              variant === 'onboarding' && s.chipOnboarding,
+              on && s.chipOn,
+            ]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: on }}
           >
@@ -199,33 +245,41 @@ export function PrefTagInput({
 export function SpiceLevelControl({
   value,
   onChange,
+  variant = 'default',
 }: {
   value: string;
   onChange: (v: string) => void;
+  variant?: PrefVariant;
 }) {
-  return (
-    <PrefSegment options={SPICE_LEVELS} value={value} onChange={onChange} />
-  );
+  if (variant === 'onboarding') {
+    return <PrefPillSelect options={SPICE_LEVELS} value={value} onChange={onChange} />;
+  }
+  return <PrefSegment options={SPICE_LEVELS} value={value} onChange={onChange} />;
 }
 
 export function CookingSkillControl({
   value,
   onChange,
+  variant = 'default',
 }: {
   value: string;
   onChange: (v: string) => void;
+  variant?: PrefVariant;
 }) {
-  return (
-    <PrefSegment options={COOKING_SKILLS} value={value} onChange={onChange} />
-  );
+  if (variant === 'onboarding') {
+    return <PrefPillSelect options={COOKING_SKILLS} value={value} onChange={onChange} />;
+  }
+  return <PrefSegment options={COOKING_SKILLS} value={value} onChange={onChange} />;
 }
 
 export function DietControls({
   dietaryTags,
   onDietaryTags,
+  variant = 'default',
 }: {
   dietaryTags: string[];
   onDietaryTags: (tags: string[]) => void;
+  variant?: PrefVariant;
 }) {
   const { dietType, restrictions } = splitDietaryTags(dietaryTags);
 
@@ -243,18 +297,20 @@ export function DietControls({
 
   return (
     <>
-      <PrefField label="Diet type" first>
+      <PrefField label="Diet type" first variant={variant}>
         <PrefChips
           options={DIET_TYPE_OPTIONS}
           selected={dietType ? [dietType] : []}
           onToggle={setDietType}
+          variant={variant}
         />
       </PrefField>
-      <PrefField label="Restrictions" labelSuffix="· optional">
+      <PrefField label="Restrictions" labelSuffix="· optional" variant={variant}>
         <PrefChips
           options={DIET_RESTRICTION_OPTIONS}
           selected={restrictions}
           onToggle={toggleRestriction}
+          variant={variant}
         />
       </PrefField>
     </>
@@ -265,10 +321,12 @@ export function CuisineControls({
   cuisines,
   options,
   onToggle,
+  variant = 'default',
 }: {
   cuisines: string[];
   options: readonly string[];
   onToggle: (c: string) => void;
+  variant?: PrefVariant;
 }) {
   return (
     <View style={s.chipRow}>
@@ -278,7 +336,11 @@ export function CuisineControls({
           <Pressable
             key={c}
             onPress={() => onToggle(c)}
-            style={[s.chip, on && s.chipOn]}
+            style={[
+              s.chip,
+              variant === 'onboarding' && s.chipOnboarding,
+              on && s.chipOn,
+            ]}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: on }}
           >
@@ -298,6 +360,7 @@ export function BasicsFields({
   onSpiceLevel,
   cookingSkill,
   onCookingSkill,
+  variant = 'default',
 }: {
   householdSize: number;
   onHouseholdSize: (n: number) => void;
@@ -305,17 +368,30 @@ export function BasicsFields({
   onSpiceLevel: (v: string) => void;
   cookingSkill: string;
   onCookingSkill: (v: string) => void;
+  variant?: PrefVariant;
 }) {
   return (
-    <PrefCard title="Basics">
-      <PrefField label="Household size" first>
-        <PrefStepper value={householdSize} onChange={onHouseholdSize} />
+    <PrefCard title="Basics" variant={variant}>
+      <PrefField label="Household size" first variant={variant}>
+        <PrefStepper
+          value={householdSize}
+          onChange={onHouseholdSize}
+          variant={variant}
+        />
       </PrefField>
-      <PrefField label="Spice level">
-        <SpiceLevelControl value={spiceLevel} onChange={onSpiceLevel} />
+      <PrefField label="Spice level" variant={variant}>
+        <SpiceLevelControl
+          value={spiceLevel}
+          onChange={onSpiceLevel}
+          variant={variant}
+        />
       </PrefField>
-      <PrefField label="Cooking skill">
-        <CookingSkillControl value={cookingSkill} onChange={onCookingSkill} />
+      <PrefField label="Cooking skill" variant={variant}>
+        <CookingSkillControl
+          value={cookingSkill}
+          onChange={onCookingSkill}
+          variant={variant}
+        />
       </PrefField>
     </PrefCard>
   );
@@ -324,13 +400,19 @@ export function BasicsFields({
 export function DietFields({
   dietaryTags,
   onDietaryTags,
+  variant = 'default',
 }: {
   dietaryTags: string[];
   onDietaryTags: (tags: string[]) => void;
+  variant?: PrefVariant;
 }) {
   return (
-    <PrefCard title="Diet">
-      <DietControls dietaryTags={dietaryTags} onDietaryTags={onDietaryTags} />
+    <PrefCard title="Diet" variant={variant}>
+      <DietControls
+        dietaryTags={dietaryTags}
+        onDietaryTags={onDietaryTags}
+        variant={variant}
+      />
     </PrefCard>
   );
 }
@@ -339,15 +421,22 @@ export function CuisineFields({
   cuisines,
   options,
   onToggle,
+  variant = 'default',
 }: {
   cuisines: string[];
   options: readonly string[];
   onToggle: (c: string) => void;
+  variant?: PrefVariant;
 }) {
   return (
-    <PrefCard title="Favourite cuisines">
+    <PrefCard title="Favourite cuisines" variant={variant}>
       <View style={{ marginTop: 16 }}>
-        <CuisineControls cuisines={cuisines} options={options} onToggle={onToggle} />
+        <CuisineControls
+          cuisines={cuisines}
+          options={options}
+          onToggle={onToggle}
+          variant={variant}
+        />
       </View>
     </PrefCard>
   );
@@ -362,6 +451,7 @@ export function AllergiesDislikesFields({
   onNewAllergy,
   newDislike,
   onNewDislike,
+  variant = 'default',
 }: {
   allergies: string[];
   onAllergies: (v: string[]) => void;
@@ -371,6 +461,7 @@ export function AllergiesDislikesFields({
   onNewAllergy: (v: string) => void;
   newDislike: string;
   onNewDislike: (v: string) => void;
+  variant?: PrefVariant;
 }) {
   const addAllergy = () => {
     const t = newAllergy.trim();
@@ -384,11 +475,18 @@ export function AllergiesDislikesFields({
   };
 
   return (
-    <PrefCard title="Allergies & dislikes">
-      <Text style={[s.cardHint, { marginBottom: 0 }]}>
-        <Text style={s.fieldLabelMuted}>optional</Text>
-      </Text>
-      <PrefField label="🚫 Allergies" labelSuffix="· hidden completely (safety)" first>
+    <PrefCard title="Allergies & dislikes" variant={variant}>
+      {variant === 'default' ? (
+        <Text style={[s.cardHint, { marginBottom: 0 }]}>
+          <Text style={s.fieldLabelMuted}>optional</Text>
+        </Text>
+      ) : null}
+      <PrefField
+        label={variant === 'onboarding' ? 'Allergies' : '🚫 Allergies'}
+        labelSuffix="· hidden completely (safety)"
+        first
+        variant={variant}
+      >
         <PrefTagInput
           tags={allergies}
           onRemove={a => onAllergies(allergies.filter(x => x !== a))}
@@ -399,7 +497,11 @@ export function AllergiesDislikesFields({
           warn
         />
       </PrefField>
-      <PrefField label="👎 Dislikes" labelSuffix="· just deprioritised">
+      <PrefField
+        label={variant === 'onboarding' ? 'Dislikes' : '👎 Dislikes'}
+        labelSuffix="· just deprioritised"
+        variant={variant}
+      >
         <PrefTagInput
           tags={dislikes}
           onRemove={d => onDislikes(dislikes.filter(x => x !== d))}
@@ -417,11 +519,34 @@ export function NotesField({
   value,
   onChangeText,
   placeholder = 'e.g. kids like mild food, light dinners',
+  variant = 'default',
 }: {
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
+  variant?: PrefVariant;
 }) {
+  if (variant === 'onboarding') {
+    return (
+      <View style={[s.card, s.cardOnboarding]}>
+        <Text style={s.cardTitle}>
+          Notes for us{' '}
+          <Text style={s.fieldLabelMuted}>optional</Text>
+        </Text>
+        <Text style={s.cardHint}>Anything we should remember when suggesting meals?</Text>
+        <View style={{ marginTop: 14 }}>
+          <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor="#9AA39C"
+            style={s.textInput}
+          />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.card}>
       <Text style={s.cardTitle}>

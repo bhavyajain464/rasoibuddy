@@ -75,7 +75,9 @@ export function ScanScreen() {
         showUpgradeMessage(e.message, startUpgrade);
         void refreshEntitlements();
       } else {
-        showAppAlert(BILL_SCAN_ALERT_TITLE, BILL_SCAN_ALERT_MESSAGE);
+        const message =
+          e instanceof Error && e.message.trim() ? e.message.trim() : BILL_SCAN_ALERT_MESSAGE;
+        showAppAlert(BILL_SCAN_ALERT_TITLE, message);
       }
     } finally {
       setScanning(false);

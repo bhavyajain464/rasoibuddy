@@ -1,8 +1,8 @@
 export const SPICE_LEVELS = [
-  { id: 'mild', label: 'Mild', emoji: '🌶️' },
-  { id: 'medium', label: 'Medium', emoji: '🌶️' },
-  { id: 'spicy', label: 'Spicy', emoji: '🌶️🌶️' },
-  { id: 'extra_spicy', label: 'Extra', emoji: '🔥' },
+  { id: 'mild', label: 'Mild' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'spicy', label: 'Spicy' },
+  { id: 'extra_spicy', label: 'Extra' },
 ] as const;
 
 export const COOKING_SKILLS = [
@@ -28,15 +28,17 @@ export const DIET_RESTRICTION_OPTIONS = [
   { id: 'low-carb', label: 'Low-carb' },
 ] as const;
 
+/** Favourite cuisines shown in onboarding — must have dishes in the catalog. */
 export const ONBOARDING_CUISINE_OPTIONS = [
   'North Indian', 'South Indian', 'Bengali', 'Gujarati',
-  'Punjabi', 'Chinese', 'Italian', 'Continental', 'Thai',
+  'Punjabi', 'Chinese', 'Italian', 'Continental',
 ];
 
+/** Profile editor includes extra regional Indian options; same catalog coverage rules. */
 export const PROFILE_CUISINE_OPTIONS = [
   'North Indian', 'South Indian', 'Bengali', 'Gujarati',
   'Punjabi', 'Rajasthani', 'Maharashtrian', 'Kerala',
-  'Chinese', 'Italian', 'Continental', 'Thai',
+  'Chinese', 'Italian', 'Continental',
 ];
 
 export type SpiceLevelId = (typeof SPICE_LEVELS)[number]['id'];

@@ -11,22 +11,17 @@ import {
 } from 'react-native';
 import { Text, Button, ActivityIndicator, Icon } from 'react-native-paper';
 import { Entitlements, PlanProduct, UpgradeQuote } from '../types';
+import {
+  PLAN_TIER_FEATURES,
+  PLAN_TIER_TAGLINES,
+  type PlanTierId,
+} from '../constants/planTiers';
 
-type TierKey = 'free' | 'pro' | 'elite';
+type TierKey = PlanTierId;
 
-const PRO_FEATURES = [
-  'Unlimited bill scans',
-];
-const FREE_FEATURES = [
-  'All smart meal suggestions',
-  'Week meal planning',
-  '2 bill scans per day',
-];
-const ELITE_FEATURES = [
-  'Everything in Pro',
-  'Nightly diet email from your meal log',
-  'AI nutrition insights',
-];
+const PRO_FEATURES = [...PLAN_TIER_FEATURES.pro];
+const FREE_FEATURES = [...PLAN_TIER_FEATURES.free];
+const ELITE_FEATURES = [...PLAN_TIER_FEATURES.elite];
 
 const TIER_ORDER: TierKey[] = ['free', 'pro', 'elite'];
 
@@ -38,19 +33,19 @@ const TIER_META: Record<
     label: 'Free',
     icon: 'account',
     features: FREE_FEATURES,
-    tagline: 'Full meal planning with limited bill scans.',
+    tagline: PLAN_TIER_TAGLINES.free,
   },
   pro: {
     label: 'Pro',
     icon: 'star',
     features: PRO_FEATURES,
-    tagline: 'Unlimited bill scans.',
+    tagline: PLAN_TIER_TAGLINES.pro,
   },
   elite: {
     label: 'Elite',
     icon: 'crown',
     features: ELITE_FEATURES,
-    tagline: 'Pro plus diet digest and nutrition insights.',
+    tagline: PLAN_TIER_TAGLINES.elite,
   },
 };
 
@@ -569,7 +564,7 @@ export function PlanSubscriptionSection({
             <FeatureChecklist
               items={
                 entitlements?.is_elite
-                  ? [...PRO_FEATURES, 'Nightly diet email', 'AI nutrition insights']
+                  ? [...PRO_FEATURES, PLAN_TIER_FEATURES.elite[1]]
                   : PRO_FEATURES
               }
               accentColor={theme.accent}

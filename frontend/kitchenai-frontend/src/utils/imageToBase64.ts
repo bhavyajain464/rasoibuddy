@@ -14,6 +14,104 @@ function mimeFromUri(uri: string, hint?: string): string {
   return 'image/jpeg';
 }
 
+function extensionForMime(mimeHint: string | undefined, uri: string): string {
+  const mime = mimeFromUri(uri, mimeHint);
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/heic' || mime === 'image/heif') return 'heic';
+  return 'jpg';
+}
+
+/** Ensures native URIs use a scheme readable by expo-file-system (file:// or content://). */
+export function normalizeNativeFileUri(uri: string): string {
+  const trimmed = uri.trim();
+  if (!trimmed || trimmed.startsWith('data:')) return trimmed;
+  if (
+    trimmed.startsWith('file://') ||
+    trimmed.startsWith('content://') ||
+    trimmed.startsWith('ph://') ||
+    trimmed.startsWith('assets-library://')
+  ) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return `file://${trimmed}`;
+  }
+  return trimmed;
+}
+
+async function copyToCacheFile(uri: string, mimeHint?: string): Promise<string> {
+  const FileSystem = await import('expo-file-system/legacy');
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Could not access app cache to read the selected file');
+  }
+  const dest = `${cacheDir}bill-scan-${Date.now()}.${extensionForMime(mimeHint, uri)}`;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return dest;
+}
+
+async function resolveReadableNativeUri(uri: string, mimeHint?: string): Promise<string> {
+  const normalized = normalizeNativeFileUri(uri);
+  if (!normalized) {
+    throw new Error('No file selected');
+  }
+  if (normalized.startsWith('content://') || normalized.startsWith('ph://')) {
+    return copyToCacheFile(normalized, mimeHint);
+  }
+  return normalized;
+}
+
+async function readNativeFileAsBase64(
+  uri: string,
+  mimeHint?: string,
+): Promise<{ base64: string; mimeType: string }> {
+  const readableUri = await resolveReadableNativeUri(uri, mimeHint);
+  const mimeType = mimeFromUri(readableUri, mimeHint);
+
+  try {
+    const { File } = await import('expo-file-system');
+    const file = new File(readableUri);
+    if (!file.exists) {
+      throw new Error('Could not read the selected file');
+    }
+    const base64 = await file.base64();
+    if (!base64) {
+      throw new Error('Could not read the selected file');
+    }
+    return { base64, mimeType };
+  } catch (primaryError) {
+    console.warn('File.base64() failed, falling back to legacy file-system:', primaryError);
+  }
+
+  let legacyUri = readableUri;
+  const FileSystem = await import('expo-file-system/legacy');
+  if (legacyUri.startsWith('content://')) {
+    legacyUri = await copyToCacheFile(legacyUri, mimeHint);
+  }
+
+  try {
+    const base64 = await FileSystem.readAsStringAsync(legacyUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    if (!base64) {
+      throw new Error('Could not read the selected file');
+    }
+    return { base64, mimeType };
+  } catch (legacyError) {
+    console.warn('Legacy readAsStringAsync failed, retrying after cache copy:', legacyError);
+    const cachedUri = await copyToCacheFile(uri, mimeHint);
+    const base64 = await FileSystem.readAsStringAsync(cachedUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    if (!base64) {
+      throw new Error('Could not read the selected file');
+    }
+    return { base64, mimeType: mimeFromUri(cachedUri, mimeHint) };
+  }
+}
+
 /** Converts a local file URI (image, PDF, blob, or data URL) to raw base64 + mime type. */
 export async function fileUriToBase64(
   uri: string,
@@ -56,11 +154,7 @@ export async function fileUriToBase64(
     return { base64, mimeType };
   }
 
-  const FileSystem = await import('expo-file-system/legacy');
-  const base64 = await FileSystem.readAsStringAsync(trimmed, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return { base64, mimeType: mimeFromUri(trimmed, mimeHint) };
+  return readNativeFileAsBase64(trimmed, mimeHint);
 }
 
 /** @deprecated use fileUriToBase64 */

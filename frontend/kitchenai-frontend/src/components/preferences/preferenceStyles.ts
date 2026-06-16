@@ -29,6 +29,18 @@ export const preferenceStyles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  cardOnboarding: {
+    backgroundColor: '#F4F5F4',
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderRadius: 16,
+    padding: 18,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  onboardingForm: {
+    gap: 12,
+  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
@@ -52,6 +64,14 @@ export const preferenceStyles = StyleSheet.create({
     color: PREF.muted,
     marginBottom: 11,
   },
+  fieldLabelOnboarding: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    marginBottom: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
   fieldLabelMuted: {
     fontWeight: '500',
     color: PREF.softInk,
@@ -69,6 +89,9 @@ export const preferenceStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
+  },
+  chipOnboarding: {
+    backgroundColor: '#ECECEC',
   },
   chipOn: {
     backgroundColor: PREF.green,
@@ -90,6 +113,14 @@ export const preferenceStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
+  },
+  stepperOnboarding: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECECEC',
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    gap: 24,
   },
   stepBtn: {
     width: 40,
@@ -142,6 +173,28 @@ export const preferenceStyles = StyleSheet.create({
     textAlign: 'center',
   },
   segmentTextOn: {
+    color: '#fff',
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    backgroundColor: '#ECECEC',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  pillOn: {
+    backgroundColor: PREF.green,
+  },
+  pillText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  pillTextOn: {
     color: '#fff',
   },
   tagRow: {
