@@ -5,6 +5,7 @@ import {
   RefreshControl,
   ScrollView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import {
   Text,
@@ -69,6 +70,10 @@ function startWebInventoryScrollPin(pin: () => void): () => void {
 
 type TabValue = 'all' | 'expired';
 
+const INVENTORY_GRID_COLUMNS = 3;
+const INVENTORY_GRID_GAP = 6;
+const INVENTORY_GRID_PAD = 10;
+
 type PantryItem = InventoryItem | ExpiringItem;
 
 type PantryListEntry<T> = { item: T; index: number };
@@ -116,6 +121,7 @@ function toExpiredPreview(item: InventoryItem | ExpiringItem): ExpiringItem {
 }
 
 export function InventoryScreen() {
+  const { width: windowWidth } = useWindowDimensions();
   const { contentPaddingBottom } = useTabBarLayout();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Inventory'>>();
   const route = useRoute<RouteProp<MainTabParamList, 'Inventory'>>();
@@ -804,6 +810,16 @@ export function InventoryScreen() {
   // ── Render ────────────────────────────────────────────────
 
   const listBottomPad = contentPaddingBottom(24);
+  const gridCellWidth = useMemo(() => {
+    const inner = windowWidth - INVENTORY_GRID_PAD * 2 - INVENTORY_GRID_GAP * (INVENTORY_GRID_COLUMNS - 1);
+    return Math.floor(inner / INVENTORY_GRID_COLUMNS);
+  }, [windowWidth]);
+
+  const gridCellStyle = useMemo(
+    () => ({ width: gridCellWidth, marginBottom: INVENTORY_GRID_GAP }),
+    [gridCellWidth],
+  );
+
   const listContentStyle = useMemo(
     () => [
       styles.list,
@@ -956,16 +972,20 @@ export function InventoryScreen() {
                       : 'No items yet. Use + next to search to add or scan a bill.'}
               </Text>
             ) : (
-              filteredInventory.map((item) => (
-                <InventoryListItem
-                  key={item.item_id}
-                  kind="in_stock"
-                  item={item}
-                  menuActions={buildInStockMenu(item)}
-                  onSwipeLeft={() => void performExpire(item)}
-                  onSwipeRight={() => void performRemoveFromPantry(item)}
-                />
-              ))
+              <View style={styles.grid}>
+                {filteredInventory.map((item) => (
+                  <View key={item.item_id} style={gridCellStyle}>
+                    <InventoryListItem
+                      variant="grid"
+                      kind="in_stock"
+                      item={item}
+                      menuActions={buildInStockMenu(item)}
+                      onSwipeLeft={() => void performExpire(item)}
+                      onSwipeRight={() => void performRemoveFromPantry(item)}
+                    />
+                  </View>
+                ))}
+              </View>
             )}
           </ScrollView>
         </View>
@@ -1015,16 +1035,20 @@ export function InventoryScreen() {
                     : 'No expired items — great job managing your kitchen!'}
               </Text>
             ) : (
-              filteredExpired.map((item) => (
-                <InventoryListItem
-                  key={item.item_id}
-                  kind="expired"
-                  item={item}
-                  menuActions={buildExpiredMenu(item)}
-                  onSwipeLeft={() => void performAddToShopping(item)}
-                  onSwipeRight={() => void performRemoveFromPantry(item)}
-                />
-              ))
+              <View style={styles.grid}>
+                {filteredExpired.map((item) => (
+                  <View key={item.item_id} style={gridCellStyle}>
+                    <InventoryListItem
+                      variant="grid"
+                      kind="expired"
+                      item={item}
+                      menuActions={buildExpiredMenu(item)}
+                      onSwipeLeft={() => void performAddToShopping(item)}
+                      onSwipeRight={() => void performRemoveFromPantry(item)}
+                    />
+                  </View>
+                ))}
+              </View>
             )}
           </ScrollView>
         </View>
@@ -1087,15 +1111,21 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   carouselListSeparator: {
-    height: 10,
+    height: 6,
     backgroundColor: '#EBEBEB',
-    marginTop: 8,
+    marginTop: 6,
   },
   listFlex: {
     flex: 1,
   },
   list: {
-    padding: 16,
+    paddingTop: 8,
+    paddingHorizontal: INVENTORY_GRID_PAD,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: INVENTORY_GRID_GAP,
   },
   listContentGrow: {
     flexGrow: 1,

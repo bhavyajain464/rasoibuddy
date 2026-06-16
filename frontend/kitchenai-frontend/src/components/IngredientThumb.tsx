@@ -9,9 +9,10 @@ type Props = {
   name: string;
   ingredientId?: string | null;
   size?: number;
+  resizeMode?: 'cover' | 'contain';
 };
 
-export function IngredientThumb({ name, ingredientId, size = 40 }: Props) {
+export function IngredientThumb({ name, ingredientId, size = 40, resizeMode = 'cover' }: Props) {
   const { catalog } = useIngredientCatalog();
 
   const source = useMemo(() => {
@@ -29,7 +30,7 @@ export function IngredientThumb({ name, ingredientId, size = 40 }: Props) {
       <Image
         source={source}
         style={frameStyle}
-        resizeMode="cover"
+        resizeMode={resizeMode}
         accessibilityIgnoresInvertColors
       />
     );

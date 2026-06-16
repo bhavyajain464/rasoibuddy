@@ -16,8 +16,8 @@ const GAP = 10;
 const ACTION_CARD_HEIGHT = 92;
 const MIN_CARD_WIDTH = ACTION_CARD_HEIGHT;
 const ACTION_COUNT = 5;
-const ARROW_SIZE = 34;
-const ARROW_GUTTER = ARROW_SIZE + 12;
+const ARROW_SIZE = 26;
+const ARROW_GUTTER = ARROW_SIZE + 4;
 
 type QuickActionsCarouselProps = {
   onAddItem: () => void;
@@ -88,7 +88,7 @@ function CarouselScrollArrow({
       accessibilityLabel={label}
     >
       <View style={styles.arrowCircle}>
-        <Icon source={icon} size={22} color="#424242" />
+        <Icon source={icon} size={16} color="#7CB342" />
       </View>
     </Pressable>
   );
@@ -266,28 +266,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   arrowHitLeft: {
-    marginLeft: -ARROW_SIZE / 2,
+    marginLeft: -ARROW_SIZE / 2 + 1,
   },
   arrowHitRight: {
-    marginRight: -ARROW_SIZE / 2,
+    marginRight: -ARROW_SIZE / 2 + 1,
   },
   arrowHitPressed: {
-    opacity: 0.85,
+    opacity: 0.72,
   },
   arrowCircle: {
     width: ARROW_SIZE,
     height: ARROW_SIZE,
     borderRadius: ARROW_SIZE / 2,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(129, 199, 132, 0.35)',
   },
   actionSurface: {
     borderRadius: 16,

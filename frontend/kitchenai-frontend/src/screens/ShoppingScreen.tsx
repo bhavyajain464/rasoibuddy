@@ -4,7 +4,6 @@ import {
   View,
   ScrollView,
   RefreshControl,
-  Pressable,
   useWindowDimensions,
 } from 'react-native';
 import {
@@ -25,88 +24,23 @@ import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { EditShoppingItemSheet } from '../components/shopping/EditShoppingItemSheet';
 import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
+import { SuggestOrderCarousel } from '../components/shopping/SuggestOrderCarousel';
 import type { InventoryMenuAction } from '../components/inventory/InventoryItemActionsSheet';
-import { DEFAULT_UNIT } from '../components/UnitPillSelector';
 import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
 import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { normalizeSuggestedShoppingLine, sameIngredient } from '../utils/ingredientUnits';
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 import { restoreListEntries } from '../utils/restoreListEntries';
 import { writeOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
-import { IngredientThumb } from '../components/IngredientThumb';
 
 /** Server-side suggestion pool size (matches backend OrderSuggestCacheSize). */
 const SUGGEST_CACHE_SIZE = 12;
 /** How many suggestions to show at once in the UI. */
 const SUGGEST_DISPLAY_LIMIT = 5;
 
-const SUGGEST_CARD_MARGIN = 16;
-const SUGGEST_CARD_PAD = 14;
-const SUGGEST_BLOCK_GAP = 10;
-/** Fixed card width so name + quantity fit on one line. */
-const SUGGEST_BLOCK_WIDTH = 168;
-
-function useSuggestBlockLayout(screenWidth: number) {
-  return useMemo(() => {
-    const frameWidth = screenWidth - SUGGEST_CARD_MARGIN * 2 - SUGGEST_CARD_PAD * 2;
-    const blockWidth = SUGGEST_BLOCK_WIDTH;
-    const rowWidth = SUGGEST_DISPLAY_LIMIT * blockWidth + (SUGGEST_DISPLAY_LIMIT - 1) * SUGGEST_BLOCK_GAP;
-    const scrollable = rowWidth > frameWidth + 1;
-    return { blockWidth, frameWidth, scrollable };
-  }, [screenWidth]);
-}
-
-function SuggestOrderBlock({
-  suggestion,
-  width,
-  adding,
-  onAdd,
-}: {
-  suggestion: OrderSuggestItem;
-  width: number;
-  adding: boolean;
-  onAdd: (s: OrderSuggestItem) => void;
-}) {
-  const qtyLabel =
-    suggestion.qty > 0
-      ? `${suggestion.qty} ${suggestion.unit || DEFAULT_UNIT}`
-      : suggestion.unit || DEFAULT_UNIT;
-
-  return (
-    <Pressable
-      onPress={() => void onAdd(suggestion)}
-      disabled={adding}
-      accessibilityRole="button"
-      accessibilityLabel={`Add ${suggestion.name} to list`}
-      style={({ pressed }) => [{ width, opacity: pressed || adding ? 0.88 : 1 }]}
-    >
-      <Surface
-        style={[styles.suggestBlock, { width }]}
-        elevation={0}
-      >
-        <View style={styles.suggestBlockAdd}>
-          {adding ? (
-            <ActivityIndicator size={18} color="#2E7D32" />
-          ) : (
-            <Icon source="plus-circle-outline" size={22} color="#2E7D32" />
-          )}
-        </View>
-
-        <IngredientThumb name={suggestion.name} size={36} />
-
-        <View style={styles.suggestBlockMeta}>
-          <Text variant="labelMedium" style={styles.suggestBlockName} numberOfLines={1}>
-            {suggestion.name}
-          </Text>
-          <Text variant="labelSmall" style={styles.suggestBlockQtyLine} numberOfLines={1}>
-            <Text style={styles.suggestBlockQtySep}> · </Text>
-            <Text style={styles.suggestBlockQty}>{qtyLabel}</Text>
-          </Text>
-        </View>
-      </Surface>
-    </Pressable>
-  );
-}
+const SHOPPING_GRID_COLUMNS = 3;
+const SHOPPING_GRID_GAP = 6;
+const SHOPPING_GRID_PAD = 10;
 
 type ShoppingListEntry = { item: UserShoppingItem; index: number };
 
@@ -118,7 +52,16 @@ type PendingShoppingBatch = {
 export function ShoppingScreen() {
   const { contentPaddingBottom } = useTabBarLayout();
   const { width: screenWidth } = useWindowDimensions();
-  const suggestLayout = useSuggestBlockLayout(screenWidth);
+  const gridCellWidth = useMemo(() => {
+    const inner = screenWidth - SHOPPING_GRID_PAD * 2 - SHOPPING_GRID_GAP * (SHOPPING_GRID_COLUMNS - 1);
+    return Math.floor(inner / SHOPPING_GRID_COLUMNS);
+  }, [screenWidth]);
+
+  const gridCellStyle = useMemo(
+    () => ({ width: gridCellWidth, marginBottom: SHOPPING_GRID_GAP }),
+    [gridCellWidth],
+  );
+
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -521,19 +464,21 @@ export function ShoppingScreen() {
     const selected = Boolean(selectedIds[item.id]);
 
     return (
-      <ShoppingListItem
-        key={item.id}
-        item={item}
-        index={idx}
-        selectionMode={selectionMode}
-        selected={selected}
-        menuActions={buildShoppingMenu(item)}
-        onToggleSelect={() => toggleSelect(item.id)}
-        onEnterSelection={() => {
-          setSelectionMode(true);
-          setSelectedIds({ [item.id]: true });
-        }}
-      />
+      <View key={item.id} style={gridCellStyle}>
+        <ShoppingListItem
+          variant="grid"
+          item={item}
+          index={idx}
+          selectionMode={selectionMode}
+          selected={selected}
+          menuActions={buildShoppingMenu(item)}
+          onToggleSelect={() => toggleSelect(item.id)}
+          onEnterSelection={() => {
+            setSelectionMode(true);
+            setSelectedIds({ [item.id]: true });
+          }}
+        />
+      </View>
     );
   };
 
@@ -554,14 +499,14 @@ export function ShoppingScreen() {
           subtitle="Groceries shaped by your meal plan"
         />
 
-        <Surface style={styles.suggestCard} elevation={1}>
+        <Surface style={styles.suggestCard} elevation={0}>
           <View style={styles.suggestHeader}>
             <View style={styles.suggestTitleRow}>
               <View style={styles.suggestIconWrap}>
-                <Icon source="lightbulb-on-outline" size={22} color="#2E7D32" />
+                <Icon source="lightbulb-on-outline" size={17} color="#81C784" />
               </View>
               <View style={styles.suggestTitleText}>
-                <Text variant="titleSmall" style={styles.suggestTitle}>
+                <Text variant="labelLarge" style={styles.suggestTitle}>
                   Suggested to order
                   {displaySuggestions.length > 0 ? ` (${displaySuggestions.length})` : ''}
                 </Text>
@@ -569,15 +514,15 @@ export function ShoppingScreen() {
             </View>
             {displaySuggestions.length > 1 ? (
               <Button
-                mode="contained-tonal"
+                mode="text"
                 icon="cart-plus"
                 compact
                 onPress={() => void addAllSuggestions()}
                 loading={addingSuggest === '__all__'}
                 disabled={addingSuggest != null || orderLoading}
                 style={styles.suggestAddAllHeader}
-                buttonColor="#E8F5E9"
-                textColor="#2E7D32"
+                labelStyle={styles.suggestAddAllLabel}
+                textColor="#81C784"
               >
                 Add all
               </Button>
@@ -587,30 +532,11 @@ export function ShoppingScreen() {
           {orderLoading ? (
             <ActivityIndicator style={styles.suggestLoader} size="small" color="#2E7D32" />
           ) : displaySuggestions.length > 0 ? (
-            <ScrollView
-              horizontal={suggestLayout.scrollable}
-              scrollEnabled={suggestLayout.scrollable}
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              style={[styles.suggestBlocksScroll, { width: suggestLayout.frameWidth }]}
-              contentContainerStyle={[
-                styles.suggestBlocksRow,
-                !suggestLayout.scrollable && { width: suggestLayout.frameWidth },
-              ]}
-            >
-              {displaySuggestions.map((s) => {
-                const key = s.name.trim().toLowerCase();
-                return (
-                  <SuggestOrderBlock
-                    key={key}
-                    suggestion={s}
-                    width={suggestLayout.blockWidth}
-                    adding={addingSuggest === key}
-                    onAdd={addSuggestionToList}
-                  />
-                );
-              })}
-            </ScrollView>
+            <SuggestOrderCarousel
+              suggestions={displaySuggestions}
+              addingKey={addingSuggest}
+              onAdd={addSuggestionToList}
+            />
           ) : (
             <Text variant="bodySmall" style={styles.suggestEmpty}>
               {orderSuggestFailed
@@ -680,7 +606,9 @@ export function ShoppingScreen() {
           <ActivityIndicator style={{ marginTop: 40 }} size="large" />
         ) : items.length > 0 ? (
           <View style={styles.listWrap}>
-            {items.map(renderItem)}
+            <View style={styles.grid}>
+              {items.map(renderItem)}
+            </View>
           </View>
         ) : (
           <Surface style={styles.emptyCard} elevation={1}>
@@ -760,86 +688,36 @@ const styles = StyleSheet.create({
 
   suggestCard: {
     marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 18,
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    marginTop: 10,
+    borderRadius: 14,
+    backgroundColor: '#FCFDFC',
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(129, 199, 132, 0.2)',
   },
   suggestHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 6,
   },
-  suggestTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6, minWidth: 0 },
+  suggestTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 5, minWidth: 0 },
   suggestIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E8F5E9',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F1F8F4',
     alignItems: 'center',
     justifyContent: 'center',
   },
   suggestTitleText: { flex: 1 },
-  suggestTitle: { fontWeight: '800', color: '#1A1A1A' },
-  suggestLoader: { marginVertical: 12 },
-  suggestAddAllHeader: { borderRadius: 10, flexShrink: 0 },
-  suggestBlocksScroll: { marginTop: 2 },
-  suggestBlocksRow: {
-    flexDirection: 'row',
-    gap: SUGGEST_BLOCK_GAP,
-    paddingVertical: 2,
-  },
-  suggestBlock: {
-    borderRadius: 14,
-    backgroundColor: '#F4FAF4',
-    borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.12)',
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 6,
-    position: 'relative',
-  },
-  suggestBlockAdd: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    zIndex: 1,
-    width: 26,
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  suggestBlockMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    minWidth: 0,
-  },
-  suggestBlockName: {
-    flexShrink: 1,
-    minWidth: 0,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 17,
-  },
-  suggestBlockQtyLine: {
-    flexShrink: 0,
-    lineHeight: 17,
-  },
-  suggestBlockQtySep: {
-    color: '#888',
-    fontWeight: '400',
-  },
-  suggestBlockQty: {
-    color: '#666',
-    fontWeight: '600',
-  },
+  suggestTitle: { fontWeight: '600', color: '#5A5A5A', fontSize: 13 },
+  suggestLoader: { marginVertical: 8 },
+  suggestAddAllHeader: { borderRadius: 8, flexShrink: 0, marginRight: -4 },
+  suggestAddAllLabel: { fontSize: 12, fontWeight: '600', marginVertical: 0 },
   suggestEmpty: { color: '#999', marginTop: 4, lineHeight: 18 },
   listSectionTitle: {
     marginHorizontal: 20,
@@ -884,7 +762,12 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  listWrap: { paddingHorizontal: 20, marginTop: 8, gap: 8 },
+  listWrap: { paddingHorizontal: SHOPPING_GRID_PAD, marginTop: 8 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: SHOPPING_GRID_GAP,
+  },
   orderOnlineBtn: { marginTop: 4, marginBottom: 8, marginHorizontal: 20, borderRadius: 12 },
 
   selectionBar: {
