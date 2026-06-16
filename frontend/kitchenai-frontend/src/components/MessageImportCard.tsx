@@ -23,14 +23,14 @@ export function MessageImportCard() {
     <Surface style={styles.card} elevation={1}>
       <View style={styles.titleRow}>
         <View style={styles.titleIcon}>
-          <Icon source="message-text-outline" size={18} color="#2E7D32" />
+          <Icon source="robot-outline" size={18} color="#2E7D32" />
         </View>
         <View style={styles.titleText}>
           <Text variant="titleSmall" style={styles.title}>
-            Quick import
+            AI Buddy
           </Text>
           <Text variant="bodySmall" style={styles.subtitle} numberOfLines={2}>
-            Paste a note — you approve before anything changes.
+            Tell your kitchen buddy — you approve before anything changes.
           </Text>
         </View>
       </View>
@@ -40,7 +40,7 @@ export function MessageImportCard() {
         onChangeText={setDraft}
         onSubmit={handleSubmit}
         placeholder='e.g. "milk khatam ho gaya"'
-        accessibilityLabel="Review suggestion"
+        accessibilityLabel="Message for AI Buddy"
       />
 
       {!isWeb && (

@@ -16,6 +16,7 @@ import (
 	"kitchenai-backend/internal/models"
 	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/internal/services"
+	"kitchenai-backend/internal/services/ingredients"
 	"kitchenai-backend/pkg/config"
 	"kitchenai-backend/pkg/units"
 
@@ -357,12 +358,14 @@ func scanInventoryItem(
 	var item models.Inventory
 	var expiry sql.NullTime
 	var foodGroup sql.NullString
+	var ingredientID sql.NullString
 	err := rows.Scan(
 		&item.ItemID,
 		&item.CanonicalName,
 		&item.Qty,
 		&item.Unit,
 		&foodGroup,
+		&ingredientID,
 		&expiry,
 		&item.IsManual,
 		&item.CreatedAt,
@@ -370,6 +373,9 @@ func scanInventoryItem(
 	)
 	if err != nil {
 		return item, err
+	}
+	if ingredientID.Valid {
+		item.IngredientID = ingredientID.String
 	}
 	if foodGroup.Valid && foodGroup.String != "" {
 		item.FoodGroup = foodGroup.String
@@ -385,6 +391,7 @@ func scanInventoryItem(
 // (defaults to all three). Counts always reflect the full kitchen snapshot.
 func GetInventory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		userID := getUserID(r)
 		kitchen, err := resolveKitchenForUser(db, userID)
 		if err != nil {
@@ -421,14 +428,25 @@ func GetInventory(db *sql.DB) http.HandlerFunc {
 			schedulePurgeStaleExpired(db, kitchen.KitchenID)
 		}
 
+		tLoad := time.Now()
 		resp, err := loadInventoryBuckets(db, kitchen.KitchenID, wantActive, wantExpiring, wantExpired)
+		loadMs := time.Since(tLoad).Milliseconds()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		tEnrich := time.Now()
+		enrichInventoryBuckets(&resp)
+		enrichMs := time.Since(tEnrich).Milliseconds()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
+		totalMs := time.Since(start).Milliseconds()
+		if totalMs > 300 {
+			n := len(resp.Active) + len(resp.Expiring) + len(resp.Expired)
+			log.Printf("[inventory] GET kitchen=%s items=%d load_ms=%d enrich_ms=%d ms=%d",
+				kitchen.KitchenID, n, loadMs, enrichMs, totalMs)
+		}
 	}
 }
 
@@ -516,7 +534,7 @@ func queryInventoryBucketCounts(db *sql.DB, kitchenID string, counts *models.Inv
 
 func queryActiveInventory(db *sql.DB, kitchenID string) ([]models.Inventory, error) {
 	rows, err := db.Query(`
-		SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
+		SELECT item_id, canonical_name, qty, unit, food_group, ingredient_id, estimated_expiry, is_manual, created_at, updated_at
 		FROM inventory
 		WHERE kitchen_id = $1
 			AND (
@@ -544,7 +562,7 @@ func queryActiveInventory(db *sql.DB, kitchenID string) ([]models.Inventory, err
 func queryExpiringInventory(db *sql.DB, kitchenID string) ([]models.ExpiringItem, error) {
 	rows, err := db.Query(`
 		SELECT
-			item_id, canonical_name, qty, unit, food_group, estimated_expiry,
+			item_id, canonical_name, qty, unit, food_group, ingredient_id, estimated_expiry,
 			(estimated_expiry - CURRENT_DATE)::int as days_until_expiry,
 			updated_at
 		FROM inventory
@@ -564,7 +582,7 @@ func queryExpiringInventory(db *sql.DB, kitchenID string) ([]models.ExpiringItem
 func queryExpiredInventory(db *sql.DB, kitchenID string) ([]models.ExpiringItem, error) {
 	rows, err := db.Query(`
 		SELECT
-			item_id, canonical_name, qty, unit, food_group, estimated_expiry,
+			item_id, canonical_name, qty, unit, food_group, ingredient_id, estimated_expiry,
 			(estimated_expiry - CURRENT_DATE)::int as days_until_expiry,
 			updated_at
 		FROM inventory
@@ -586,15 +604,19 @@ func scanExpiringRows(rows *sql.Rows) ([]models.ExpiringItem, error) {
 	for rows.Next() {
 		var item models.ExpiringItem
 		var foodGroup sql.NullString
+		var ingredientID sql.NullString
 		var updatedAt sql.NullTime
 		err := rows.Scan(
-			&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup,
+			&item.ItemID, &item.CanonicalName, &item.Qty, &item.Unit, &foodGroup, &ingredientID,
 			&item.EstimatedExpiry, &item.DaysUntilExpiry, &updatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
 		item.Unit = units.Normalize(item.Unit)
+		if ingredientID.Valid {
+			item.IngredientID = ingredientID.String
+		}
 		if foodGroup.Valid && foodGroup.String != "" {
 			item.FoodGroup = foodGroup.String
 		}
@@ -625,8 +647,9 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 		var item models.Inventory
 		var expiry sql.NullTime
 		var foodGroup sql.NullString
+		var ingredientID sql.NullString
 		err = db.QueryRow(`
-			SELECT item_id, canonical_name, qty, unit, food_group, estimated_expiry, is_manual, created_at, updated_at
+			SELECT item_id, canonical_name, qty, unit, food_group, ingredient_id, estimated_expiry, is_manual, created_at, updated_at
 			FROM inventory
 			WHERE item_id = $1 AND kitchen_id = $2
 		`, id, kitchen.KitchenID).Scan(
@@ -635,6 +658,7 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 			&item.Qty,
 			&item.Unit,
 			&foodGroup,
+			&ingredientID,
 			&expiry,
 			&item.IsManual,
 			&item.CreatedAt,
@@ -655,8 +679,12 @@ func GetInventoryItem(db *sql.DB) http.HandlerFunc {
 		} else {
 			item.FoodGroup = "other"
 		}
+		if ingredientID.Valid {
+			item.IngredientID = ingredientID.String
+		}
 		item.EstimatedExpiry = models.NullTime(expiry)
 		item.Unit = units.Normalize(item.Unit)
+		applyInventoryDisplay(&item)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(item)
 	}
@@ -705,6 +733,13 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 		if strings.TrimSpace(req.FoodGroup) != "" {
 			foodGroup = invgroup.NormalizeFoodGroupForDietary(req.FoodGroup, dietaryTagsForUser(db, userID))
 		}
+		link := ingredients.LinkForWrite(r.Context(), req.CanonicalName, "manual")
+		if link.IngredientID != "" {
+			req.CanonicalName = link.CanonicalName
+			if strings.TrimSpace(req.FoodGroup) == "" {
+				foodGroup = invgroup.NormalizeFoodGroupForDietary(link.FoodGroup, dietaryTagsForUser(db, userID))
+			}
+		}
 
 		var itemID string
 		var createdAt, updatedAt time.Time
@@ -712,20 +747,20 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 
 		if expiry != nil {
 			err = db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, is_manual, user_id, kitchen_id, food_group)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, is_manual, user_id, kitchen_id, food_group, ingredient_id)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, req.CanonicalName, req.Qty, req.Unit, *expiry, req.IsManual, userID, kitchen.KitchenID, foodGroup).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, req.CanonicalName, req.Qty, req.Unit, *expiry, req.IsManual, userID, kitchen.KitchenID, foodGroup, link.IngredientIDParam()).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		} else {
 			err = db.QueryRow(`
-				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)
+				INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, food_group, ingredient_id)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 				RETURNING item_id, created_at, updated_at, estimated_expiry
-			`, req.CanonicalName, req.Qty, req.Unit, req.IsManual, userID, kitchen.KitchenID, foodGroup).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
+			`, req.CanonicalName, req.Qty, req.Unit, req.IsManual, userID, kitchen.KitchenID, foodGroup, link.IngredientIDParam()).Scan(&itemID, &createdAt, &updatedAt, &dbExpiry)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

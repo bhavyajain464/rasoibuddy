@@ -2,11 +2,13 @@ package services
 
 import (
 	_ "embed"
-	"encoding/json"
+	"context"
 	"log"
 	"math/rand"
 	"strings"
 	"sync"
+
+	"kitchenai-backend/internal/services/catalogdb"
 )
 
 // CatalogDish is one row in dishes/catalog.json.
@@ -20,8 +22,9 @@ type CatalogDish struct {
 	Cuisine         string   `json:"cuisine,omitempty"`
 	Diet            string   `json:"diet,omitempty"`
 	MealType        []string `json:"meal_type,omitempty"`
-	KeyIngredients  []string `json:"key_ingredients,omitempty"`
-	Ingredients     []string `json:"ingredients,omitempty"` // legacy alias
+	KeyIngredients    []string `json:"key_ingredients,omitempty"`
+	KeyIngredientIDs  []string `json:"key_ingredient_ids,omitempty"`
+	Ingredients       []string `json:"ingredients,omitempty"` // legacy alias
 	Effort          string   `json:"effort,omitempty"`      // low | medium | high
 	CookTimeMinutes int      `json:"cook_time_minutes,omitempty"`
 	WeekdayFriendly bool     `json:"weekday_friendly,omitempty"`
@@ -46,6 +49,24 @@ func (d CatalogDish) CatalogIngredients() []string {
 	return d.Ingredients
 }
 
+// CatalogIngredientLines returns stable ingredient ids with canonical display names.
+func (d CatalogDish) CatalogIngredientLines() []IngredientLine {
+	names := d.CatalogIngredients()
+	if len(names) == 0 {
+		return nil
+	}
+	ids := d.KeyIngredientIDs
+	lines := make([]IngredientLine, len(names))
+	for i, name := range names {
+		id := ""
+		if i < len(ids) {
+			id = strings.TrimSpace(ids[i])
+		}
+		lines[i] = IngredientLine{IngredientID: id, Name: name}
+	}
+	return lines
+}
+
 // HasPracticalMeta is true when effort/time/weekday fields were populated in catalog v2.
 func (d CatalogDish) HasPracticalMeta() bool {
 	return d.CookTimeMinutes > 0 || strings.TrimSpace(d.Effort) != ""
@@ -60,7 +81,12 @@ func (d CatalogDish) DisplayLabel() string {
 }
 
 //go:embed dishes/catalog.json
-var embeddedDishCatalog []byte
+var dishCatalogJSON []byte
+
+// DishCatalogJSON returns the authored catalog bytes (seed loader only).
+func DishCatalogJSON() []byte {
+	return dishCatalogJSON
+}
 
 var (
 	dishCatalog     []CatalogDish
@@ -69,16 +95,56 @@ var (
 
 func loadDishCatalog() {
 	dishCatalogOnce.Do(func() {
-		if err := json.Unmarshal(embeddedDishCatalog, &dishCatalog); err != nil {
-			log.Printf("[dish_catalog] failed to load embedded catalog: %v", err)
+		rows, err := catalogdb.CachedDishes(context.Background())
+		if err != nil {
+			log.Printf("[dish_catalog] db load failed: %v", err)
 			dishCatalog = nil
 			return
 		}
-		log.Printf("[dish_catalog] loaded %d dishes", len(dishCatalog))
+		out := make([]CatalogDish, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, dishRowToCatalog(r))
+		}
+		dishCatalog = out
+		log.Printf("[dish_catalog] loaded %d dishes from db", len(dishCatalog))
 	})
 }
 
-// DishCatalog returns all catalog dishes (lazy-loaded once).
+// InvalidateDishCatalogCache clears DB-backed dish caches after admin upsert or reseed.
+func InvalidateDishCatalogCache() {
+	catalogdb.InvalidateDishCache()
+	dishCatalogOnce = sync.Once{}
+	dishCatalog = nil
+}
+
+func dishRowToCatalog(d catalogdb.DishRow) CatalogDish {
+	return CatalogDish{
+		ID:              d.ID,
+		Name:            d.Name,
+		DisplayName:     d.DisplayName,
+		Cuisine:         d.Cuisine,
+		Diet:            d.Diet,
+		MealType:        append([]string(nil), d.MealType...),
+		KeyIngredients:   append([]string(nil), d.KeyIngredients...),
+		KeyIngredientIDs: append([]string(nil), d.KeyIngredientIDs...),
+		Effort:          d.Effort,
+		CookTimeMinutes: d.CookTimeMinutes,
+		WeekdayFriendly: d.WeekdayFriendly,
+		OnePot:          d.OnePot,
+		PairsWith:       append([]string(nil), d.PairsWith...),
+		FrequencyClass:  d.FrequencyClass,
+		HalfLifeDays:    d.HalfLifeDays,
+		Tags:            append([]string(nil), d.Tags...),
+		SpiceLevel:      d.SpiceLevel,
+		Allergens:       append([]string(nil), d.Allergens...),
+		JainSafe:        d.JainSafe,
+		HealthyScore:    d.HealthyScore,
+		TastyScore:      d.TastyScore,
+		OnionGarlic:     !d.JainSafe,
+	}
+}
+
+// DishCatalog returns all catalog dishes (cached from Postgres).
 func DishCatalog() []CatalogDish {
 	loadDishCatalog()
 	out := make([]CatalogDish, len(dishCatalog))
@@ -100,7 +166,7 @@ func FindCatalogDishByID(id string) (CatalogDish, bool) {
 	return CatalogDish{}, false
 }
 
-// DishCatalogSize is the number of dishes in the embedded catalog.
+// DishCatalogSize is the number of dishes in the catalog.
 func DishCatalogSize() int {
 	loadDishCatalog()
 	return len(dishCatalog)

@@ -79,6 +79,9 @@ type Config struct {
 	// AdminAPIKey secures /api/v1/admin/* (X-Admin-Key header). Empty disables admin routes.
 	AdminAPIKey string
 
+	// AdminPanelEmails allowlists Google accounts for the in-app ops panel (/api/v1/panel/*).
+	AdminPanelEmails []string
+
 	// SMTP for nightly diet digest emails (optional).
 	SMTPHost string
 	SMTPPort int
@@ -94,6 +97,7 @@ type Config struct {
 	AppUpdateMessage  string
 	PlayStoreURL      string
 	AppStoreURL       string
+	DishImagesCDNURL  string
 }
 
 // AppVersionEnforcementEnabled is true when any native minimum is configured.
@@ -272,6 +276,7 @@ func Load() (*Config, error) {
 	}
 	razorpay := loadRazorpayConfig()
 	adminAPIKey := getEnv("ADMIN_API_KEY", "")
+	adminPanelEmails := parseCommaSeparatedEmails(getEnv("ADMIN_PANEL_EMAILS", ""))
 	smtpPort := getEnvInt("SMTP_PORT", 587)
 
 	return &Config{
@@ -326,6 +331,7 @@ func Load() (*Config, error) {
 		Razorpay:                           razorpay,
 		Commerce:                           loadCommerceConfig(),
 		AdminAPIKey:                        adminAPIKey,
+		AdminPanelEmails:                   adminPanelEmails,
 		SMTPHost:                           strings.TrimSpace(getEnv("SMTP_HOST", "")),
 		SMTPPort:                           smtpPort,
 		SMTPUser:                           getEnv("SMTP_USER", ""),
@@ -338,6 +344,7 @@ func Load() (*Config, error) {
 		AppUpdateMessage:                   strings.TrimSpace(getEnv("APP_UPDATE_MESSAGE", "A new version of Rasoibuddy is required. Please update from the store to continue.")),
 		PlayStoreURL:                       strings.TrimSpace(getEnv("PLAY_STORE_URL", "")),
 		AppStoreURL:                        strings.TrimSpace(getEnv("APP_STORE_URL", "")),
+		DishImagesCDNURL:                   strings.TrimRight(strings.TrimSpace(getEnv("DISH_IMAGES_CDN_URL", "")), "/"),
 	}, nil
 }
 
@@ -430,4 +437,21 @@ func getEnvBool(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return boolValue
+}
+
+func parseCommaSeparatedEmails(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	raw = strings.ReplaceAll(raw, ";", ",")
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

@@ -359,7 +359,7 @@ func scoreDish(dish CatalogDish, userVec map[string]float64, in DishRetrieveInpu
 	}
 	dot += uiCategoryStyleBoost(dish, in.Category)
 	if in.Category == "rescue_meal" && len(in.InventoryNames) > 0 {
-		match := MatchDishToInventory(dish, in.InventoryNames)
+		match := MatchDishToInventory(dish, BuildHaveIngredientSet(nil, in.InventoryNames))
 		dot += match.Coverage * 3.0
 		dot += float64(len(match.Have)) * 0.35
 	}
@@ -584,7 +584,7 @@ func FormatCandidateList(ranked []RankedDish, globalStars map[string]int, catego
 			}
 		case "rescue_meal":
 			if len(inventoryNames) > 0 {
-				match := MatchDishToInventory(r.Dish, inventoryNames)
+				match := MatchDishToInventory(r.Dish, BuildHaveIngredientSet(nil, inventoryNames))
 				if match.Coverage > 0 {
 					meta = append(meta, fmt.Sprintf("pantry:%.0f%%", match.Coverage*100))
 				}

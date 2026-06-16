@@ -31,6 +31,7 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+	ingredients.InitCatalog(db)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

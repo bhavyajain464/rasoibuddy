@@ -61,7 +61,7 @@ jobs:
         env:
           RUN_SECRETS: >-
             /secrets/kafka-ca.pem=kafka-ca-pem:latest,
-            DATABASE_URL=database-url:latest,
+            DATABASE_URL=database-url-staging:latest,
             GEMINI_API_KEY=gemini-api-key:latest,
             GOOGLE_VISION_API_KEY=google-vision-api-key:latest,
             GROQ_API_KEY=groq-api-key:latest,

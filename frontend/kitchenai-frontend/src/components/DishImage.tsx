@@ -6,6 +6,7 @@ import {
   getDishImageSource,
   type DishImageVariant,
 } from '../data/dishImages';
+import { useResolvedDish } from '../hooks/useResolvedDish';
 
 type Props = {
   dishName?: string | null;
@@ -27,9 +28,11 @@ export function DishImage({
   style,
   accessibilityLabel,
 }: Props) {
+  const { dishId: resolvedId, imageUrls } = useResolvedDish(dishId, dishName);
+
   const source = useMemo(
-    () => getDishImageSource(dishName, dishId, variant),
-    [dishName, dishId, variant],
+    () => getDishImageSource(resolvedId, variant, imageUrls),
+    [resolvedId, variant, imageUrls],
   );
 
   const alignSelf: FlexAlignType = typeof width === 'number' ? 'flex-start' : 'stretch';

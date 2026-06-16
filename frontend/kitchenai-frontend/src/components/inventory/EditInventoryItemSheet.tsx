@@ -9,11 +9,10 @@ import {
   STACKED_ROW_BREAKPOINT,
   type InventoryDraftRow,
 } from './InventoryItemRowEditor';
-import { CatalogIngredient, InventoryItem, ExpiringItem } from '../../types';
+import { InventoryItem, ExpiringItem, ItemCatalog } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { buildInventoryItemPatch } from '../../utils/inventoryPatch';
 import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
-import { resolveCatalogItem } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
 type PantryItem = InventoryItem | ExpiringItem;
@@ -33,16 +32,16 @@ function expiryToInput(expiry?: string): string {
   return expiry.slice(0, 10);
 }
 
-function itemToDraftRow(item: PantryItem, catalog: CatalogIngredient[]): InventoryDraftRow {
-  const match = resolveCatalogItem(catalog, undefined, item.canonical_name);
+function itemToDraftRow(item: PantryItem): InventoryDraftRow {
   return {
     key: EDIT_ROW_KEY,
     name: item.canonical_name,
     qty: String(item.qty),
     unit: item.unit || DEFAULT_UNIT,
     expiry: expiryToInput(item.estimated_expiry),
-    ingredientId: match?.ingredient_id,
-    foodGroup: item.food_group,
+    ingredientId: item.ingredient_id ?? item.catalog?.ingredient_id,
+    foodGroup: item.food_group ?? item.catalog?.food_group,
+    catalog: item.catalog,
   };
 }
 
@@ -73,10 +72,10 @@ export function EditInventoryItemSheet({
 
   useEffect(() => {
     if (!item || !visible) return;
-    const row = itemToDraftRow(item, catalog);
+    const row = itemToDraftRow(item);
     setDraftRow(row);
     setInitialRow(row);
-  }, [item, visible, catalog]);
+  }, [item, visible]);
 
   const canSave = useMemo(() => {
     const name = draftRow.name.trim();

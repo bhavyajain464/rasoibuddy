@@ -31,7 +31,7 @@ import { palette } from '../theme';
 
 type WhatsAppShareContextValue = {
   openWithText: (text: string) => void;
-  /** Opens Review suggestion sheet with an empty message to type in the sheet. */
+  /** Opens AI Buddy sheet with an empty message to type in the sheet. */
   openCompose: () => void;
 };
 
@@ -157,7 +157,7 @@ function WhatsAppShareModal({
       visible={visible}
       onDismiss={onDismiss}
       dismissDisabled={busy}
-      title="Review suggestion"
+      title="AI Buddy"
       scrollable
       maxHeightRatio={0.92}
       footer={(
@@ -211,7 +211,7 @@ function WhatsAppShareModal({
           placeholder='e.g. "milk khatam ho gaya"'
           disabled={busy}
           loading={parsing}
-          accessibilityLabel="Review suggestion"
+          accessibilityLabel="Message for AI Buddy"
         />
       ) : (
         <View style={styles.messageBox}>

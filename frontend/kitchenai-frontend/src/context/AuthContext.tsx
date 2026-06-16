@@ -7,6 +7,7 @@ import { AuthUser } from '../types';
 import { googleLogin, logoutApi, setAuthToken, setOnUnauthorized } from '../services/api';
 import { clearOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
 import { resetWebAppHomePath, resetWebPublicPath } from '../navigation/webHomePath';
+import { isAdminWebPath } from '../navigation/adminPath';
 import { BRAND_DISPLAY_NAME } from '../constants/brand';
 
 function getRequiredEnv(value: string | undefined, name: 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID' | 'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID') {
@@ -177,7 +178,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await googleLogin(credential);
 
       if (result.token && result.user) {
-        resetWebAppHomePath();
+        if (Platform.OS !== 'web' || !isAdminWebPath()) {
+          resetWebAppHomePath();
+        }
         await AsyncStorage.setItem('authToken', result.token);
         await AsyncStorage.setItem('authUser', JSON.stringify(result.user));
         // Push the token into the api module synchronously so child screens
@@ -204,12 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Platform-specific hooks
-  const webAuth = Platform.OS === 'web'
-    ? useGoogleIdentityServices(handleCredential)
-    : { setGoogleButtonRef: () => {}, ready: false, buttonRendered: false };
-
-  // For native, we use expo-auth-session hooks at the top level
+  const webAuth = useGoogleIdentityServices(handleCredential);
   const nativeAuth = useNativeAuthRequest(handleCredential);
 
   useEffect(() => {
@@ -327,11 +325,8 @@ function useNativeAuthRequest(onIdToken: (idToken: string) => void) {
   onIdTokenRef.current = onIdToken;
   const [ready, setReady] = useState(false);
 
-  if (Platform.OS === 'web') {
-    return { ready: false, promptAsync: () => {} };
-  }
-
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       iosClientId: Platform.OS === 'ios' ? GOOGLE_IOS_CLIENT_ID : undefined,
@@ -342,6 +337,7 @@ function useNativeAuthRequest(onIdToken: (idToken: string) => void) {
   }, []);
 
   const promptAsync = useCallback(async () => {
+    if (Platform.OS === 'web') return;
     try {
       if (Platform.OS === 'android') {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -387,7 +383,7 @@ function useNativeAuthRequest(onIdToken: (idToken: string) => void) {
   }, []);
 
   return {
-    ready,
+    ready: Platform.OS === 'web' ? false : ready,
     promptAsync: () => promptAsync(),
   };
 }

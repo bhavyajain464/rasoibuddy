@@ -194,11 +194,12 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 		var itemQty float64
 		var bought bool
 		var createdAt time.Time
+		link := ingredients.LinkForWrite(ctx, name, "whatsapp_shopping")
 		err = db.QueryRow(`
-			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit, ingredient_id)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, name, qty, unit, bought, created_at
-		`, userID, kitchen.KitchenID, name, qty, unit).Scan(&id, &itemName, &itemQty, &itemUnit, &bought, &createdAt)
+		`, userID, kitchen.KitchenID, link.CanonicalName, qty, unit, link.IngredientIDParam()).Scan(&id, &itemName, &itemQty, &itemUnit, &bought, &createdAt)
 		if err != nil {
 			return "", nil, err
 		}
@@ -242,11 +243,12 @@ func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.
 		if kitchen == nil {
 			return "", nil, fmt.Errorf("kitchen not found")
 		}
+		link := ingredients.LinkForWrite(ctx, name, "whatsapp_inventory")
 		err = db.QueryRow(`
-			INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id)
-			VALUES ($1, $2, $3, true, $4, $5)
+			INSERT INTO inventory (canonical_name, qty, unit, is_manual, user_id, kitchen_id, ingredient_id)
+			VALUES ($1, $2, $3, true, $4, $5, $6)
 			RETURNING item_id
-		`, name, qty, unit, userID, kitchen.KitchenID).Scan(&itemID)
+		`, link.CanonicalName, qty, unit, userID, kitchen.KitchenID, link.IngredientIDParam()).Scan(&itemID)
 		if err != nil {
 			return "", nil, err
 		}
@@ -331,10 +333,11 @@ func markInventoryOutOfStock(db *sql.DB, userID, itemName string) (rows int64, i
 			}
 			return 0, "", "", true, nil
 		}
+		link := ingredients.LinkForWrite(context.Background(), shoppingName, "whatsapp_out_of_stock")
 		if _, err := tx.Exec(`
-			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit)
-			VALUES ($1, $2, $3, 1, 'pcs')
-		`, userID, kitchen.KitchenID, shoppingName); err != nil {
+			INSERT INTO shopping_items (user_id, kitchen_id, name, qty, unit, ingredient_id)
+			VALUES ($1, $2, $3, 1, 'pcs', $4)
+		`, userID, kitchen.KitchenID, link.CanonicalName, link.IngredientIDParam()); err != nil {
 			return 0, "", "", false, err
 		}
 		if err := tx.Commit(); err != nil {

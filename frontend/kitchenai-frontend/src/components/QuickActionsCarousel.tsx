@@ -172,8 +172,8 @@ export function QuickActionsCarousel({
   const slides = (
     <>
       <ActionSlide
-        icon="message-text-outline"
-        label="Quick import"
+        icon="robot-outline"
+        label="AI Buddy"
         onPress={openCompose}
         width={cardWidth}
       />

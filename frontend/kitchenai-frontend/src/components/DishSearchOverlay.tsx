@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -11,13 +12,10 @@ import {
 } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DISH_CATALOG_SEARCH, type CatalogDishSearchItem } from '../data/dishCatalogSearch';
 import { DishImage } from './DishImage';
-import {
-  DISH_ROW_MIN_HEIGHT,
-  MAX_DISH_SEARCH_RESULTS,
-  filterDishCatalog,
-} from '../utils/dishSearch';
+import { MAX_DISH_SEARCH_RESULTS, DISH_ROW_MIN_HEIGHT } from '../utils/dishSearch';
+import { fetchDishesCatalog } from '../services/api';
+import type { CatalogDishSearchItem } from '../types';
 import { palette } from '../theme';
 
 type Props = {
@@ -44,6 +42,9 @@ export function DishSearchOverlay({
   const insets = useSafeAreaInsets();
   const inputRef = useRef<RNTextInput>(null);
   const [query, setQuery] = useState('');
+  const [options, setOptions] = useState<CatalogDishSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -52,14 +53,41 @@ export function DishSearchOverlay({
     return () => clearTimeout(timer);
   }, [visible, mealSlot]);
 
-  const options = useMemo(
-    () => filterDishCatalog(DISH_CATALOG_SEARCH, query, mealSlot, MAX_DISH_SEARCH_RESULTS),
-    [query, mealSlot],
-  );
+  useEffect(() => {
+    if (!visible) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError(null);
+      void fetchDishesCatalog({
+        q: query,
+        mealSlot,
+        limit: MAX_DISH_SEARCH_RESULTS,
+      })
+        .then((items) => {
+          if (!active) return;
+          setOptions(items ?? []);
+        })
+        .catch(() => {
+          if (!active) return;
+          setOptions([]);
+          setError('Could not load dishes. Try again.');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, query.trim() ? 200 : 0);
 
-  const headerTitle = title ?? (mealSlot
-    ? `Choose ${SLOT_LABELS[mealSlot] ?? mealSlot} dish`
-    : 'Choose a dish');
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [visible, query, mealSlot]);
+
+  const headerTitle = useMemo(
+    () => title ?? (mealSlot ? `Choose ${SLOT_LABELS[mealSlot] ?? mealSlot} dish` : 'Choose a dish'),
+    [title, mealSlot],
+  );
 
   return (
     <Modal
@@ -95,6 +123,16 @@ export function DishSearchOverlay({
           />
         </View>
 
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={palette.primary} />
+          </View>
+        ) : null}
+
+        {error ? (
+          <Text style={styles.error}>{error}</Text>
+        ) : null}
+
         <FlatList
           data={options}
           keyExtractor={(item) => item.id}
@@ -105,7 +143,7 @@ export function DishSearchOverlay({
             { paddingBottom: Math.max(insets.bottom, 16) },
           ]}
           ListEmptyComponent={(
-            <Text style={styles.empty}>No dishes match</Text>
+            !loading ? <Text style={styles.empty}>No dishes match</Text> : null
           )}
           renderItem={({ item }) => (
             <Pressable
@@ -124,8 +162,8 @@ export function DishSearchOverlay({
                 <Text style={styles.rowName} numberOfLines={2}>
                   {item.name}
                 </Text>
-                {item.cookTimeMins > 0 ? (
-                  <Text style={styles.rowMeta}>{item.cookTimeMins} min</Text>
+                {item.cook_time_mins > 0 ? (
+                  <Text style={styles.rowMeta}>{item.cook_time_mins} min</Text>
                 ) : null}
               </View>
             </Pressable>
@@ -172,6 +210,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 17,
     color: palette.text,
+  },
+  loadingWrap: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  error: {
+    textAlign: 'center',
+    color: '#C62828',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    fontSize: 14,
   },
   listContent: {
     flexGrow: 1,

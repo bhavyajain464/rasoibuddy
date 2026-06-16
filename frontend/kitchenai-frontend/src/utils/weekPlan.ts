@@ -13,11 +13,15 @@ export function mapWeekPlanDayResponse(d: WeekPlanDayResponse): WeekPlanDay {
       name: m.name,
       description: m.description ?? '',
       ingredients: m.ingredients ?? [],
+      ingredient_ids: m.ingredient_ids,
       items_to_order: m.items_to_order,
       pairs_with: m.pairs_with,
+      pair_ingredients: m.pair_ingredients,
       cooking_time_mins: m.cooking_time_mins,
       difficulty: m.difficulty,
       why_this_meal: m.why_this_meal,
+      star_count: m.star_count,
+      user_starred: m.user_starred,
     })),
   };
 }

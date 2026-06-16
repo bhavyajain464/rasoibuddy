@@ -56,11 +56,20 @@ func BackfillInventoryCatalog(ctx context.Context, db *sql.DB, kitchenID string)
 		nameSame := strings.EqualFold(strings.TrimSpace(row.CanonicalName), targetName)
 		groupSame := strings.EqualFold(strings.TrimSpace(row.FoodGroup), targetGroup)
 		if nameSame && groupSame {
+			// Still set ingredient_id if missing.
+			if match.Ingredient.IngredientID != "" {
+				if _, err := db.ExecContext(ctx, `
+					UPDATE inventory SET ingredient_id = $1, updated_at = NOW()
+					WHERE item_id = $2::uuid AND ingredient_id IS NULL
+				`, match.Ingredient.IngredientID, row.ItemID); err != nil {
+					return res, err
+				}
+			}
 			res.Unchanged++
 			continue
 		}
 
-		if err := applyInventoryCatalogMatch(ctx, db, row, targetName, targetGroup, &res); err != nil {
+		if err := applyInventoryCatalogMatch(ctx, db, row, targetName, targetGroup, match.Ingredient.IngredientID, &res); err != nil {
 			return res, err
 		}
 	}
@@ -106,7 +115,7 @@ func listInventoryRows(ctx context.Context, db *sql.DB, kitchenID string) ([]inv
 	return out, rows.Err()
 }
 
-func applyInventoryCatalogMatch(ctx context.Context, db *sql.DB, row inventoryRow, targetName, targetGroup string, res *InventoryBackfillResult) error {
+func applyInventoryCatalogMatch(ctx context.Context, db *sql.DB, row inventoryRow, targetName, targetGroup, ingredientID string, res *InventoryBackfillResult) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -127,12 +136,13 @@ func applyInventoryCatalogMatch(ctx context.Context, db *sql.DB, row inventoryRo
 
 	if err == nil {
 		if _, err := tx.ExecContext(ctx, `
-			UPDATE inventory
-			SET qty = qty + $1,
-				food_group = $2,
-				updated_at = NOW()
-			WHERE item_id = $3::uuid
-		`, row.Qty, targetGroup, existingID); err != nil {
+		UPDATE inventory
+		SET qty = qty + $1,
+			food_group = $2,
+			ingredient_id = COALESCE($3, ingredient_id),
+			updated_at = NOW()
+		WHERE item_id = $4::uuid
+	`, row.Qty, targetGroup, nullIngredientID(ingredientID), existingID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM inventory WHERE item_id = $1::uuid`, row.ItemID); err != nil {
@@ -145,15 +155,24 @@ func applyInventoryCatalogMatch(ctx context.Context, db *sql.DB, row inventoryRo
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE inventory
-		SET canonical_name = $1,
-			food_group = $2,
-			updated_at = NOW()
-		WHERE item_id = $3::uuid
-	`, targetName, targetGroup, row.ItemID); err != nil {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE inventory
+			SET canonical_name = $1,
+				food_group = $2,
+				ingredient_id = $3,
+				updated_at = NOW()
+			WHERE item_id = $4::uuid
+		`, targetName, targetGroup, nullIngredientID(ingredientID), row.ItemID); err != nil {
 		return err
 	}
 	res.Updated++
 	return tx.Commit()
+}
+
+func nullIngredientID(id string) interface{} {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil
+	}
+	return id
 }

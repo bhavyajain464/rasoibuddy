@@ -31,13 +31,15 @@ type SmartMeal struct {
 	DishID         string   `json:"dish_id,omitempty"`
 	Name           string   `json:"name"`
 	Description    string   `json:"description"`
-	Ingredients    []string `json:"ingredients"`
-	ItemsToOrder   []string `json:"items_to_order,omitempty"`
+	Ingredients     []string                          `json:"ingredients"`
+	IngredientIDs   []string                          `json:"ingredient_ids,omitempty"`
+	ItemsToOrder    []string                          `json:"items_to_order,omitempty"`
 	CookingTime    int      `json:"cooking_time_mins"`
 	Difficulty     string   `json:"difficulty"`
 	WhyThisMeal    string   `json:"why_this_meal"`
-	PairsWith      []string `json:"pairs_with,omitempty"`
-	NutritionNotes string   `json:"nutrition_notes,omitempty"`
+	PairsWith       []string                          `json:"pairs_with,omitempty"`
+	PairIngredients services.PairIngredientLinesMap   `json:"pair_ingredients,omitempty"`
+	NutritionNotes  string              `json:"nutrition_notes,omitempty"`
 	StarCount      int      `json:"star_count,omitempty"`   // global stars from all users
 	UserStarred    bool     `json:"user_starred,omitempty"` // this user already starred (one star per user)
 }
@@ -309,6 +311,9 @@ func relabelAsGlobalMealOfDay(categories []MealCategory, globalStars map[string]
 		}
 		cat.Meals[i].UserStarred = false
 		enrichSmartMealDishID(&cat.Meals[i])
+		enrichSmartMealIngredientIDs(&cat.Meals[i])
+		enrichSmartMealPairIngredients(&cat.Meals[i])
+		enrichSmartMealGroceryLines(&cat.Meals[i])
 	}
 	return []MealCategory{*cat}
 }
@@ -375,10 +380,11 @@ func recordMealSuggestions(ctx context.Context, cookedLog *services.CookedLogSer
 }
 
 type inventoryRow struct {
-	Name   string
-	Qty    float64
-	Unit   string
-	Expiry *time.Time
+	Name         string
+	IngredientID string
+	Qty          float64
+	Unit         string
+	Expiry       *time.Time
 }
 
 func fetchUserInventory(db *sql.DB, userID string) []inventoryRow {
@@ -390,13 +396,21 @@ func fetchUserInventory(db *sql.DB, userID string) []inventoryRow {
 	if kitchen == nil {
 		return nil
 	}
+	return fetchUserInventoryForKitchen(db, kitchen.KitchenID)
+}
+
+func fetchUserInventoryForKitchen(db *sql.DB, kitchenID string) []inventoryRow {
+	kitchenID = strings.TrimSpace(kitchenID)
+	if kitchenID == "" {
+		return nil
+	}
 	rows, err := db.Query(`
-		SELECT canonical_name, SUM(qty) as qty, unit, MIN(estimated_expiry) as estimated_expiry
+		SELECT canonical_name, MAX(ingredient_id), SUM(qty) as qty, unit, MIN(estimated_expiry) as estimated_expiry
 		FROM inventory
 		WHERE kitchen_id = $1 AND qty > 0
-		GROUP BY canonical_name, unit
+		GROUP BY canonical_name, unit, COALESCE(ingredient_id, '')
 		ORDER BY MIN(estimated_expiry) ASC NULLS LAST
-	`, kitchen.KitchenID)
+	`, kitchenID)
 	if err != nil {
 		log.Printf("fetchUserInventory error: %v", err)
 		return nil
@@ -407,11 +421,15 @@ func fetchUserInventory(db *sql.DB, userID string) []inventoryRow {
 	for rows.Next() {
 		var item inventoryRow
 		var expiry sql.NullTime
-		if err := rows.Scan(&item.Name, &item.Qty, &item.Unit, &expiry); err != nil {
+		var ingID sql.NullString
+		if err := rows.Scan(&item.Name, &ingID, &item.Qty, &item.Unit, &expiry); err != nil {
 			continue
 		}
 		if expiry.Valid {
 			item.Expiry = &expiry.Time
+		}
+		if ingID.Valid {
+			item.IngredientID = ingID.String
 		}
 		items = append(items, item)
 	}
@@ -797,7 +815,6 @@ const maxMealsPerCategory = 1
 
 // finalizeMealCategories keeps one meal per category; randomizes within the prompt-matched shortlist.
 func finalizeMealCategories(categories []MealCategory, category, userPrompt string, candidates []services.RankedDish, inventory []inventoryRow, expiringNames []string, exclude []string, globalStars map[string]int, userStarred map[string]bool) []MealCategory {
-	invNames := inventoryNames(inventory)
 	out := make([]MealCategory, 0, len(categories))
 	for _, cat := range categories {
 		catID := cat.ID
@@ -806,7 +823,7 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 		}
 		var meals []SmartMeal
 		if pick, ok := services.RandomCandidateForPrompt(candidates, userPrompt, exclude); ok {
-			meal := smartMealFromCatalog(pick.Dish, invNames, expiringNames, catID, globalStars, userStarred)
+			meal := smartMealFromCatalog(pick.Dish, inventory, expiringNames, catID, globalStars, userStarred)
 			if groq := firstGroqMealMatching(cat.Meals, userPrompt, pick.Dish.Name); groq != nil {
 				meal = mergeGroqMeal(meal, *groq)
 			}
@@ -820,6 +837,9 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 		cat.Meals = meals
 		for i := range cat.Meals {
 			enrichSmartMealDishID(&cat.Meals[i])
+			enrichSmartMealIngredientIDs(&cat.Meals[i])
+			enrichSmartMealPairIngredients(&cat.Meals[i])
+			enrichSmartMealGroceryLines(&cat.Meals[i])
 		}
 		out = append(out, cat)
 	}
@@ -850,7 +870,7 @@ func mergeGroqMeal(base, groq SmartMeal) SmartMeal {
 		base.Ingredients = groq.Ingredients
 	}
 	if len(base.ItemsToOrder) == 0 && len(groq.ItemsToOrder) > 0 {
-		base.ItemsToOrder = groq.ItemsToOrder
+		base.ItemsToOrder = services.GroceryIngredientLines(groq.ItemsToOrder)
 	}
 	if groq.CookingTime > 0 {
 		base.CookingTime = groq.CookingTime
@@ -863,6 +883,9 @@ func mergeGroqMeal(base, groq SmartMeal) SmartMeal {
 	}
 	if len(base.PairsWith) == 0 && len(groq.PairsWith) > 0 {
 		base.PairsWith = groq.PairsWith
+	}
+	if len(base.PairIngredients) == 0 && len(base.PairsWith) > 0 {
+		base.PairIngredients = services.PairIngredientsMap(base.PairsWith)
 	}
 	if n := strings.TrimSpace(groq.NutritionNotes); n != "" {
 		base.NutritionNotes = n
@@ -909,25 +932,55 @@ func fallbackMealsFromCandidates(candidates []services.RankedDish, category stri
 		pick = candidates[0]
 	}
 
-	invNames := inventoryNames(inventory)
 	return []MealCategory{{
 		ID:          category,
 		Title:       meta.Title,
 		Description: meta.Desc,
-		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, invNames, expiringNames, category, globalStars, userStarred)},
+		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, inventory, expiringNames, category, globalStars, userStarred)},
 	}}
 }
 
 func inventoryNames(inventory []inventoryRow) []string {
 	names := make([]string, 0, len(inventory))
 	for _, item := range inventory {
-		names = append(names, item.Name)
+		if n := strings.TrimSpace(item.Name); n != "" {
+			names = append(names, n)
+		}
 	}
 	return names
 }
 
-func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []string, category string, globalStars map[string]int, userStarred map[string]bool) SmartMeal {
-	ing, itemsToOrder := catalogIngredientsForMeal(d, invNames, expiringNames, category)
+func inventoryIngredientIDs(inventory []inventoryRow) []string {
+	ids := make([]string, 0, len(inventory))
+	seen := map[string]struct{}{}
+	for _, item := range inventory {
+		id := strings.TrimSpace(item.IngredientID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func haveIngredients(inventory []inventoryRow) map[string]bool {
+	ids := make([]string, 0, len(inventory))
+	for _, item := range inventory {
+		if item.IngredientID != "" {
+			ids = append(ids, item.IngredientID)
+		}
+	}
+	return services.BuildHaveIngredientSet(ids, inventoryNames(inventory))
+}
+
+func smartMealFromCatalog(d services.CatalogDish, inventory []inventoryRow, expiringNames []string, category string, globalStars map[string]int, userStarred map[string]bool) SmartMeal {
+	invNames := inventoryNames(inventory)
+	have := haveIngredients(inventory)
+	ing, ingIDs, itemsToOrder := catalogIngredientsForMeal(d, have, invNames, expiringNames, category)
 	why := "Picked from your personalized dish shortlist."
 	switch category {
 	case "most_healthy":
@@ -951,8 +1004,8 @@ func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []stri
 			why = fmt.Sprintf("From your %s shortlist.", strings.ReplaceAll(c, "-", " "))
 		}
 	}
-	if category == "rescue_meal" && len(invNames) > 0 {
-		match := services.MatchDishToInventory(d, invNames)
+	if category == "rescue_meal" && len(have) > 0 {
+		match := services.MatchDishToInventory(d, have)
 		if match.Coverage > 0 {
 			why = fmt.Sprintf("%s %.0f%% pantry match.", why, match.Coverage*100)
 		}
@@ -963,18 +1016,21 @@ func smartMealFromCatalog(d services.CatalogDish, invNames, expiringNames []stri
 		cookMins = 30
 	}
 	difficulty := catalogDifficulty(d.Effort)
-	pairs := d.PairsWith
+	pairIDs := d.PairsWith
+	pairs := services.PairDisplayLabels(pairIDs)
 	if len(pairs) > 6 {
 		pairs = pairs[:6]
 	}
 	return SmartMeal{
-		DishID:      d.ID,
-		Name:        d.DisplayLabel(),
-		Description: "",
-		Ingredients: ing,
-		ItemsToOrder: itemsToOrder,
-		PairsWith:   pairs,
-		CookingTime: cookMins,
+		DishID:          d.ID,
+		Name:            d.DisplayLabel(),
+		Description:     "",
+		Ingredients:     ing,
+		IngredientIDs:   ingIDs,
+		ItemsToOrder:    itemsToOrder,
+		PairsWith:       pairs,
+		PairIngredients: services.PairIngredientsMap(pairIDs),
+		CookingTime:     cookMins,
 		Difficulty:  difficulty,
 		WhyThisMeal: why,
 		StarCount:   d.GlobalStarCount(globalStars),
@@ -991,6 +1047,72 @@ func enrichSmartMealDishID(meal *SmartMeal) {
 	}
 }
 
+func enrichSmartMealIngredientIDs(meal *SmartMeal) {
+	if meal == nil || len(meal.IngredientIDs) > 0 {
+		return
+	}
+	dishID := strings.TrimSpace(meal.DishID)
+	if dishID == "" {
+		if dish, ok := services.FindCatalogDishByName(meal.Name); ok {
+			dishID = dish.ID
+		}
+	}
+	if dishID == "" {
+		return
+	}
+	dish, ok := services.FindCatalogDishByID(dishID)
+	if !ok {
+		return
+	}
+	lines := dish.CatalogIngredientLines()
+	if len(lines) == 0 {
+		return
+	}
+	n := len(lines)
+	if len(meal.Ingredients) > 0 && len(meal.Ingredients) < n {
+		n = len(meal.Ingredients)
+	}
+	if n > maxIngredientsInMeal {
+		n = maxIngredientsInMeal
+	}
+	meal.IngredientIDs = make([]string, n)
+	for i, line := range lines[:n] {
+		meal.IngredientIDs[i] = strings.TrimSpace(line.IngredientID)
+	}
+}
+
+func enrichSmartMealPairIngredients(meal *SmartMeal) {
+	if meal == nil {
+		return
+	}
+	enrichSmartMealPairsWith(meal)
+}
+
+// enrichSmartMealPairsWith resolves pairs_with for API responses. When pair_ingredients
+// were already stored in Redis, only refresh display labels (no catalog DB lookups).
+func enrichSmartMealPairsWith(meal *SmartMeal) {
+	if meal == nil || len(meal.PairsWith) == 0 {
+		if meal != nil {
+			meal.PairIngredients = nil
+		}
+		return
+	}
+	raw := append([]string(nil), meal.PairsWith...)
+	if len(meal.PairIngredients) > 0 {
+		meal.PairsWith = services.PairDisplayLabels(raw)
+		return
+	}
+	meal.PairIngredients = services.PairIngredientsMap(raw)
+	meal.PairsWith = services.PairDisplayLabels(raw)
+}
+
+func enrichSmartMealGroceryLines(meal *SmartMeal) {
+	if meal == nil {
+		return
+	}
+	meal.ItemsToOrder = services.GroceryIngredientLines(meal.ItemsToOrder)
+}
+
 func catalogDifficulty(effort string) string {
 	switch strings.ToLower(strings.TrimSpace(effort)) {
 	case "high":
@@ -1002,36 +1124,38 @@ func catalogDifficulty(effort string) string {
 	}
 }
 
-func catalogIngredientsForMeal(d services.CatalogDish, invNames, expiringNames []string, category string) ([]string, []string) {
-	full := d.CatalogIngredients()
-	if len(full) == 0 {
+func catalogIngredientsForMeal(d services.CatalogDish, have map[string]bool, invNames, expiringNames []string, category string) ([]string, []string, []string) {
+	lines := d.CatalogIngredientLines()
+	if len(lines) == 0 {
 		if category == "rescue_meal" && len(invNames) > 0 {
 			n := 6
 			if len(invNames) < n {
 				n = len(invNames)
 			}
-			return invNames[:n], nil
+			return invNames[:n], nil, nil
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	ordered := full
+	ordered := lines
 	if category == "rescue_meal" {
-		ordered = orderRecipeIngredients(full, invNames, expiringNames, true)
+		ordered = orderRecipeIngredientLines(lines, invNames, expiringNames, true)
 	}
 	n := len(ordered)
 	if n > maxIngredientsInMeal {
 		n = maxIngredientsInMeal
 	}
 	ingredients := make([]string, n)
-	for i, ing := range ordered[:n] {
-		ingredients[i] = titleIngredientToken(ing)
+	ingredientIDs := make([]string, n)
+	for i, line := range ordered[:n] {
+		ingredients[i] = titleIngredientToken(line.Name)
+		ingredientIDs[i] = strings.TrimSpace(line.IngredientID)
 	}
 
-	if category == "rescue_meal" || len(invNames) == 0 {
-		return ingredients, nil
+	if category == "rescue_meal" || len(have) == 0 {
+		return ingredients, ingredientIDs, nil
 	}
-	match := services.MatchDishToInventory(d, invNames)
+	match := services.MatchDishToInventory(d, have)
 	itemsToOrder := make([]string, 0, min(len(match.Missing), maxItemsToOrder))
 	for _, missing := range match.Missing {
 		itemsToOrder = append(itemsToOrder, titleIngredientToken(missing))
@@ -1039,7 +1163,35 @@ func catalogIngredientsForMeal(d services.CatalogDish, invNames, expiringNames [
 			break
 		}
 	}
-	return ingredients, itemsToOrder
+	return ingredients, ingredientIDs, itemsToOrder
+}
+
+func orderRecipeIngredientLines(lines []services.IngredientLine, invNames, expiringNames []string, rescue bool) []services.IngredientLine {
+	if !rescue || len(invNames) == 0 || len(lines) == 0 {
+		return lines
+	}
+	names := make([]string, len(lines))
+	for i, line := range lines {
+		names[i] = line.Name
+	}
+	orderedNames := orderRecipeIngredients(names, invNames, expiringNames, rescue)
+	byName := map[string]services.IngredientLine{}
+	for _, line := range lines {
+		key := strings.ToLower(strings.TrimSpace(line.Name))
+		if key != "" {
+			byName[key] = line
+		}
+	}
+	out := make([]services.IngredientLine, 0, len(orderedNames))
+	for _, name := range orderedNames {
+		key := strings.ToLower(strings.TrimSpace(name))
+		if line, ok := byName[key]; ok {
+			out = append(out, line)
+			continue
+		}
+		out = append(out, services.IngredientLine{Name: name})
+	}
+	return out
 }
 
 func orderRecipeIngredients(full, invNames, expiringNames []string, rescue bool) []string {

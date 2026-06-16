@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,12 +12,19 @@ import (
 
 	"kitchenai-backend/internal/dblock"
 	"kitchenai-backend/internal/services"
+	"kitchenai-backend/internal/services/catalogdb"
 	invgroup "kitchenai-backend/internal/services/inventory"
 	"kitchenai-backend/pkg/config"
 	"kitchenai-backend/pkg/units"
 )
 
 const billScanUserMessage = "We couldn't read this bill. Try a clearer photo with good lighting."
+
+func recordSkippedCandidates(ctx context.Context, db *sql.DB, skipped []string, source string) {
+	for _, name := range skipped {
+		_ = catalogdb.RecordCandidate(ctx, db, name, source)
+	}
+}
 
 func billScanResultMessage(matched int, skipped []string) string {
 	if matched == 0 && len(skipped) > 0 {
@@ -96,6 +104,7 @@ func ScanBill(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			return
 		}
 		items, skipped := services.ApplyCatalogMapping(items)
+		recordSkippedCandidates(r.Context(), db, skipped, "bill_scan")
 		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
@@ -170,6 +179,7 @@ func ScanBillMultipart(db *sql.DB, cfg *config.Config) http.HandlerFunc {
 			return
 		}
 		items, skipped := services.ApplyCatalogMapping(items)
+		recordSkippedCandidates(r.Context(), db, skipped, "bill_scan")
 		normalizeBillItemsFoodGroup(items, dietaryTagsForUser(db, userID))
 
 		if err := services.RecordBillScan(db, userID); err != nil {
@@ -238,9 +248,11 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 		if findErr == nil {
 			_, err = tx.Exec(`
 				UPDATE inventory 
-				SET qty = qty + $1, estimated_expiry = LEAST(estimated_expiry, $2), food_group = $3, user_id = COALESCE(user_id, $4), updated_at = NOW()
+				SET qty = qty + $1, estimated_expiry = LEAST(estimated_expiry, $2), food_group = $3,
+					ingredient_id = COALESCE($7, ingredient_id),
+					user_id = COALESCE(user_id, $4), updated_at = NOW()
 				WHERE item_id = $5 AND kitchen_id = $6
-			`, item.Quantity, expiry, foodGroup, userID, existingID, kitchen.KitchenID)
+			`, item.Quantity, expiry, foodGroup, userID, existingID, kitchen.KitchenID, nullStr(item.IngredientID))
 			if err != nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Failed to update %s: %v", item.Name, err))
@@ -271,10 +283,10 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 
 		var itemID string
 		err = tx.QueryRow(`
-			INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, kitchen_id, is_manual, food_group, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, false, $7, NOW(), NOW())
+			INSERT INTO inventory (canonical_name, qty, unit, estimated_expiry, user_id, kitchen_id, is_manual, food_group, ingredient_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, NOW(), NOW())
 			RETURNING item_id
-		`, item.Name, item.Quantity, unit, expiry, userID, kitchen.KitchenID, foodGroup).Scan(&itemID)
+		`, item.Name, item.Quantity, unit, expiry, userID, kitchen.KitchenID, foodGroup, nullStr(item.IngredientID)).Scan(&itemID)
 		if err != nil {
 			tx.Rollback()
 			errors = append(errors, fmt.Sprintf("Failed to insert %s: %v", item.Name, err))
@@ -298,6 +310,14 @@ func addItemsToInventory(db *sql.DB, items []services.BillItem, userID string) (
 	}
 
 	return addedItems, errors
+}
+
+func nullStr(s string) interface{} {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 // writeJSONResponse writes a JSON response with the given status code

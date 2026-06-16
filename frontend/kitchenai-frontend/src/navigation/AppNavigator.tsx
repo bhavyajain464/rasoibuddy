@@ -18,6 +18,7 @@ import { ShoppingScreen } from '../screens/ShoppingScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import * as api from '../services/api';
 import { checkForceUpdate } from '../utils/appUpdate';
+import { setDishImagesCdnBase } from '../data/dishImageConfig';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
 import { AppRefreshProvider } from '../context/AppRefreshContext';
@@ -25,6 +26,8 @@ import { UpgradePaywallProvider } from '../context/UpgradePaywallContext';
 import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { syncWebPathForAuthState } from '../navigation/webHomePath';
+import { isAdminWebPlatform } from '../navigation/adminPath';
+import { AdminPanelGate } from '../navigation/AdminPanelGate';
 import { palette } from '../theme';
 import type { MainTabParamList, PublicStackParamList, RootStackParamList } from './types';
 
@@ -146,6 +149,12 @@ export function AppNavigator() {
 
   useEffect(() => {
     let cancelled = false;
+    api.fetchAppConfig().then((config) => {
+      if (cancelled) return;
+      if (config.dish_images_cdn_url?.trim()) {
+        setDishImagesCdnBase(config.dish_images_cdn_url);
+      }
+    }).catch(() => {});
     checkForceUpdate().then(result => {
       if (!cancelled) setForceUpdate(result);
     });
@@ -197,6 +206,10 @@ export function AppNavigator() {
 
   if (!sessionReady) {
     return <LoadingScreen />;
+  }
+
+  if (isAdminWebPlatform()) {
+    return <AdminPanelGate />;
   }
 
   if (!token) {

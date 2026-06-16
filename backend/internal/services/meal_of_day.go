@@ -25,13 +25,15 @@ type CachedSmartMeal struct {
 	DishID         string   `json:"dish_id,omitempty"`
 	Name           string   `json:"name"`
 	Description    string   `json:"description"`
-	Ingredients    []string `json:"ingredients"`
-	ItemsToOrder   []string `json:"items_to_order,omitempty"`
+	Ingredients     []string                        `json:"ingredients"`
+	IngredientIDs   []string                        `json:"ingredient_ids,omitempty"`
+	ItemsToOrder    []string                        `json:"items_to_order,omitempty"`
 	CookingTime    int      `json:"cooking_time_mins"`
 	Difficulty     string   `json:"difficulty"`
 	WhyThisMeal    string   `json:"why_this_meal"`
-	PairsWith      []string `json:"pairs_with,omitempty"`
-	NutritionNotes string   `json:"nutrition_notes,omitempty"`
+	PairsWith       []string                        `json:"pairs_with,omitempty"`
+	PairIngredients PairIngredientLinesMap          `json:"pair_ingredients,omitempty"`
+	NutritionNotes  string              `json:"nutrition_notes,omitempty"`
 	StarCount      int      `json:"star_count,omitempty"`
 	UserStarred    bool     `json:"user_starred,omitempty"`
 }

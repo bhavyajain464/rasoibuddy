@@ -1,6 +1,5 @@
 import type { CatalogIngredient } from '../types';
 import { DEFAULT_UNIT, UNIT_OPTIONS, normalizeUnit } from './units';
-import { defaultPurchaseQty } from './purchaseUnits';
 
 function normKey(s: string): string {
   return s.trim().toLowerCase();
@@ -51,31 +50,6 @@ export function coerceUnit(unit: string, allowed: readonly string[]): string {
   const normalized = normalizeUnit(unit);
   if (allowed.includes(normalized)) return normalized;
   return allowed[0] ?? DEFAULT_UNIT;
-}
-
-/** Default qty when adding a catalog-backed suggestion to the shopping list. */
-export function defaultSuggestQty(unit: string, item?: CatalogIngredient | null): number {
-  return defaultPurchaseQty(item, unit);
-}
-
-/** Resolve catalog name/unit before persisting a suggested line to shopping. */
-export function normalizeSuggestedShoppingLine(
-  catalog: CatalogIngredient[],
-  line: { name: string; qty: number; unit: string },
-): { name: string; qty: number; unit: string } {
-  const trimmed = line.name.trim();
-  const match = resolveCatalogItem(catalog, undefined, trimmed);
-  if (!match) {
-    return {
-      name: trimmed,
-      qty: line.qty > 0 ? line.qty : defaultSuggestQty(line.unit),
-      unit: normalizeUnit(line.unit || DEFAULT_UNIT),
-    };
-  }
-  const allowed = unitsForCatalogItem(match);
-  const unit = coerceUnit(line.unit, allowed);
-  const qty = line.qty > 0 ? line.qty : defaultSuggestQty(unit, match);
-  return { name: match.name, qty, unit };
 }
 
 /** Whether two names are the same catalog ingredient (mirrors backend SameIngredient). */

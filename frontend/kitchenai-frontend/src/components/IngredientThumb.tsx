@@ -2,8 +2,6 @@ import React, { useMemo } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { getIngredientStapleImageSource } from '../data/ingredientImages';
-import { resolveCatalogItem } from '../utils/ingredientUnits';
-import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 
 type Props = {
   name: string;
@@ -13,12 +11,10 @@ type Props = {
 };
 
 export function IngredientThumb({ name, ingredientId, size = 40, resizeMode = 'cover' }: Props) {
-  const { catalog } = useIngredientCatalog();
-
-  const source = useMemo(() => {
-    const match = resolveCatalogItem(catalog, ingredientId ?? undefined, name);
-    return getIngredientStapleImageSource(name, match?.ingredient_id ?? ingredientId);
-  }, [catalog, ingredientId, name]);
+  const source = useMemo(
+    () => getIngredientStapleImageSource(name, ingredientId?.trim() || undefined),
+    [ingredientId, name],
+  );
 
   const frameStyle = useMemo(
     () => [styles.frame, { width: size, height: size, borderRadius: Math.round(size * 0.24) }],
