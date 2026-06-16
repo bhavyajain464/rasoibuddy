@@ -27,7 +27,7 @@ git pull origin develop
 
 Production deploys: `.github/workflows/deploy-backend.yml` on `main` only.
 
-**Onboarding testing:** Staging API sets `ENVIRONMENT=staging`, so `/onboarding/status` always returns `onboarding_done: false` (onboarding shows every login, even after complete). Production is unchanged.
+**Onboarding testing:** Set `ONBOARDING_ALWAYS_SHOW=true` on the staging Cloud Run service so `/onboarding/status` returns `onboarding_done: false` for every user (repeat testing). Leave unset for normal onboarding persistence.
 
 ## Consumer frontend (Vercel project: **rasoibuddy**)
 

@@ -45,11 +45,13 @@ function withEdgeToEdgeReleaseFix(config) {
     }
     const snippet = `
 ${MARKER}
-subprojects { subproject ->
-  subproject.afterEvaluate {
-    subproject.configurations.configureEach { configuration ->
-      if (configuration.name.toLowerCase().contains('release')) {
-        configuration.exclude group: 'androidx.compose.ui', module: 'ui-tooling'
+gradle.projectsLoaded {
+  rootProject.subprojects { subproject ->
+    subproject.afterEvaluate {
+      subproject.configurations.configureEach { configuration ->
+        if (configuration.name.toLowerCase().contains('release')) {
+          configuration.exclude group: 'androidx.compose.ui', module: 'ui-tooling'
+        }
       }
     }
   }
