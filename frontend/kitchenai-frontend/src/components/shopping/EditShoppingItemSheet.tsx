@@ -9,10 +9,9 @@ import {
   STACKED_ROW_BREAKPOINT,
   type InventoryDraftRow,
 } from '../inventory/InventoryItemRowEditor';
-import { CatalogIngredient, UserShoppingItem } from '../../types';
+import { UserShoppingItem } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
-import { resolveCatalogItem } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
 const EDIT_ROW_KEY = 'edit-row';
@@ -25,15 +24,15 @@ type Props = {
   saving?: boolean;
 };
 
-function itemToDraftRow(item: UserShoppingItem, catalog: CatalogIngredient[]): InventoryDraftRow {
-  const match = resolveCatalogItem(catalog, undefined, item.name);
+function itemToDraftRow(item: UserShoppingItem): InventoryDraftRow {
   return {
     key: EDIT_ROW_KEY,
     name: item.name,
     qty: String(item.qty),
     unit: item.unit || DEFAULT_UNIT,
     expiry: '',
-    ingredientId: match?.ingredient_id,
+    ingredientId: item.ingredient_id ?? item.catalog?.ingredient_id,
+    catalog: item.catalog,
   };
 }
 
@@ -57,8 +56,8 @@ export function EditShoppingItemSheet({
 
   useEffect(() => {
     if (!item || !visible) return;
-    setDraftRow(itemToDraftRow(item, catalog));
-  }, [item, visible, catalog]);
+    setDraftRow(itemToDraftRow(item));
+  }, [item, visible]);
 
   const canSave = useMemo(() => {
     const name = draftRow.name.trim();

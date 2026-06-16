@@ -13,12 +13,35 @@ export interface CatalogIngredient {
   synonyms?: string[];
 }
 
+/** Resolved catalog row attached to pantry/shopping API items. */
+export type ItemCatalog = Omit<CatalogIngredient, 'synonyms'>;
+
+export interface CatalogDishSearchItem {
+  id: string;
+  name: string;
+  meal_types: string[];
+  cuisine: string;
+  cook_time_mins: number;
+}
+
+export interface DishLookupResponse {
+  id: string;
+  name: string;
+  meal_types: string[];
+  cuisine: string;
+  cook_time_mins: number;
+  image_urls?: Partial<Record<'hero' | 'card' | 'thumb', string>>;
+}
+
 export interface InventoryItem {
   item_id: string;
+  ingredient_id?: string;
   canonical_name: string;
   qty: number;
   unit: string;
   food_group?: string;
+  display_qty?: string;
+  catalog?: ItemCatalog;
   estimated_expiry?: string;
   is_manual: boolean;
   updated_at?: string;
@@ -26,10 +49,13 @@ export interface InventoryItem {
 
 export interface ExpiringItem {
   item_id: string;
+  ingredient_id?: string;
   canonical_name: string;
   qty: number;
   unit: string;
   food_group?: string;
+  display_qty?: string;
+  catalog?: ItemCatalog;
   estimated_expiry: string;
   days_until_expiry: number;
   updated_at?: string;
@@ -99,8 +125,11 @@ export interface ShoppingListItem {
 export interface UserShoppingItem {
   id: string;
   name: string;
+  ingredient_id?: string;
   qty: number;
   unit: string;
+  display_qty?: string;
+  catalog?: ItemCatalog;
   bought: boolean;
   created_at: string;
   bought_at?: string;

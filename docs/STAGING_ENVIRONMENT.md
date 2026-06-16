@@ -9,7 +9,8 @@ The **develop** branch is the integration environment. **main** stays production
 | Partner web (Vercel) | *(not deployed from `main` yet)* | Project **rasoibuddy-partner** — **production branch `develop`** → [kitchmate-partner.vercel.app](https://kitchmate-partner.vercel.app) |
 | API (Cloud Run) | `kitchenai-backend` | `kitchenai-backend-staging` |
 | Razorpay | Live (`RAZORPAY_ENV=production`) | Test (`RAZORPAY_ENV=staging`) |
-| DB / Redis / Kafka / LLM keys | Shared (same GCP secrets for now) | Same secrets as production |
+| DB | `kitch-mate` | `rasoibuddy-staging` (copy on same Oracle Postgres instance) |
+| Redis / Kafka / LLM keys | Shared | Same secrets as production |
 
 ## Git workflow
 
@@ -88,6 +89,13 @@ DOTENV_CONFIG_PATH=staging.env npm run web
 
 ## What stays shared (for now)
 
-- PostgreSQL, Redis, Kafka, Groq/Gemini keys, Google OAuth clients (with extra redirect URI for develop preview)
+- Redis, Kafka, Groq/Gemini keys, Google OAuth clients (with extra redirect URI for develop preview)
 
-Splitting staging DB or Kafka is a later step when you want isolated data.
+**Staging database:** `rasoibuddy-staging` on the same Oracle Cloud Postgres host as production (`kitch-mate`). GCP secret `database-url-staging` → staging Cloud Run only.
+
+To refresh staging data from production:
+
+```bash
+pg_dump "postgresql://kitch_admin:…@140.245.26.151:5432/kitch-mate?sslmode=disable" --no-owner --no-acl \
+  | psql "postgresql://kitch_admin:…@140.245.26.151:5432/rasoibuddy-staging?sslmode=disable" -q
+```

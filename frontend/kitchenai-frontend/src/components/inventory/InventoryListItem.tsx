@@ -10,10 +10,8 @@ import {
 import { IconButton, Menu, Text } from 'react-native-paper';
 import { RectButton, Swipeable } from 'react-native-gesture-handler';
 import { InventoryItem, ExpiringItem } from '../../types';
-import { daysUntilExpiryLocal, formatExpiryCountdown } from '../../utils/expiryDate';
-import { resolveCatalogItem } from '../../utils/ingredientUnits';
-import { formatPurchaseQty } from '../../utils/purchaseUnits';
-import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
+import { formatExpiryCountdown } from '../../utils/expiryDate';
+import { expiryDaysLeft, pantryQtyLabel } from '../../utils/inventoryBuckets';
 import { InventoryItemActionsSheet, type InventoryMenuAction } from './InventoryItemActionsSheet';
 import { IngredientThumb } from '../IngredientThumb';
 import { palette } from '../../theme';
@@ -79,26 +77,13 @@ export function InventoryListItem({
   style,
   variant = 'list',
 }: Props) {
-  const { catalog } = useIngredientCatalog();
-  const catalogItem = React.useMemo(
-    () => resolveCatalogItem(catalog, undefined, item.canonical_name),
-    [catalog, item.canonical_name],
-  );
-  const qtyLabel = React.useMemo(
-    () => formatPurchaseQty(item.qty, item.unit, catalogItem),
-    [item.qty, item.unit, catalogItem],
-  );
+  const qtyLabel = React.useMemo(() => pantryQtyLabel(item), [item]);
   const swipeRef = useRef<Swipeable>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const daysLeft =
-    'days_until_expiry' in item && item.days_until_expiry != null
-      ? item.days_until_expiry
-      : item.estimated_expiry
-        ? daysUntilExpiryLocal(item.estimated_expiry)
-        : null;
+  const daysLeft = expiryDaysLeft(item);
 
   const isExpired = kind === 'expired' || (daysLeft !== null && daysLeft < 0);
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 2;
@@ -227,7 +212,12 @@ export function InventoryListItem({
         {menuControl}
       </View>
       <View style={styles.gridColumn}>
-        <IngredientThumb name={item.canonical_name} size={44} resizeMode="contain" />
+        <IngredientThumb
+          name={item.canonical_name}
+          ingredientId={item.ingredient_id}
+          size={44}
+          resizeMode="contain"
+        />
         <Text
           variant="labelMedium"
           numberOfLines={3}
@@ -266,7 +256,7 @@ export function InventoryListItem({
         : {})}
     >
       <View style={styles.row}>
-        <IngredientThumb name={item.canonical_name} size={40} />
+        <IngredientThumb name={item.canonical_name} ingredientId={item.ingredient_id} size={40} />
         <View style={styles.left}>
           <View style={styles.titleRow}>
             <View style={styles.nameWrap}>

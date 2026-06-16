@@ -43,6 +43,8 @@ import {
   KitchenInfo,
   CommercePartnersResponse,
   OrderLinkResponse,
+  CatalogDishSearchItem,
+  DishLookupResponse,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
@@ -51,6 +53,10 @@ import { getAppVersionHeaders } from '../utils/appUpdate';
 
 function resolveApiBaseUrl(): string {
   const url = process.env.EXPO_PUBLIC_API_BASE_URL!;
+  if (Platform.OS === 'web') {
+    // 10.0.2.2 is the Android emulator alias for the host — browsers must use localhost.
+    return url.replace(/10\.0\.2\.2/g, 'localhost');
+  }
   if (
     Platform.OS === 'android' &&
     (url.includes('localhost') || url.includes('127.0.0.1'))
@@ -326,27 +332,7 @@ export async function fetchInventoryBuckets(
   const res = await authFetch(`${API_BASE_URL}/inventory?${params}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const raw = await res.json();
-  let normalized = normalizeInventoryBucketsResponse(raw, include);
-
-  // Legacy backends return a flat array without an expired bucket — fetch it separately.
-  if (Array.isArray(raw) && include.includes('expired') && !(normalized.expired?.length)) {
-    try {
-      const expiredRes = await authFetch(`${API_BASE_URL}/inventory/expired`);
-      if (expiredRes.ok) {
-        const expiredRaw = await expiredRes.json();
-        if (Array.isArray(expiredRaw) && expiredRaw.length > 0) {
-          normalized = normalizeInventoryBucketsResponse(
-            { ...normalized, expired: expiredRaw, counts: normalized.counts },
-            include,
-          );
-        }
-      }
-    } catch {
-      // keep normalized result without expired
-    }
-  }
-
-  return normalized;
+  return normalizeInventoryBucketsResponse(raw, include);
 }
 
 export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
@@ -358,6 +344,33 @@ export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> 
 export async function fetchIngredientsCatalog(query?: string): Promise<CatalogIngredient[]> {
   const params = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
   const res = await authFetch(`${API_BASE_URL}/ingredients${params}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchDishesCatalog(opts?: {
+  q?: string;
+  mealSlot?: string;
+  limit?: number;
+}): Promise<CatalogDishSearchItem[]> {
+  const params = new URLSearchParams();
+  if (opts?.q?.trim()) params.set('q', opts.q.trim());
+  if (opts?.mealSlot?.trim()) params.set('meal_slot', opts.mealSlot.trim());
+  if (opts?.limit != null && opts.limit > 0) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  const res = await authFetch(`${API_BASE_URL}/dishes${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function lookupDish(opts: {
+  dishId?: string;
+  name?: string;
+}): Promise<DishLookupResponse> {
+  const params = new URLSearchParams();
+  if (opts.dishId?.trim()) params.set('dish_id', opts.dishId.trim());
+  if (opts.name?.trim()) params.set('name', opts.name.trim());
+  const res = await authFetch(`${API_BASE_URL}/dishes/lookup?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -980,6 +993,7 @@ export interface AppConfigResponse {
   update_message: string;
   play_store_url: string;
   app_store_url: string;
+  dish_images_cdn_url?: string;
 }
 
 export async function fetchAppConfig(): Promise<AppConfigResponse> {
@@ -1076,3 +1090,75 @@ export async function logoutApi(token: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+// ─── Ops panel (hidden route; 404 unless allowlisted) ─────────
+
+export type PanelPairAlias = {
+  label: string;
+  target_kind: 'dish' | 'ingredient';
+  target_id: string;
+};
+
+/** Returns true only when the signed-in user is on the server allowlist. */
+export async function checkPanelAccess(): Promise<boolean> {
+  const res = await authFetch(`${API_BASE_URL}/panel/access`);
+  return res.ok;
+}
+
+export async function listPanelPairAliases(): Promise<PanelPairAlias[]> {
+  const res = await authFetch(`${API_BASE_URL}/panel/catalog/pair-aliases`);
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'Not found' : `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data.aliases) ? data.aliases : [];
+}
+
+export async function registerPanelPairAlias(body: {
+  label: string;
+  target_kind: 'dish' | 'ingredient';
+  target_id: string;
+}): Promise<void> {
+  const res = await authFetch(`${API_BASE_URL}/panel/catalog/pair-aliases`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+}
+
+export async function deletePanelPairAlias(label: string): Promise<void> {
+  const res = await authFetch(
+    `${API_BASE_URL}/panel/catalog/pair-aliases?label=${encodeURIComponent(label)}`,
+    { method: 'DELETE' },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+}
+
+export async function upsertPanelDish(body: {
+  id?: string;
+  name: string;
+  ingredients: string[];
+  pairs_with?: string[];
+  effort?: string;
+  diet?: string;
+}): Promise<string> {
+  const res = await authFetch(`${API_BASE_URL}/panel/catalog/dishes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return typeof data.id === 'string' ? data.id : body.id ?? '';
+}
+

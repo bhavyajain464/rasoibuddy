@@ -27,8 +27,6 @@ import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
 import { SuggestOrderCarousel } from '../components/shopping/SuggestOrderCarousel';
 import type { InventoryMenuAction } from '../components/inventory/InventoryItemActionsSheet';
 import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
-import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
-import { normalizeSuggestedShoppingLine, sameIngredient } from '../utils/ingredientUnits';
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 import { restoreListEntries } from '../utils/restoreListEntries';
 import { writeOrderSuggestionsCache } from '../utils/orderSuggestionsCache';
@@ -89,7 +87,6 @@ export function ShoppingScreen() {
   const skipMountLoadItems = useRef(true);
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
-  const { catalog } = useIngredientCatalog();
 
   const selectedList = useMemo(
     () => items.filter((i) => selectedIds[i.id]),
@@ -187,26 +184,16 @@ export function ShoppingScreen() {
     setRefreshing(false);
   }, [loadItems, loadOrderSuggestions]);
 
-  const visibleSuggestions = useMemo(() => {
-    const listNames = items.map((i) => i.name.trim()).filter(Boolean);
-    return orderSuggestions.filter((s) => {
-      const key = s.name.trim();
-      if (!key) return false;
-      return !listNames.some((name) => sameIngredient(catalog, s.name, name));
-    });
-  }, [orderSuggestions, items, catalog]);
-
   const displaySuggestions = useMemo(
-    () => visibleSuggestions.slice(0, SUGGEST_DISPLAY_LIMIT),
-    [visibleSuggestions],
+    () => orderSuggestions.filter((s) => s.name.trim()).slice(0, SUGGEST_DISPLAY_LIMIT),
+    [orderSuggestions],
   );
 
   const addSuggestionToList = async (suggestion: OrderSuggestItem) => {
     const key = suggestion.name.trim().toLowerCase();
     setAddingSuggest(key);
     try {
-      const line = normalizeSuggestedShoppingLine(catalog, suggestion);
-      await api.addShoppingItem(line.name, line.qty, line.unit);
+      await api.addShoppingItem(suggestion.name, suggestion.qty, suggestion.unit);
       await loadItems();
       await refillSuggestionPool();
       showAppSuccess(`"${suggestion.name}" added to your list`);
@@ -222,7 +209,7 @@ export function ShoppingScreen() {
     setAddingSuggest('__all__');
     try {
       await api.addBulkShoppingItems(
-        displaySuggestions.map((s) => normalizeSuggestedShoppingLine(catalog, s)),
+        displaySuggestions.map((s) => ({ name: s.name, qty: s.qty, unit: s.unit })),
       );
       await loadItems();
       await refillSuggestionPool();

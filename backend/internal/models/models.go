@@ -5,17 +5,29 @@ import (
 	"time"
 )
 
+// ItemCatalog is resolved catalog metadata attached to pantry/shopping API rows.
+type ItemCatalog struct {
+	IngredientID string   `json:"ingredient_id"`
+	Name         string   `json:"name"`
+	DefaultUnit  string   `json:"default_unit"`
+	Units        []string `json:"units,omitempty"`
+	FoodGroup    string   `json:"food_group,omitempty"`
+}
+
 // Inventory represents an item in the pantry/fridge
 type Inventory struct {
-	ItemID          string     `json:"item_id"`
-	CanonicalName   string     `json:"canonical_name"`
-	Qty             float64    `json:"qty"`
-	Unit            string     `json:"unit"`
-	FoodGroup       string     `json:"food_group"`
-	EstimatedExpiry *time.Time `json:"estimated_expiry,omitempty"`
-	IsManual        bool       `json:"is_manual"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ItemID          string       `json:"item_id"`
+	IngredientID    string       `json:"ingredient_id,omitempty"`
+	CanonicalName   string       `json:"canonical_name"`
+	Qty             float64      `json:"qty"`
+	Unit            string       `json:"unit"`
+	FoodGroup       string       `json:"food_group"`
+	DisplayQty      string       `json:"display_qty,omitempty"`
+	Catalog         *ItemCatalog `json:"catalog,omitempty"`
+	EstimatedExpiry *time.Time   `json:"estimated_expiry,omitempty"`
+	IsManual        bool         `json:"is_manual"`
+	CreatedAt       time.Time    `json:"created_at"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 // InventoryRequest represents the payload for creating inventory
@@ -150,14 +162,17 @@ type InventoryBucketsResponse struct {
 
 // ExpiringItem represents an inventory item that is near expiry
 type ExpiringItem struct {
-	ItemID          string    `json:"item_id"`
-	CanonicalName   string    `json:"canonical_name"`
-	Qty             float64   `json:"qty"`
-	Unit            string    `json:"unit"`
-	FoodGroup       string    `json:"food_group,omitempty"`
-	EstimatedExpiry time.Time `json:"estimated_expiry"`
-	DaysUntilExpiry int       `json:"days_until_expiry"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ItemID          string       `json:"item_id"`
+	IngredientID    string       `json:"ingredient_id,omitempty"`
+	CanonicalName   string       `json:"canonical_name"`
+	Qty             float64      `json:"qty"`
+	Unit            string       `json:"unit"`
+	FoodGroup       string       `json:"food_group,omitempty"`
+	DisplayQty      string       `json:"display_qty,omitempty"`
+	Catalog         *ItemCatalog `json:"catalog,omitempty"`
+	EstimatedExpiry time.Time    `json:"estimated_expiry"`
+	DaysUntilExpiry int          `json:"days_until_expiry"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 // NullString handles nullable strings from database

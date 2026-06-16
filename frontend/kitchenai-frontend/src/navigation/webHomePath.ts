@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { isAdminWebPath } from './adminPath';
 
 const APP_HOME_PATH = '/app';
 const PUBLIC_HOME_PATH = '/';
@@ -40,6 +41,9 @@ export function resetWebPublicPath() {
 export function syncWebPathForAuthState(hasSession: boolean) {
   if (Platform.OS !== 'web') return;
   const path = window.location.pathname;
+  if (isAdminWebPath(path)) {
+    return;
+  }
   if (hasSession) {
     if (path === PUBLIC_HOME_PATH || path === LOGIN_PATH) {
       navigateWebToAppHome();

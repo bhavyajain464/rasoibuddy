@@ -5,7 +5,7 @@ import { ExpiryDateBox } from '../ExpiryDateBox';
 import { IngredientNamePicker } from '../IngredientNamePicker';
 import { ItemNameBox } from '../UnitPillSelector';
 import { QtyUnitStrip } from '../QtyUnitStrip';
-import { CatalogIngredient } from '../../types';
+import { CatalogIngredient, ItemCatalog } from '../../types';
 import { coerceUnit, resolveCatalogItem, unitsForCatalogItem } from '../../utils/ingredientUnits';
 import { palette } from '../../theme';
 
@@ -17,6 +17,7 @@ export type InventoryDraftRow = {
   expiry: string;
   ingredientId?: string;
   foodGroup?: string;
+  catalog?: ItemCatalog;
 };
 
 export const STACKED_ROW_BREAKPOINT = 560;
@@ -160,10 +161,10 @@ export function InventoryItemRowEditor({
   onAddRow = () => {},
   onRemoveRow = () => {},
 }: InventoryItemRowEditorProps) {
-  const catalogItem = useMemo(
-    () => resolveCatalogItem(catalog ?? [], row.ingredientId, row.name),
-    [catalog, row.ingredientId, row.name],
-  );
+  const catalogItem = useMemo(() => {
+    if (row.catalog) return row.catalog as CatalogIngredient;
+    return resolveCatalogItem(catalog ?? [], row.ingredientId, row.name);
+  }, [row.catalog, catalog, row.ingredientId, row.name]);
   const allowedUnits = useMemo(() => unitsForCatalogItem(catalogItem), [catalogItem]);
 
   useEffect(() => {

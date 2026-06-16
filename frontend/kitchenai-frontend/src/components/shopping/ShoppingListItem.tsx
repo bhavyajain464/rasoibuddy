@@ -3,7 +3,6 @@ import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-nat
 import { Checkbox, IconButton, Menu, Surface, Text } from 'react-native-paper';
 import { UserShoppingItem } from '../../types';
 import { formatShoppingQty } from '../../utils/shoppingFormat';
-import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import {
   InventoryItemActionsSheet,
   type InventoryMenuAction,
@@ -34,12 +33,11 @@ export function ShoppingListItem({
   style,
   variant = 'list',
 }: Props) {
-  const { catalog } = useIngredientCatalog();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const qtyLabel = useMemo(() => formatShoppingQty(item, catalog), [item, catalog]);
+  const qtyLabel = useMemo(() => formatShoppingQty(item), [item]);
   const isGrid = variant === 'grid';
 
   const openMenu = () => {
@@ -127,7 +125,7 @@ export function ShoppingListItem({
       )}
 
       <View style={styles.gridColumn}>
-        <IngredientThumb name={item.name} size={44} resizeMode="contain" />
+        <IngredientThumb name={item.name} ingredientId={item.ingredient_id} size={44} resizeMode="contain" />
         <Text variant="labelMedium" numberOfLines={3} ellipsizeMode="tail" style={styles.gridName}>
           {item.name}
         </Text>
@@ -154,7 +152,7 @@ export function ShoppingListItem({
           <Checkbox status={selected ? 'checked' : 'unchecked'} onPress={onToggleSelect} />
         ) : null}
 
-        <IngredientThumb name={item.name} size={40} />
+        <IngredientThumb name={item.name} ingredientId={item.ingredient_id} size={40} />
 
         <View style={styles.itemInfo}>
           <View style={styles.titleRow}>

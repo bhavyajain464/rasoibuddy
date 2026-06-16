@@ -26,7 +26,6 @@ import { FilterPill, FilterPillRow } from '../components/FilterPill';
 import { InventoryListItem } from '../components/inventory/InventoryListItem';
 import { EditInventoryItemSheet } from '../components/inventory/EditInventoryItemSheet';
 import type { InventoryMenuAction } from '../components/inventory/InventoryItemActionsSheet';
-import { daysUntilExpiryLocal } from '../utils/expiryDate';
 import { AddInventoryModal } from '../components/modals/AddInventoryModal';
 import { ScanBillBottomSheet } from '../components/modals/ScanBillBottomSheet';
 import * as api from '../services/api';
@@ -107,15 +106,17 @@ function yesterdayExpiryIso(): string {
 
 function toExpiredPreview(item: InventoryItem | ExpiringItem): ExpiringItem {
   const estimated_expiry = yesterdayExpiryIso();
-  const days_until_expiry = daysUntilExpiryLocal(estimated_expiry) ?? -1;
   return {
     item_id: item.item_id,
+    ingredient_id: item.ingredient_id,
     canonical_name: item.canonical_name,
     qty: item.qty,
     unit: item.unit,
     food_group: item.food_group,
+    display_qty: item.display_qty,
+    catalog: item.catalog,
     estimated_expiry,
-    days_until_expiry,
+    days_until_expiry: -1,
     updated_at: 'updated_at' in item ? item.updated_at : undefined,
   };
 }

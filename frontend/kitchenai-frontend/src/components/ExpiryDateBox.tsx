@@ -127,7 +127,6 @@ export function ExpiryDateBox({
       </View>
 
       {Platform.OS === 'web' ? (
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <input
           ref={webInputRef}
           type="date"
