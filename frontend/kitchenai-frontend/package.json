@@ -15,6 +15,7 @@
     "build:android:production": "npx eas-cli build --platform android --profile production",
     "doctor": "npx expo-doctor",
     "typecheck": "tsc --noEmit",
+    "verify:android:release": "EXPO_NO_GIT_STATUS=1 npx expo prebuild --clean --platform android --no-install && node scripts/verify-android-manifest.mjs && cd android && ./gradlew :app:processReleaseMainManifest --no-daemon -PreactNativeArchitectures=arm64-v8a",
     "optimize:dishes": "node scripts/optimize-dish-images.mjs",
     "sync:staples": "node scripts/sync-staples-from-catalog.mjs",
     "generate:staple-images": "node scripts/generate-staple-images.mjs",

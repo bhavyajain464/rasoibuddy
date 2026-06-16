@@ -26,15 +26,6 @@ const DEPRECATED_THEME_ITEMS = [
   'android:windowTranslucentNavigation',
 ];
 
-function ensureToolsNamespace(manifest) {
-  if (!manifest.$) {
-    manifest.$ = {};
-  }
-  if (!manifest.$['xmlns:tools']) {
-    manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
-  }
-}
-
 function withEdgeToEdgeReleaseFix(config) {
   config = withProjectBuildGradle(config, (cfg) => {
     if (cfg.modResults.language !== 'groovy') {
@@ -81,8 +72,7 @@ gradle.projectsLoaded {
   });
 
   config = withAndroidManifest(config, (cfg) => {
-    const manifest = cfg.modResults;
-    ensureToolsNamespace(manifest);
+    const manifest = AndroidConfig.Manifest.ensureToolsAvailable(cfg.modResults);
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
     const activities = app.activity ?? [];
     const already = activities.some(
@@ -99,6 +89,7 @@ gradle.projectsLoaded {
         },
       ];
     }
+    cfg.modResults = manifest;
     return cfg;
   });
 
