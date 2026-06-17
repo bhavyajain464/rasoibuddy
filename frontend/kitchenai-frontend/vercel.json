@@ -21,6 +21,9 @@
   ],
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!robots\\.txt|llms\\.txt|sitemap\\.xml|privacy\\.html|favicon\\.ico|_expo/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
