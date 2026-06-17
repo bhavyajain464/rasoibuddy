@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { BRAND_DISPLAY_NAME } from '../../constants/brand';
 import {
+  PLAY_HERO_SCREENSHOT_SRC,
   PLAY_SHOWCASE_COUNT,
   PLAY_SHOWCASE_SLIDES,
   playScreenshotSrc,
@@ -21,10 +22,11 @@ export function HeroHomePhone() {
       <div className="phone">
         <div className="screen phone-screen-shot">
           <img
-            src={playScreenshotSrc(0)}
+            src={PLAY_HERO_SCREENSHOT_SRC}
             alt={`${BRAND_DISPLAY_NAME} home screen`}
             className="phone-shot-img"
-            decoding="async"
+            decoding="sync"
+            fetchPriority="high"
           />
         </div>
       </div>

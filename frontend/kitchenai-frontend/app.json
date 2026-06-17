@@ -51,7 +51,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "description": "Rasoi Buddy is your digital kitchen hub. Scan grocery bills, track pantry expiry, get smart meal ideas, and WhatsApp your cook — less waste, smarter meals.",
+      "themeColor": "#2E7D32"
     },
     "plugins": [
       [

@@ -1,0 +1,18 @@
+# Rasoi Buddy
+
+> Rasoi Buddy is a digital kitchen hub for Indian households. Scan grocery bills, track pantry expiry, get smart meal ideas, and coordinate with your cook via WhatsApp.
+
+Rasoi Buddy helps families waste less food, plan smarter meals, and run calmer kitchens. The mobile app is available on Google Play (com.kitchenai.app).
+
+## Product
+
+- [Home](https://www.rasoibuddy.com/): Landing page with features, pricing, and download links
+- [Google Play](https://play.google.com/store/apps/details?id=com.kitchenai.app): Download the Android app
+
+## Legal
+
+- [Privacy Policy](https://www.rasoibuddy.com/privacy): How we collect, use, and protect your data
+
+## Optional
+
+- [Sitemap](https://www.rasoibuddy.com/sitemap.xml): Machine-readable list of public pages

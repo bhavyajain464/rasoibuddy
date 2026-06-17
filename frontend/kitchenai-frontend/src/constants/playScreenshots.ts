@@ -21,7 +21,10 @@ export const PLAY_SCREENSHOT_FILES = [
 
 export const PLAY_SCREENSHOT_COUNT = PLAY_SCREENSHOT_FILES.length;
 
-const PLAY_SCREENSHOT_BASE = '/play-screenshots';
+export const PLAY_SCREENSHOT_BASE = '/play-screenshots';
+
+/** Hero phone mockup on the landing page — also preloaded in public/index.html */
+export const PLAY_HERO_SCREENSHOT_SRC = `${PLAY_SCREENSHOT_BASE}/${PLAY_SCREENSHOT_FILES[0]}`;
 
 export function playScreenshotSrc(index: number): string {
   const safe = ((index % PLAY_SCREENSHOT_COUNT) + PLAY_SCREENSHOT_COUNT) % PLAY_SCREENSHOT_COUNT;

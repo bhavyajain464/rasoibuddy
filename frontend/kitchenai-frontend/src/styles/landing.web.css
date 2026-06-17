@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
+/* Fonts load from public/index.html (preconnect + preload) — do not @import here. */
 
 .landing-screen-root {
   position: relative;
