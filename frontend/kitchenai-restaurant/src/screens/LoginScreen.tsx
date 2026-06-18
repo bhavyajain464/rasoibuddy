@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Surface, Text } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
+import { openPrivacyPolicy } from '../utils/privacy';
 import { palette } from '../theme';
 
 function GoogleButtonWeb() {
@@ -53,6 +54,9 @@ export default function LoginScreen() {
             Sign in with Google
           </Button>
         )}
+        <Pressable onPress={openPrivacyPolicy} accessibilityRole="link" style={styles.privacyLink}>
+          <Text style={styles.privacyText}>Privacy policy</Text>
+        </Pressable>
       </Surface>
     </ScrollView>
   );
@@ -93,6 +97,15 @@ const styles = StyleSheet.create({
   },
   nativeBtn: {
     marginTop: 8,
+  },
+  privacyLink: {
+    marginTop: 20,
+    alignSelf: 'center',
+  },
+  privacyText: {
+    color: palette.primary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
   loading: {
     flex: 1,

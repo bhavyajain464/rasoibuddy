@@ -10,6 +10,7 @@ import ZomatoConnectModal from '../components/ZomatoConnectModal';
 import { OutletSetupForm } from '../components/outlet/OutletSetupForm';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { restaurantFetch } from '../services/api';
+import { openPrivacyPolicy } from '../utils/privacy';
 import {
   integrationWorkers,
   OutletIntegrationsStatus,
@@ -215,8 +216,8 @@ export default function ProfileScreen() {
       setStaffEmail('');
       setTeamMsg(
         res.pending
-          ? `Invite sent to ${addr} ‚Äî they can sign in with that Google account to access this outlet`
-          : `${addr} added ‚Äî they can switch to this outlet in Profile`,
+          ? `Invite sent to ${addr} ù they can sign in with that Google account to access this outlet`
+          : `${addr} added ù they can switch to this outlet in Profile`,
       );
       await loadTeamMembers();
     } catch (e) {
@@ -252,7 +253,7 @@ export default function ProfileScreen() {
     setTeamMsg('');
     try {
       await restaurantFetch(`/restaurant/${outletId}/members/${memberId}`, { method: 'DELETE' });
-      setTeamMsg(`${member.name?.trim() || member.email || 'Staff member'} removed ‚Äî they can no longer access this outlet until re-invited`);
+      setTeamMsg(`${member.name?.trim() || member.email || 'Staff member'} removed ù they can no longer access this outlet until re-invited`);
       await loadTeamMembers();
     } catch (e) {
       setTeamMsg(e instanceof Error ? e.message : 'Remove failed');
@@ -306,18 +307,18 @@ export default function ProfileScreen() {
                 {user?.name ?? 'Partner'}
               </Text>
               <Text variant="bodySmall" style={styles.userEmail} numberOfLines={1}>
-                {user?.email ?? '‚Äî'}
+                {user?.email ?? 'ù'}
               </Text>
               <Text variant="bodySmall" style={styles.userKitchen} numberOfLines={1}>
                 {outletName}
-                {outlet?.role ? ` ¬∑ ${outlet.role}` : ''}
+                {outlet?.role ? ` ù ${outlet.role}` : ''}
               </Text>
             </View>
           </View>
           <View style={styles.statRow}>
             <StatPill label="Plan" value={plan} />
             <StatPill label="Imported" value={totalImported} />
-            <StatPill label="Workers" value={runningCount > 0 ? `${runningCount} live` : workers.length ? 'Idle' : '‚Äî'} />
+            <StatPill label="Workers" value={runningCount > 0 ? `${runningCount} live` : workers.length ? 'Idle' : 'ù'} />
           </View>
         </View>
 
@@ -342,7 +343,7 @@ export default function ProfileScreen() {
                       <Text style={styles.outletTitle}>{o.name?.trim() || 'Outlet'}</Text>
                       <Text style={styles.meta}>
                         {o.role}
-                        {active ? ' ¬∑ active' : ''}
+                        {active ? ' ù active' : ''}
                       </Text>
                     </View>
                     {active ? (
@@ -364,7 +365,7 @@ export default function ProfileScreen() {
             </Text>
             <OutletSetupForm
               onSuccess={(name) => {
-                setOutletMsg(name ? `Switched to ${name}` : 'Outlet added ‚Äî you are now working in it');
+                setOutletMsg(name ? `Switched to ${name}` : 'Outlet added ù you are now working in it');
                 setTeamMsg('');
               }}
             />
@@ -372,9 +373,9 @@ export default function ProfileScreen() {
           </SettingsSection>
 
           {canManageTeam ? (
-            <SettingsSection title="Team ¬∑ this outlet">
+            <SettingsSection title="Team ù this outlet">
               <Text style={styles.hint}>
-                Share the outlet ID or invite code so staff can join. Or add their email ‚Äî they sign in with Google
+                Share the outlet ID or invite code so staff can join. Or add their email ù they sign in with Google
                 using that address.
               </Text>
               <View style={styles.row}>
@@ -400,8 +401,8 @@ export default function ProfileScreen() {
                         <Text style={styles.outletTitle}>{m.name?.trim() || m.email || 'Member'}</Text>
                         <Text style={styles.meta}>
                           {m.role}
-                          {m.pending ? ' ¬∑ invite pending' : ''}
-                          {m.email && m.name ? ` ¬∑ ${m.email}` : ''}
+                          {m.pending ? ' ù invite pending' : ''}
+                          {m.email && m.name ? ` ù ${m.email}` : ''}
                         </Text>
                       </View>
                       {canRemoveMember(m) ? (
@@ -448,11 +449,11 @@ export default function ProfileScreen() {
           <SettingsSection title="Account">
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Name</Text>
-              <Text style={styles.rowValue}>{user?.name ?? '‚Äî'}</Text>
+              <Text style={styles.rowValue}>{user?.name ?? 'ù'}</Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Email</Text>
-              <Text style={styles.rowValue}>{user?.email ?? '‚Äî'}</Text>
+              <Text style={styles.rowValue}>{user?.email ?? 'ù'}</Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Outlet</Text>
@@ -460,13 +461,16 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.row}>
               <Text style={styles.rowLabel}>Role</Text>
-              <Text style={styles.rowValue}>{outlet?.role ?? '‚Äî'}</Text>
+              <Text style={styles.rowValue}>{outlet?.role ?? 'ù'}</Text>
             </View>
+            <Pressable onPress={openPrivacyPolicy} accessibilityRole="link" style={styles.privacyRow}>
+              <Text style={styles.privacyLink}>Privacy policy</Text>
+            </Pressable>
           </SettingsSection>
 
           <SettingsSection title="Partners">
             <Text style={styles.hint}>
-              Each partner (Zomato, Swiggy, ‚Ä¶) has one background worker per outlet. Start or stop workers to pull
+              Each partner (Zomato, Swiggy, ù) has one background worker per outlet. Start or stop workers to pull
               orders into this outlet&apos;s menu and stock.
             </Text>
             {integrations?.session_saved ? <MetaLine>Partner session saved</MetaLine> : null}
@@ -491,7 +495,7 @@ export default function ProfileScreen() {
                         <Text style={styles.outletTitle}>{workerLabel(worker)}</Text>
                         <Text style={running ? styles.ok : styles.meta}>
                           {running ? 'Running' : worker.status}
-                          {worker.orders_imported_count ? ` ¬∑ ${worker.orders_imported_count} imported` : ''}
+                          {worker.orders_imported_count ? ` ù ${worker.orders_imported_count} imported` : ''}
                         </Text>
                         {worker.last_sync_message ? (
                           <Text style={worker.last_sync_ok ? styles.ok : styles.err} numberOfLines={2}>
@@ -536,7 +540,7 @@ export default function ProfileScreen() {
                 })}
               </>
             ) : (
-              <MetaLine>No partner workers yet ‚Äî add one below.</MetaLine>
+              <MetaLine>No partner workers yet ù add one below.</MetaLine>
             )}
 
             <Text style={styles.sectionLabel}>Add worker</Text>
@@ -716,4 +720,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surfaceElevated,
   },
   signOut: { marginTop: 8, borderColor: palette.error },
+  privacyRow: { marginTop: 12 },
+  privacyLink: { color: palette.primary, fontSize: 14, textDecorationLine: 'underline' },
 });

@@ -15,6 +15,11 @@ config.server = {
   enhanceMiddleware: (middleware) => (req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    const path = req.url?.split('?')[0] ?? '';
+    if (path === '/privacy' || path === '/privacy/') {
+      const query = req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+      req.url = `/privacy.html${query}`;
+    }
     return middleware(req, res, next);
   },
 };
