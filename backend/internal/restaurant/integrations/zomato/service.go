@@ -119,6 +119,7 @@ type PartnerWorkerStatus struct {
 	LastSyncMessage     string     `json:"last_sync_message,omitempty"`
 	LastSyncOK          bool       `json:"last_sync_ok"`
 	OrdersImportedCount int        `json:"orders_imported_count"`
+	OrdersFetchedLastHour int      `json:"orders_fetched_last_hour"`
 	PollIntervalMinutes int        `json:"poll_interval_minutes"`
 	NextPollAt          *time.Time `json:"next_poll_at,omitempty"`
 	SyncMode            string     `json:"sync_mode,omitempty"`
@@ -342,6 +343,18 @@ func (s *Service) rowToWorkerStatus(outletID string, row outletSyncRow) PartnerW
 	return st
 }
 
+func (s *Service) countOrdersFetchedLastHour(ctx context.Context, kitchenID string) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)::int
+		FROM zomato_external_orders z
+		INNER JOIN restaurant_orders ro ON ro.order_id = z.order_id
+		WHERE z.kitchen_id = $1
+		  AND ro.created_at >= (CURRENT_TIMESTAMP - INTERVAL '1 hour')
+	`, kitchenID).Scan(&n)
+	return n, err
+}
+
 func (s *Service) GetKitchenStatus(ctx context.Context, kitchenID string) (*KitchenZomatoStatus, error) {
 	sessionSaved, err := s.hasKitchenAuth(ctx, kitchenID)
 	if err != nil {
@@ -351,6 +364,10 @@ func (s *Service) GetKitchenStatus(ctx context.Context, kitchenID string) (*Kitc
 	if err != nil {
 		return nil, err
 	}
+	fetchedLastHour := 0
+	if n, err := s.countOrdersFetchedLastHour(ctx, kitchenID); err == nil {
+		fetchedLastHour = n
+	}
 	st := &OutletIntegrationsStatus{
 		SessionSaved:        sessionSaved,
 		PollIntervalMinutes: 5,
@@ -359,6 +376,7 @@ func (s *Service) GetKitchenStatus(ctx context.Context, kitchenID string) (*Kitc
 	}
 	for _, row := range rows {
 		w := s.rowToWorkerStatus(kitchenID, row)
+		w.OrdersFetchedLastHour = fetchedLastHour
 		st.Workers = append(st.Workers, w)
 	}
 	st.Outlets = st.Workers

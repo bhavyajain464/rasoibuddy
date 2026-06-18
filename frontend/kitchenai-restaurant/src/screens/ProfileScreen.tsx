@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, IconButton, Surface, Text, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { closeProfile } from '../navigation/rootNavigation';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurant } from '../context/RestaurantContext';
@@ -96,7 +97,7 @@ export default function ProfileScreen() {
     }
   }, [outletId, canManageTeam]);
 
-  useEffect(() => {
+  const loadProfile = useCallback(() => {
     if (!outletId) return;
     restaurantFetch<{ name?: string; outlet_id?: string; invite_code?: string }>(`/restaurant/${outletId}`)
       .then((k) => {
@@ -114,6 +115,12 @@ export default function ProfileScreen() {
     loadZomatoStatus();
     void loadTeamMembers();
   }, [outletId, loadZomatoStatus, loadTeamMembers]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  useRefreshOnFocus(loadProfile, { enabled: Boolean(outletId) });
 
   useEffect(() => {
     const running = integrationWorkers(integrations).some((o) => o.status === 'running');

@@ -32,25 +32,23 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 		return nil, fmt.Errorf("qty must be positive")
 	}
 
-	var catalogName, catalogUnit, catalogFoodGroup string
-	err := db.QueryRowContext(ctx, `
-		SELECT name, default_unit, COALESCE(NULLIF(TRIM(food_group), ''), 'other')
-		FROM restaurant_ingredients WHERE name_normalized = $1
-	`, normalizeIngredientName(name)).Scan(&catalogName, &catalogUnit, &catalogFoodGroup)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("ingredient not in catalog")
-	}
+	catalog, err := resolveGlobalCatalogIngredient(ctx, db, name)
 	if err != nil {
 		return nil, err
 	}
-	name = catalogName
+	name = catalog.Name
+	catalogFoodGroup := catalog.FoodGroup
 
 	unit := units.Normalize(strings.TrimSpace(in.Unit))
 	if unit == "" {
-		unit = units.Normalize(catalogUnit)
+		unit = units.Normalize(catalog.DefaultUnit)
 	}
 	if unit == "" {
 		unit = "kg"
+	}
+	qty, unit, err := units.NormalizeStoredQty(in.Qty, unit)
+	if err != nil {
+		return nil, err
 	}
 	foodGroup := normalizeInventoryFoodGroup(catalogFoodGroup)
 
@@ -69,13 +67,13 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 			INSERT INTO inventory (kitchen_id, user_id, canonical_name, qty, unit, food_group, is_manual)
 			VALUES ($1, $2, $3, $4, $5, $6, TRUE)
 			RETURNING item_id::text
-		`, kitchenID, userID, name, in.Qty, unit, foodGroup).Scan(&itemID); err != nil {
+		`, kitchenID, userID, name, qty, unit, foodGroup).Scan(&itemID); err != nil {
 			return nil, err
 		}
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO inventory_movements (kitchen_id, item_id, actor_user_id, delta_qty, reason)
 			VALUES ($1, $2, $3, $4, 'receive')
-		`, kitchenID, itemID, userID, in.Qty); err != nil {
+		`, kitchenID, itemID, userID, qty); err != nil {
 			return nil, err
 		}
 	} else {
@@ -83,7 +81,7 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 			KitchenID:   kitchenID,
 			ItemID:      itemID,
 			ActorUserID: userID,
-			DeltaQty:    in.Qty,
+			DeltaQty:    qty,
 			Reason:      "receive",
 		}); err != nil {
 			return nil, err
@@ -95,6 +93,10 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 				  AND COALESCE(NULLIF(TRIM(food_group), ''), 'other') = 'other'
 			`, itemID, kitchenID, foodGroup)
 		}
+	}
+
+	if compactErr := compactInventoryRowQty(ctx, db, kitchenID, itemID); compactErr != nil {
+		return nil, compactErr
 	}
 
 	row := db.QueryRowContext(ctx, fmt.Sprintf(`
@@ -109,4 +111,23 @@ func AddInventory(ctx context.Context, db *sql.DB, inv contracts.InventoryServic
 	}
 	out.FoodGroup = normalizeInventoryFoodGroup(out.FoodGroup)
 	return &out, nil
+}
+
+func compactInventoryRowQty(ctx context.Context, db *sql.DB, kitchenID, itemID string) error {
+	var qty float64
+	var unit string
+	if err := db.QueryRowContext(ctx, `
+		SELECT qty, unit FROM inventory WHERE item_id = $1 AND kitchen_id = $2
+	`, itemID, kitchenID).Scan(&qty, &unit); err != nil {
+		return err
+	}
+	nextQty, nextUnit := units.CompactQtyUnit(qty, unit)
+	if nextQty == qty && nextUnit == units.Normalize(unit) {
+		return nil
+	}
+	_, err := db.ExecContext(ctx, `
+		UPDATE inventory SET qty = $3, unit = $4, updated_at = CURRENT_TIMESTAMP
+		WHERE item_id = $1 AND kitchen_id = $2
+	`, itemID, kitchenID, nextQty, nextUnit)
+	return err
 }

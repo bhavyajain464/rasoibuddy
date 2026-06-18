@@ -12,7 +12,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { IconButton, Text } from 'react-native-paper';
+import { IconButton, Portal, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette } from '../theme';
 
@@ -25,8 +25,11 @@ type BottomSheetProps = {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
+  dismissDisabled?: boolean;
   maxHeightRatio?: number;
   sheetStyle?: ViewStyle;
+  scrollable?: boolean;
 };
 
 export function BottomSheet({
@@ -35,15 +38,21 @@ export function BottomSheet({
   title,
   subtitle,
   children,
+  footer,
+  dismissDisabled = false,
   maxHeightRatio = 0.88,
   sheetStyle,
+  scrollable = true,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const dragAnim = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
+  const dismissDisabledRef = useRef(dismissDisabled);
   const onDismissRef = useRef(onDismiss);
+
+  dismissDisabledRef.current = dismissDisabled;
   onDismissRef.current = onDismiss;
 
   const runCloseAnimation = () => {
@@ -58,12 +67,14 @@ export function BottomSheet({
   };
 
   const requestDismiss = () => {
+    if (dismissDisabledRef.current) return;
     onDismissRef.current();
   };
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) =>
+        !dismissDisabledRef.current && g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderMove: (_, g) => {
         if (g.dy > 0) dragAnim.setValue(g.dy);
       },
@@ -109,69 +120,104 @@ export function BottomSheet({
 
   const sheetTranslateY = Animated.add(slideAnim, dragAnim);
 
+  const bodyContent = scrollable ? (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      bounces={false}
+      nestedScrollEnabled
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={styles.staticBody}>{children}</View>
+  );
+
   return (
-    <Modal transparent visible={mounted} animationType="none" onRequestClose={requestDismiss} statusBarTranslucent>
-      <View style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={requestDismiss} accessibilityLabel="Close sheet">
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
-        </Pressable>
-
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              maxHeight: SCREEN_HEIGHT * maxHeightRatio,
-              paddingBottom: Math.max(insets.bottom, 12),
-              transform: [{ translateY: sheetTranslateY }],
-            },
-            sheetStyle,
-          ]}
-        >
-          <View {...panResponder.panHandlers} style={styles.dragZone}>
-            <View style={styles.handle} />
-          </View>
-
-          <View style={styles.header}>
-            <View style={styles.headerText}>
-              <Text variant="titleLarge" style={styles.title}>
-                {title}
-              </Text>
-              {subtitle ? (
-                <Text variant="bodySmall" style={styles.subtitle}>
-                  {subtitle}
-                </Text>
-              ) : null}
-            </View>
-            <IconButton
-              icon="close"
-              size={22}
-              iconColor={palette.textMuted}
-              onPress={requestDismiss}
-              style={styles.closeBtn}
-            />
-          </View>
-
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.body}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+    <Modal
+      transparent
+      visible={mounted}
+      animationType="none"
+      onRequestClose={requestDismiss}
+      statusBarTranslucent
+    >
+      <Portal.Host>
+        <View style={styles.root}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={requestDismiss}
+            disabled={dismissDisabled}
+            accessibilityLabel="Close sheet"
           >
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              nestedScrollEnabled
+            <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
+          </Pressable>
+
+          <Animated.View
+            style={[
+              styles.sheet,
+              {
+                maxHeight: SCREEN_HEIGHT * maxHeightRatio,
+                paddingBottom: Math.max(insets.bottom, 12),
+                transform: [{ translateY: sheetTranslateY }],
+              },
+              sheetStyle,
+            ]}
+          >
+            <View {...panResponder.panHandlers} style={styles.dragZone}>
+              <View style={styles.handle} />
+            </View>
+
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text variant="titleLarge" style={styles.title}>
+                  {title}
+                </Text>
+                {subtitle ? (
+                  <Text variant="bodySmall" style={styles.subtitle}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+              </View>
+              <IconButton
+                icon="close"
+                size={22}
+                iconColor={palette.textMuted}
+                onPress={requestDismiss}
+                disabled={dismissDisabled}
+                style={styles.closeBtn}
+              />
+            </View>
+
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={styles.body}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
             >
-              {children}
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </Animated.View>
-      </View>
+              {bodyContent}
+              {footer ? <View style={styles.footer}>{footer}</View> : null}
+            </KeyboardAvoidingView>
+          </Animated.View>
+        </View>
+      </Portal.Host>
     </Modal>
   );
 }
+
+export const bottomSheetPrimaryBtn = {
+  button: {
+    borderRadius: 12,
+    width: '100%' as const,
+  },
+  content: {
+    height: 52,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+  },
+};
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
@@ -195,4 +241,11 @@ const styles = StyleSheet.create({
   body: { flexGrow: 0, flexShrink: 1 },
   scroll: { flexGrow: 0 },
   scrollContent: { paddingBottom: 8 },
+  staticBody: { paddingBottom: 4 },
+  footer: {
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.borderLight,
+    backgroundColor: palette.surface,
+  },
 });

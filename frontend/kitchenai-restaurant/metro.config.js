@@ -15,8 +15,11 @@ const appModules = path.resolve(projectRoot, 'node_modules');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(projectRoot);
 
-// Watch shared workspace packages only — not sibling apps (avoids duplicate React).
-config.watchFolders = [path.resolve(workspaceRoot, 'packages/api-core')];
+// Watch shared workspace packages + consumer staple icons (restaurant bundles them by path).
+config.watchFolders = [
+  path.resolve(workspaceRoot, 'packages/api-core'),
+  path.resolve(workspaceRoot, 'kitchenai-frontend/assets/staples'),
+];
 
 config.resolver.disableHierarchicalLookup = true;
 config.resolver.nodeModulesPaths = [appModules, workspaceModules];

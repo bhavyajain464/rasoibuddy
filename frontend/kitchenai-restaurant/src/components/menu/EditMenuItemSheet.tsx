@@ -32,9 +32,21 @@ type Props = {
   }) => void;
 };
 
+function catalogMatch(catalog: CatalogIngredient[], ing: RecipeIngredient): CatalogIngredient | undefined {
+  const catalogId = ing.catalog_ingredient_id?.trim();
+  if (catalogId) {
+    const byId = catalog.find((c) => c.ingredient_id === catalogId);
+    if (byId) return byId;
+  }
+  const norm = ing.ingredient_name.trim().toLowerCase();
+  if (!norm) return undefined;
+  return catalog.find((c) => c.name.trim().toLowerCase() === norm);
+}
+
 function newDraft(partial?: Partial<IngredientDraft>): IngredientDraft {
   return {
     key: partial?.key ?? String(Date.now()) + Math.random(),
+    ingredient_id: partial?.ingredient_id,
     inventory_item_id: partial?.inventory_item_id,
     ingredient_name: partial?.ingredient_name ?? '',
     qty: partial?.qty ?? '1',
@@ -63,20 +75,22 @@ export function EditMenuItemSheet({
     setCategory(item?.category ?? 'general');
     if (ingredients.length > 0) {
       setDrafts(
-        ingredients.map((ing, i) =>
-          newDraft({
-            key: ing.ingredient_id ?? `ing-${i}`,
+        ingredients.map((ing, i) => {
+          const hit = catalogMatch(catalog, ing);
+          return newDraft({
+            key: ing.recipe_ingredient_id ?? `ing-${i}`,
+            ingredient_id: hit?.ingredient_id ?? ing.catalog_ingredient_id,
             inventory_item_id: ing.inventory_item_id,
-            ingredient_name: ing.ingredient_name,
+            ingredient_name: hit?.name ?? ing.ingredient_name,
             qty: String(ing.qty),
             unit: ing.unit,
-          }),
-        ),
+          });
+        }),
       );
     } else {
       setDrafts([newDraft()]);
     }
-  }, [visible, item, ingredients]);
+  }, [visible, item, ingredients, catalog]);
 
   const updateDraft = (key: string, patch: Partial<IngredientDraft>) => {
     setDrafts((prev) => prev.map((d) => (d.key === key ? { ...d, ...patch } : d)));
@@ -87,7 +101,11 @@ export function EditMenuItemSheet({
   };
 
   const handleSave = () => {
-    const valid = drafts.filter((d) => d.ingredient_id && d.ingredient_name.trim());
+    const valid = drafts.filter((d) => {
+      const name = d.ingredient_name.trim();
+      const qty = parseFloat(d.qty);
+      return name.length > 0 && Number.isFinite(qty) && qty > 0;
+    });
     onSave({
       name: name.trim(),
       category: category.trim() || 'general',

@@ -10,6 +10,7 @@ import (
 
 // FormatPurchaseQty renders a human-readable qty for lists (e.g. "2" lemons, "1 kg" rice).
 func FormatPurchaseQty(qty float64, unit string, item *CatalogIngredient) string {
+	qty, unit = units.CompactQtyUnit(qty, unit)
 	u := units.Normalize(unit)
 	if item != nil && u == "" {
 		u = units.Normalize(item.DefaultUnit)

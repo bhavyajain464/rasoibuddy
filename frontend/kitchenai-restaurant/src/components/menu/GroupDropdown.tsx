@@ -35,7 +35,7 @@ export function GroupDropdown({ value, options, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [customMode, setCustomMode] = useState(false);
   const [customValue, setCustomValue] = useState('');
-  const blurTimer = useRef<ReturnType<typeof setTimeout>>();
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const normalized = normalizeCategory(value);
   const choices = useMemo(() => {

@@ -43,7 +43,9 @@ type AddShoppingItemReq struct {
 
 func normalizeShoppingReq(req *AddShoppingItemReq) error {
 	req.Name, req.Qty, req.Unit = ingredients.NormalizeShoppingLine(req.Name, req.Qty, req.Unit)
-	return units.ValidateQty(req.Qty)
+	var err error
+	req.Qty, req.Unit, err = units.NormalizeStoredQty(req.Qty, req.Unit)
+	return err
 }
 
 func GetShoppingItems(db *sql.DB) http.HandlerFunc {

@@ -3,53 +3,66 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 
+	"kitchenai-backend/internal/services/catalogdb"
 	"kitchenai-backend/pkg/units"
 )
 
 type CatalogIngredient struct {
-	IngredientID string `json:"ingredient_id"`
-	Name         string `json:"name"`
-	DefaultUnit  string `json:"default_unit"`
-	FoodGroup    string `json:"food_group,omitempty"`
+	IngredientID string   `json:"ingredient_id"`
+	Name         string   `json:"name"`
+	DefaultUnit  string   `json:"default_unit"`
+	Units        []string `json:"units,omitempty"`
+	FoodGroup    string   `json:"food_group,omitempty"`
 }
 
 func normalizeIngredientName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
-// ListCatalogIngredients returns all approved global restaurant ingredients.
-func ListCatalogIngredients(ctx context.Context, db *sql.DB) ([]CatalogIngredient, error) {
-	rows, err := db.QueryContext(ctx, `
-		SELECT ingredient_id::text, name, default_unit, food_group
-		FROM restaurant_ingredients
-		ORDER BY LOWER(name)
-	`)
-	if err != nil {
-		if catalogTableMissing(err) {
-			return []CatalogIngredient{}, nil
-		}
-		return nil, err
+func rowToCatalogIngredient(r catalogdb.IngredientRow) CatalogIngredient {
+	return CatalogIngredient{
+		IngredientID: r.IngredientID,
+		Name:         r.Name,
+		DefaultUnit:  units.Normalize(r.DefaultUnit),
+		Units:        r.Units,
+		FoodGroup:    r.FoodGroup,
 	}
-	defer rows.Close()
-
-	out := make([]CatalogIngredient, 0)
-	for rows.Next() {
-		var row CatalogIngredient
-		if err := rows.Scan(&row.IngredientID, &row.Name, &row.DefaultUnit, &row.FoodGroup); err != nil {
-			return nil, err
-		}
-		row.DefaultUnit = units.Normalize(row.DefaultUnit)
-		out = append(out, row)
-	}
-	return out, rows.Err()
 }
 
-func catalogTableMissing(err error) bool {
-	if err == nil {
-		return false
+// ListCatalogIngredients returns verified ingredients from the shared home-kitchen catalog (Postgres).
+func ListCatalogIngredients(ctx context.Context, db *sql.DB) ([]CatalogIngredient, error) {
+	return SearchCatalogIngredients(ctx, db, "")
+}
+
+// SearchCatalogIngredients searches the shared ingredients catalog (pg_trgm on aliases).
+func SearchCatalogIngredients(ctx context.Context, db *sql.DB, query string) ([]CatalogIngredient, error) {
+	rows, err := catalogdb.SearchIngredients(ctx, db, query)
+	if err != nil {
+		return nil, err
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "does not exist") && strings.Contains(msg, "restaurant_ingredients")
+	out := make([]CatalogIngredient, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, rowToCatalogIngredient(r))
+	}
+	return out, nil
+}
+
+func resolveGlobalCatalogIngredient(ctx context.Context, db *sql.DB, name string) (CatalogIngredient, error) {
+	hit, ok, err := catalogdb.LookupIngredient(ctx, db, name)
+	if err != nil {
+		return CatalogIngredient{}, err
+	}
+	if !ok {
+		return CatalogIngredient{}, fmt.Errorf("ingredient not in catalog")
+	}
+	return CatalogIngredient{
+		IngredientID: hit.IngredientID,
+		Name:         hit.CanonicalName,
+		DefaultUnit:  units.Normalize(hit.DefaultUnit),
+		Units:        hit.Units,
+		FoodGroup:    hit.FoodGroup,
+	}, nil
 }

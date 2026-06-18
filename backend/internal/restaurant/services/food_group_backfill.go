@@ -6,11 +6,12 @@ import (
 	"fmt"
 )
 
-// BackfillRestaurantFoodGroups infers food_group on the global catalog and syncs restaurant stock rows.
+// BackfillRestaurantFoodGroups infers food_group on the shared ingredients catalog and syncs restaurant stock rows.
 func BackfillRestaurantFoodGroups(ctx context.Context, db *sql.DB) (catalogUpdated, inventoryUpdated int64, err error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT ingredient_id::text, name, food_group
-		FROM restaurant_ingredients
+		SELECT id, canonical_name, COALESCE(metadata->>'food_group', 'other')
+		FROM ingredients
+		WHERE verified = true
 	`)
 	if err != nil {
 		return 0, 0, err
@@ -38,9 +39,10 @@ func BackfillRestaurantFoodGroups(ctx context.Context, db *sql.DB) (catalogUpdat
 			continue
 		}
 		res, err := db.ExecContext(ctx, `
-			UPDATE restaurant_ingredients
-			SET food_group = $2
-			WHERE ingredient_id = $1::uuid
+			UPDATE ingredients
+			SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('food_group', $2::text),
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE id = $1
 		`, r.id, inferred)
 		if err != nil {
 			return catalogUpdated, inventoryUpdated, fmt.Errorf("catalog %s: %w", r.name, err)
@@ -51,12 +53,25 @@ func BackfillRestaurantFoodGroups(ctx context.Context, db *sql.DB) (catalogUpdat
 
 	res, err := db.ExecContext(ctx, `
 		UPDATE inventory i
-		SET food_group = ri.food_group,
+		SET food_group = cat.food_group,
 		    updated_at = CURRENT_TIMESTAMP
-		FROM restaurant_ingredients ri
-		WHERE ri.name_normalized = LOWER(TRIM(i.canonical_name))
-		  AND i.kitchen_id IN (SELECT kitchen_id FROM kitchens WHERE kind = 'restaurant')
-		  AND COALESCE(NULLIF(TRIM(i.food_group), ''), 'other') <> ri.food_group
+		FROM (
+			SELECT i2.item_id,
+				COALESCE(NULLIF(TRIM(ing.metadata->>'food_group'), ''), 'other') AS food_group
+			FROM inventory i2
+			LEFT JOIN LATERAL (
+				SELECT ing.metadata
+				FROM ingredient_aliases ia
+				JOIN ingredients ing ON ing.id = ia.ingredient_id
+				WHERE ing.verified = true
+				  AND ia.normalized = lower(unaccent(trim(i2.canonical_name)))
+				ORDER BY ia.is_ambiguous ASC
+				LIMIT 1
+			) ing ON true
+			WHERE i2.kitchen_id IN (SELECT kitchen_id FROM kitchens WHERE kind = 'restaurant')
+		) cat
+		WHERE i.item_id = cat.item_id
+		  AND COALESCE(NULLIF(TRIM(i.food_group), ''), 'other') <> cat.food_group
 	`)
 	if err != nil {
 		return catalogUpdated, inventoryUpdated, err

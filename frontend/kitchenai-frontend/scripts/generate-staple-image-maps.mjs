@@ -9,70 +9,81 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
+const RESTAURANT_ROOT = path.resolve(ROOT, '../kitchenai-restaurant');
 const CATALOG_PATH = path.resolve(
   ROOT,
   '../../backend/internal/services/ingredients/catalog.json',
 );
 const STAPLES_DIR = path.join(ROOT, 'assets/staples');
-const OUT_IMAGES = path.join(ROOT, 'src/data/catalogStapleImages.ts');
-const OUT_INDEX = path.join(ROOT, 'src/data/ingredientImageIndex.ts');
 
-function norm(s) {
-  return s.trim().toLowerCase();
-}
+const APP_TARGETS = [
+  {
+    name: 'consumer',
+    root: ROOT,
+    staplesDir: STAPLES_DIR,
+    requirePrefix: '../../assets/staples',
+  },
+  {
+    name: 'restaurant',
+    root: RESTAURANT_ROOT,
+    staplesDir: STAPLES_DIR,
+    requirePrefix: '../../../kitchenai-frontend/assets/staples',
+  },
+];
 
-function needsQuotedKey(id) {
-  return /[^a-zA-Z0-9_$]/.test(id);
-}
+function writeStapleMaps({ root, staplesDir, requirePrefix }) {
+  const outImages = path.join(root, 'src/data/catalogStapleImages.ts');
+  const outIndex = path.join(root, 'src/data/ingredientImageIndex.ts');
 
-function keyFmt(id) {
-  return needsQuotedKey(id) ? `'${id}'` : id;
-}
-
-const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
-const ingredients = catalog.ingredients ?? [];
-const webpIds = new Set(
-  fs
-    .readdirSync(STAPLES_DIR)
-    .filter((f) => f.endsWith('.webp'))
-    .map((f) => f.replace(/\.webp$/, '')),
-);
-
-const imageLines = [];
-const indexMap = new Map();
-let missingImages = 0;
-
-for (const ing of ingredients) {
-  const id = ing.id;
-  if (!id) continue;
-
-  const keys = new Set([norm(ing.canonical)]);
-  for (const syn of ing.synonyms ?? []) {
-    const k = norm(syn);
-    if (k) keys.add(k);
+  if (!fs.existsSync(staplesDir)) {
+    console.warn(`Skip ${root}: missing ${staplesDir}`);
+    return;
   }
-  for (const k of keys) {
-    if (k && !indexMap.has(k)) indexMap.set(k, id);
+  fs.mkdirSync(path.dirname(outImages), { recursive: true });
+  fs.mkdirSync(path.dirname(outIndex), { recursive: true });
+
+  const webpIds = new Set(
+    fs
+      .readdirSync(staplesDir)
+      .filter((f) => f.endsWith('.webp'))
+      .map((f) => f.replace(/\.webp$/, '')),
+  );
+
+  const imageLines = [];
+  const indexMap = new Map();
+  let missingImages = 0;
+
+  for (const ing of ingredients) {
+    const id = ing.id;
+    if (!id) continue;
+
+    const keys = new Set([norm(ing.canonical)]);
+    for (const syn of ing.synonyms ?? []) {
+      const k = norm(syn);
+      if (k) keys.add(k);
+    }
+    for (const k of keys) {
+      if (k && !indexMap.has(k)) indexMap.set(k, id);
+    }
+
+    if (!webpIds.has(id)) {
+      missingImages++;
+      continue;
+    }
+    imageLines.push(`  ${keyFmt(id)}: require('${requirePrefix}/${id}.webp'),`);
   }
 
-  if (!webpIds.has(id)) {
-    missingImages++;
-    continue;
-  }
-  imageLines.push(`  ${keyFmt(id)}: require('../../assets/staples/${id}.webp'),`);
-}
-
-const imagesTs = `/** Auto-generated staple WebP requires — do not edit by hand. */
+  const imagesTs = `/** Auto-generated staple WebP requires — do not edit by hand. */
 export const CATALOG_STAPLE_IMAGES: Record<string, number> = {
 ${imageLines.join('\n')}
 };
 `;
 
-const indexEntries = [...indexMap.entries()].map(
-  ([k, id]) => `  ${JSON.stringify(k)}: ${JSON.stringify(id)},`,
-);
+  const indexEntries = [...indexMap.entries()].map(
+    ([k, id]) => `  ${JSON.stringify(k)}: ${JSON.stringify(id)},`,
+  );
 
-const indexTs = `/** Auto-generated from ingredients/catalog.json — do not edit by hand. */
+  const indexTs = `/** Auto-generated from ingredients/catalog.json — do not edit by hand. */
 export function normalizeIngredientName(name: string): string {
   return name.trim().toLowerCase();
 }
@@ -93,9 +104,28 @@ export function resolveIngredientImageId(
 }
 `;
 
-fs.writeFileSync(OUT_IMAGES, imagesTs);
-fs.writeFileSync(OUT_INDEX, indexTs);
+  fs.writeFileSync(outImages, imagesTs);
+  fs.writeFileSync(outIndex, indexTs);
+  console.log(
+    `[${path.basename(root)}] ${imageLines.length} images, ${indexMap.size} name keys (missing webp: ${missingImages})`,
+  );
+}
 
-console.log(`Wrote ${imageLines.length} image requires → ${OUT_IMAGES}`);
-console.log(`Wrote ${indexMap.size} name keys → ${OUT_INDEX}`);
-console.log(`Catalog ingredients missing webp: ${missingImages}`);
+function norm(s) {
+  return s.trim().toLowerCase();
+}
+
+function needsQuotedKey(id) {
+  return /[^a-zA-Z0-9_$]/.test(id);
+}
+
+function keyFmt(id) {
+  return needsQuotedKey(id) ? `'${id}'` : id;
+}
+
+const catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const ingredients = catalog.ingredients ?? [];
+
+for (const target of APP_TARGETS) {
+  writeStapleMaps(target);
+}

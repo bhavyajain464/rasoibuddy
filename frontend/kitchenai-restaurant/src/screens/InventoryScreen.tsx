@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ActivityIndicator, IconButton, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FilterPill, FilterPillRow } from '../components/FilterPill';
@@ -7,11 +7,17 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { AddStockSheet } from '../components/stock/AddStockSheet';
 import { StockListItem } from '../components/stock/StockListItem';
 import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
-import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
+import { useGridFilterScroll } from '../hooks/useGridFilterScroll';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { InventoryListPage, InventoryRow } from '../types';
 import { formatFoodGroupLabel, normalizeFoodGroup, STATIC_FOOD_GROUPS } from '../utils/foodGroup';
+import {
+  INGREDIENT_GRID_GAP,
+  INGREDIENT_GRID_PAD,
+  useIngredientGridCellWidth,
+} from '../utils/ingredientGrid';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { palette } from '../theme';
 
@@ -27,6 +33,12 @@ type StockSection = {
 
 export default function InventoryScreen() {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const gridCellWidth = useIngredientGridCellWidth(windowWidth);
+  const gridCellStyle = useMemo(
+    () => ({ width: gridCellWidth, marginBottom: INGREDIENT_GRID_GAP }),
+    [gridCellWidth],
+  );
   const { kitchen } = useRestaurant();
   const kitchenId = kitchen?.kitchen_id ?? '';
   const [items, setItems] = useState<InventoryRow[]>([]);
@@ -41,11 +53,10 @@ export default function InventoryScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const { catalog } = useIngredientCatalog();
   const [error, setError] = useState('');
-  const { listRef, loadMoreLockRef, handleListScroll, handleContentSizeChange, resetForFilterChange, canAutoLoadMore } =
-    useSectionListFilterScroll<InventoryRow>(groupFilter, loading);
+  const { scrollRef, loadMoreLockRef, handleListScroll, handleContentSizeChange, resetForFilterChange, canAutoLoadMore } =
+    useGridFilterScroll(groupFilter, loading);
 
   const selectGroupFilter = useCallback(
     (filter: StockFilter) => {
@@ -91,6 +102,15 @@ export default function InventoryScreen() {
       .finally(() => setLoading(false));
   }, [fetchPage]);
 
+  const reloadOnFocus = useCallback(() => {
+    fetchPage().catch((e) => {
+      setItems([]);
+      setError(e instanceof Error ? e.message : 'Failed to load stock');
+    });
+  }, [fetchPage]);
+
+  useRefreshOnFocus(reloadOnFocus, { enabled: Boolean(kitchenId) });
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -116,21 +136,22 @@ export default function InventoryScreen() {
     }
   };
 
-  const handleAdd = async (payload: { name: string; qty: number; unit: string }) => {
-    if (!kitchenId) return;
-    setSaving(true);
+  const handleAdd = async (rows: { name: string; qty: number; unit: string; food_group?: string }[]) => {
+    if (!kitchenId || !rows.length) return;
     try {
-      await restaurantFetch<InventoryRow>(`/restaurant/${kitchenId}/inventory`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      setSheetOpen(false);
-      showAppSuccess(`Added ${payload.name} to stock`);
+      for (const payload of rows) {
+        await restaurantFetch<InventoryRow>(`/restaurant/${kitchenId}/inventory`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+      showAppSuccess(
+        rows.length === 1 ? `Added ${rows[0].name} to stock` : `Added ${rows.length} items to stock`,
+      );
       setSearch('');
       setGroupFilter('all');
       resetForFilterChange();
       setLoading(true);
-      // Refetch with all filter (groupFilter state may not have flushed yet).
       const params = new URLSearchParams({ limit: String(STOCK_PAGE_SIZE) });
       const page = await restaurantFetch<InventoryListPage>(
         `/restaurant/${kitchenId}/inventory?${params.toString()}`,
@@ -142,9 +163,9 @@ export default function InventoryScreen() {
       setHasMore(page.has_more);
       setItems(page.items ?? []);
     } catch (e) {
-      showAppError(e instanceof Error ? e.message : 'Could not add stock item');
+      showAppError(e instanceof Error ? e.message : 'Could not add stock items');
+      throw e;
     } finally {
-      setSaving(false);
       setLoading(false);
     }
   };
@@ -176,41 +197,28 @@ export default function InventoryScreen() {
           const group = formatFoodGroupLabel(item.food_group).toLowerCase();
           return name.includes(searchLower) || group.includes(searchLower);
         });
-    return [...base].sort((a, b) => {
-      const ga = normalizeFoodGroup(a.food_group);
-      const gb = normalizeFoodGroup(b.food_group);
-      const ai = STATIC_FOOD_GROUPS.indexOf(ga as (typeof STATIC_FOOD_GROUPS)[number]);
-      const bi = STATIC_FOOD_GROUPS.indexOf(gb as (typeof STATIC_FOOD_GROUPS)[number]);
-      const orderA = ai === -1 ? STATIC_FOOD_GROUPS.length : ai;
-      const orderB = bi === -1 ? STATIC_FOOD_GROUPS.length : bi;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.canonical_name.localeCompare(b.canonical_name);
-    });
-  }, [items, searchLower]);
+    return [...base].sort((a, b) => a.canonical_name.localeCompare(b.canonical_name));
+  }, [items, searchLower, groupFilter]);
 
-  const showGroupedSections = groupFilter === 'all';
-
-  const listSections = useMemo((): StockSection[] => {
-    if (!showGroupedSections) {
-      return [{ key: String(groupFilter), title: '', data: filteredItems }];
-    }
-    const grouped = new Map<string, InventoryRow[]>();
-    for (const item of filteredItems) {
-      const key = normalizeFoodGroup(item.food_group);
-      const bucket = grouped.get(key) ?? [];
-      bucket.push(item);
-      grouped.set(key, bucket);
-    }
-    return STATIC_FOOD_GROUPS.filter((key) => (grouped.get(key)?.length ?? 0) > 0).map((key) => ({
-      key,
-      title: formatFoodGroupLabel(key),
-      data: grouped.get(key) ?? [],
-    }));
-  }, [filteredItems, groupFilter, showGroupedSections]);
+  const listSections = useMemo(
+    (): StockSection[] => [{ key: String(groupFilter), title: '', data: filteredItems }],
+    [filteredItems, groupFilter],
+  );
 
   const subtitle = loading
     ? 'Loading stock…'
     : `${totalCount} items${lowStockCount > 0 ? ` · ${lowStockCount} low` : ''}`;
+
+  const tryLoadMore = useCallback(
+    (event: Parameters<typeof handleListScroll>[0]) => {
+      handleListScroll(event);
+      if (!canAutoLoadMore() || loading || loadingMore || !hasMore) return;
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y < contentSize.height - 240) return;
+      void loadMore();
+    },
+    [canAutoLoadMore, handleListScroll, hasMore, loadMore, loading, loadingMore],
+  );
 
   return (
     <View style={styles.root}>
@@ -232,7 +240,7 @@ export default function InventoryScreen() {
           mode="contained"
           containerColor={palette.primary}
           iconColor="#0F172A"
-          size={22}
+          size={20}
           onPress={() => setSheetOpen(true)}
           style={styles.addBtn}
           accessibilityLabel="Add stock item"
@@ -271,12 +279,9 @@ export default function InventoryScreen() {
       {loading ? (
         <ActivityIndicator color={palette.primary} style={styles.loader} />
       ) : (
-        <SectionList
-          ref={listRef}
-          sections={listSections}
+        <ScrollView
+          ref={scrollRef}
           style={styles.list}
-          keyExtractor={(item) => item.item_id}
-          stickySectionHeadersEnabled={false}
           contentContainerStyle={[
             styles.listContent,
             filteredItems.length === 0 && styles.listEmpty,
@@ -285,40 +290,44 @@ export default function InventoryScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
           }
-          onScroll={handleListScroll}
+          onScroll={tryLoadMore}
           onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
-          onEndReached={() => {
-            if (!canAutoLoadMore() || loading || loadingMore || !hasMore) return;
-            void loadMore();
-          }}
-          onEndReachedThreshold={0.35}
-          ListEmptyComponent={
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredItems.length === 0 ? (
             <Text style={styles.empty}>
               {searchLower || groupFilter !== 'all'
                 ? 'No items match your filters'
                 : 'No stock yet — tap + to add items or import from menu seed'}
             </Text>
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
-            ) : null
-          }
-          renderItem={({ item }) => <StockListItem item={item} showGroup={!showGroupedSections} />}
-          renderSectionHeader={({ section }) =>
-            section.title ? (
-              <Text variant="titleSmall" style={styles.sectionHeader}>
-                {section.title}
-              </Text>
-            ) : null
-          }
-        />
+          ) : (
+            listSections.map((section) => (
+              <View key={section.key}>
+                {section.title ? (
+                  <Text variant="titleSmall" style={styles.sectionHeader}>
+                    {section.title}
+                  </Text>
+                ) : null}
+                <View style={styles.grid}>
+                  {section.data.map((item) => (
+                    <View key={item.item_id} style={gridCellStyle}>
+                      <StockListItem item={item} variant="grid" />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))
+          )}
+          {loadingMore ? (
+            <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
+          ) : null}
+        </ScrollView>
       )}
 
       <AddStockSheet
         visible={sheetOpen}
-        saving={saving}
         catalog={catalog}
         onDismiss={() => setSheetOpen(false)}
         onSave={handleAdd}
@@ -333,24 +342,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 4,
+    paddingTop: 8,
+    paddingBottom: 2,
+    gap: 6,
   },
-  addBtn: { margin: 0 },
-  filterRowWrap: { backgroundColor: palette.background },
+  addBtn: { margin: 0, width: 40, height: 40 },
+  filterRowWrap: { backgroundColor: palette.background, overflow: 'visible', zIndex: 2 },
   searchbar: {
     flex: 1,
+    minWidth: 0,
+    height: 40,
+    minHeight: 40,
     backgroundColor: palette.surfaceElevated,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: palette.border,
   },
-  searchInput: { color: palette.text, fontSize: 14 },
+  searchInput: {
+    color: palette.text,
+    fontSize: 14,
+    minHeight: 0,
+    height: 40,
+    paddingVertical: 0,
+    marginVertical: 0,
+  },
   loader: { marginTop: 48 },
   list: { flex: 1 },
   footerLoader: { marginVertical: 16 },
-  listContent: { paddingHorizontal: 16, paddingTop: 4 },
+  listContent: {
+    paddingHorizontal: INGREDIENT_GRID_PAD,
+    paddingTop: 4,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: INGREDIENT_GRID_GAP,
+  },
   sectionHeader: {
     color: palette.textMuted,
     fontWeight: '700',

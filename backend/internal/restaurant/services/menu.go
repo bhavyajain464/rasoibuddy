@@ -22,7 +22,7 @@ func NewMenuService(db *sql.DB, cfg *config.Config) *MenuService {
 
 func (s *MenuService) ListMenuItems(ctx context.Context, kitchenID string, activeOnly bool) ([]MenuItem, error) {
 	q := `
-		SELECT menu_item_id::text, kitchen_id::text, name, category, price_cents, is_active, created_at, updated_at
+		SELECT ` + menuItemSelectSQL + `
 		FROM menu_items WHERE kitchen_id = $1`
 	if activeOnly {
 		q += ` AND is_active = TRUE`
@@ -37,11 +37,14 @@ func (s *MenuService) ListMenuItems(ctx context.Context, kitchenID string, activ
 
 	out := make([]MenuItem, 0)
 	for rows.Next() {
-		var m MenuItem
-		if err := rows.Scan(&m.MenuItemID, &m.KitchenID, &m.Name, &m.Category, &m.PriceCents, &m.IsActive, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		m, err := scanMenuItem(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return out, rows.Err()
 }
@@ -98,12 +101,12 @@ func (s *MenuService) ListMenuPage(ctx context.Context, kitchenID string, in Lis
 	}
 
 	query := fmt.Sprintf(`
-		SELECT m.menu_item_id::text, m.kitchen_id::text, m.name, m.category, m.price_cents, m.is_active, m.created_at, m.updated_at
+		SELECT %s
 		FROM menu_items m
 		%s
 		ORDER BY LOWER(TRIM(m.category)), m.name, m.menu_item_id
 		LIMIT $%d
-	`, where, argN)
+	`, menuItemSelectSQL, where, argN)
 	args = append(args, limit+1)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -114,8 +117,8 @@ func (s *MenuService) ListMenuPage(ctx context.Context, kitchenID string, in Lis
 
 	out := make([]MenuItem, 0, limit)
 	for rows.Next() {
-		var m MenuItem
-		if err := rows.Scan(&m.MenuItemID, &m.KitchenID, &m.Name, &m.Category, &m.PriceCents, &m.IsActive, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		m, err := scanMenuItem(rows)
+		if err != nil {
 			return MenuListPage{}, err
 		}
 		out = append(out, m)
@@ -175,13 +178,16 @@ func (s *MenuService) loadRecipeIngredientsForMenuItems(ctx context.Context, kit
 		var menuItemID string
 		var ing RecipeIngredient
 		var invID sql.NullString
-		if err := rows.Scan(&menuItemID, &ing.IngredientID, &ing.RecipeID, &ing.IngredientName, &ing.Qty, &ing.Unit, &ing.WasteFactor, &invID, &ing.SortOrder); err != nil {
+		if err := rows.Scan(&menuItemID, &ing.CatalogIngredientID, &ing.RecipeID, &ing.IngredientName, &ing.Qty, &ing.Unit, &ing.WasteFactor, &invID, &ing.SortOrder); err != nil {
 			return nil, err
 		}
 		if invID.Valid {
 			ing.InventoryItemID = &invID.String
 		}
 		out[menuItemID] = append(out[menuItemID], ing)
+	}
+	for menuItemID, ings := range out {
+		out[menuItemID] = enrichRecipeIngredientsFromCatalog(ctx, s.db, ings)
 	}
 	return out, rows.Err()
 }
@@ -248,15 +254,23 @@ func (s *MenuService) UpsertMenuItem(ctx context.Context, kitchenID string, item
 		return nil, fmt.Errorf("price_cents must be >= 0")
 	}
 
+	zomatoCatalogueID := strings.TrimSpace(item.ZomatoCatalogueID)
+	imageURL := strings.TrimSpace(item.ImageURL)
+
 	if item.MenuItemID != "" {
 		var out MenuItem
 		err := s.db.QueryRowContext(ctx, `
 			UPDATE menu_items
-			SET name = $3, category = $4, price_cents = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
+			SET name = $3, category = $4, price_cents = $5, is_active = $6,
+			    zomato_catalogue_id = COALESCE(NULLIF($7, ''), zomato_catalogue_id),
+			    image_url = COALESCE(NULLIF($8, ''), image_url),
+			    updated_at = CURRENT_TIMESTAMP
 			WHERE menu_item_id = $1 AND kitchen_id = $2
-			RETURNING menu_item_id::text, kitchen_id::text, name, category, price_cents, is_active, created_at, updated_at
-		`, item.MenuItemID, kitchenID, name, category, item.PriceCents, item.IsActive).Scan(
-			&out.MenuItemID, &out.KitchenID, &out.Name, &out.Category, &out.PriceCents, &out.IsActive, &out.CreatedAt, &out.UpdatedAt,
+			RETURNING `+menuItemSelectSQL+`
+		`, item.MenuItemID, kitchenID, name, category, item.PriceCents, item.IsActive, zomatoCatalogueID, imageURL).Scan(
+			&out.MenuItemID, &out.KitchenID, &out.Name, &out.Category, &out.PriceCents, &out.IsActive,
+			&out.ZomatoCatalogueID, &out.ImageURL,
+			&out.CreatedAt, &out.UpdatedAt,
 		)
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("menu item not found")
@@ -269,11 +283,13 @@ func (s *MenuService) UpsertMenuItem(ctx context.Context, kitchenID string, item
 
 	var out MenuItem
 	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO menu_items (kitchen_id, name, category, price_cents, is_active)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING menu_item_id::text, kitchen_id::text, name, category, price_cents, is_active, created_at, updated_at
-	`, kitchenID, name, category, item.PriceCents, item.IsActive).Scan(
-		&out.MenuItemID, &out.KitchenID, &out.Name, &out.Category, &out.PriceCents, &out.IsActive, &out.CreatedAt, &out.UpdatedAt,
+		INSERT INTO menu_items (kitchen_id, name, category, price_cents, is_active, zomato_catalogue_id, image_url)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''))
+		RETURNING `+menuItemSelectSQL+`
+	`, kitchenID, name, category, item.PriceCents, item.IsActive, zomatoCatalogueID, imageURL).Scan(
+		&out.MenuItemID, &out.KitchenID, &out.Name, &out.Category, &out.PriceCents, &out.IsActive,
+		&out.ZomatoCatalogueID, &out.ImageURL,
+		&out.CreatedAt, &out.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -303,7 +319,7 @@ func (s *MenuService) GetRecipeIngredients(ctx context.Context, kitchenID, menuI
 	for rows.Next() {
 		var ing RecipeIngredient
 		var invID sql.NullString
-		if err := rows.Scan(&ing.IngredientID, &ing.RecipeID, &ing.IngredientName, &ing.Qty, &ing.Unit, &ing.WasteFactor, &invID, &ing.SortOrder); err != nil {
+		if err := rows.Scan(&ing.CatalogIngredientID, &ing.RecipeID, &ing.IngredientName, &ing.Qty, &ing.Unit, &ing.WasteFactor, &invID, &ing.SortOrder); err != nil {
 			return nil, err
 		}
 		if invID.Valid {
@@ -311,7 +327,7 @@ func (s *MenuService) GetRecipeIngredients(ctx context.Context, kitchenID, menuI
 		}
 		out = append(out, ing)
 	}
-	return out, rows.Err()
+	return enrichRecipeIngredientsFromCatalog(ctx, s.db, out), rows.Err()
 }
 
 func (s *MenuService) SetRecipeIngredients(ctx context.Context, kitchenID, menuItemID string, ingredients []RecipeIngredient) ([]RecipeIngredient, error) {
@@ -340,9 +356,15 @@ func (s *MenuService) SetRecipeIngredients(ctx context.Context, kitchenID, menuI
 	}
 
 	for i, ing := range ingredients {
-		name := strings.TrimSpace(ing.IngredientName)
-		if name == "" || ing.Qty <= 0 {
+		if ing.Qty <= 0 {
 			continue
+		}
+		name, _, err := resolveRecipeIngredientForSave(ctx, s.db, ing)
+		if err != nil {
+			name = strings.TrimSpace(ing.IngredientName)
+			if name == "" {
+				continue
+			}
 		}
 		unit := strings.TrimSpace(ing.Unit)
 		if unit == "" {

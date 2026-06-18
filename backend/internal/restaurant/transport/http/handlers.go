@@ -77,12 +77,12 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	k.HandleFunc("/members/{user_id}", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.removeMember)).ServeHTTP).Methods("DELETE", "OPTIONS")
 
 	k.HandleFunc("/menu", h.listMenu).Methods("GET", "OPTIONS")
-	k.HandleFunc("/menu", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.upsertMenu)).ServeHTTP).Methods("POST", "OPTIONS")
+	k.HandleFunc("/menu", h.upsertMenu).Methods("POST", "OPTIONS")
 	k.HandleFunc("/menu/export", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.exportMenu)).ServeHTTP).Methods("GET", "OPTIONS")
 	k.HandleFunc("/menu/import", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.importMenu)).ServeHTTP).Methods("POST", "OPTIONS")
 	k.HandleFunc("/menu/seed-catalog", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.seedMenuFromCatalog)).ServeHTTP).Methods("POST", "OPTIONS")
 	k.HandleFunc("/menu/{menu_item_id}/ingredients", h.getRecipe).Methods("GET", "OPTIONS")
-	k.HandleFunc("/menu/{menu_item_id}/ingredients", restmw.RequireRestaurantKitchen(h.kitchen, contracts.RoleManager)(http.HandlerFunc(h.setRecipe)).ServeHTTP).Methods("PUT", "OPTIONS")
+	k.HandleFunc("/menu/{menu_item_id}/ingredients", h.setRecipe).Methods("PUT", "OPTIONS")
 
 	k.HandleFunc("/shopping", h.listShopping).Methods("GET", "OPTIONS")
 	k.HandleFunc("/shopping", h.addShopping).Methods("POST", "OPTIONS")
@@ -475,7 +475,8 @@ func (h *Handler) listInventory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listCatalogIngredients(w http.ResponseWriter, r *http.Request) {
-	items, err := services.ListCatalogIngredients(r.Context(), h.db)
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	items, err := services.SearchCatalogIngredients(r.Context(), h.db, q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

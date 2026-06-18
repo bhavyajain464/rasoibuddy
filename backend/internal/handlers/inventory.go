@@ -80,9 +80,6 @@ func mergeInventoryPatch(current models.Inventory, patch models.InventoryPatchRe
 		merged.CanonicalName = name
 	}
 	if patch.Qty != nil {
-		if err := units.ValidateQty(*patch.Qty); err != nil {
-			return merged, nil, false, err
-		}
 		merged.Qty = *patch.Qty
 	}
 	if patch.Unit != nil {
@@ -112,6 +109,11 @@ func mergeInventoryPatch(current models.Inventory, patch models.InventoryPatchRe
 
 	if strings.TrimSpace(merged.CanonicalName) == "" || merged.Qty <= 0 || merged.Unit == "" {
 		return merged, nil, false, fmt.Errorf("invalid merged inventory row")
+	}
+	var normErr error
+	merged.Qty, merged.Unit, normErr = units.NormalizeStoredQty(merged.Qty, merged.Unit)
+	if normErr != nil {
+		return merged, nil, false, normErr
 	}
 	return merged, expiry, clearExpiry, nil
 }
@@ -714,8 +716,10 @@ func CreateInventoryItem(db *sql.DB, producer *kafkalib.Producer) http.HandlerFu
 			http.Error(w, "Missing required fields", http.StatusBadRequest)
 			return
 		}
-		if err := units.ValidateQty(req.Qty); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		var normErr error
+		req.Qty, req.Unit, normErr = units.NormalizeStoredQty(req.Qty, req.Unit)
+		if normErr != nil {
+			http.Error(w, normErr.Error(), http.StatusBadRequest)
 			return
 		}
 

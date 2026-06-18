@@ -3,20 +3,23 @@ package services
 import "time"
 
 type MenuItem struct {
-	MenuItemID string    `json:"menu_item_id"`
-	KitchenID  string    `json:"kitchen_id"`
-	Name       string    `json:"name"`
-	Category   string    `json:"category"`
-	PriceCents int       `json:"price_cents"`
-	IsActive   bool      `json:"is_active"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	MenuItemID    string    `json:"menu_item_id"`
+	KitchenID     string    `json:"kitchen_id"`
+	Name          string    `json:"name"`
+	Category      string    `json:"category"`
+	PriceCents    int       `json:"price_cents"`
+	IsActive      bool      `json:"is_active"`
+	ZomatoCatalogueID string    `json:"zomato_catalogue_id,omitempty"`
+	ImageURL          string    `json:"image_url,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type RecipeIngredient struct {
-	IngredientID      string  `json:"ingredient_id"`
-	RecipeID          string  `json:"recipe_id"`
-	IngredientName    string  `json:"ingredient_name"`
+	RecipeIngredientID  string  `json:"recipe_ingredient_id,omitempty"`
+	CatalogIngredientID string  `json:"catalog_ingredient_id,omitempty"`
+	RecipeID            string  `json:"recipe_id,omitempty"`
+	IngredientName      string  `json:"ingredient_name"`
 	Qty               float64 `json:"qty"`
 	Unit              string  `json:"unit"`
 	WasteFactor       float64 `json:"waste_factor"`

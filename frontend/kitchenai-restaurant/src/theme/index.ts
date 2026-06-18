@@ -4,14 +4,18 @@ import { MD3DarkTheme } from 'react-native-paper';
 export const palette = {
   primary: '#F59E0B',
   primaryDark: '#D97706',
+  primaryContainer: 'rgba(245, 158, 11, 0.14)',
   background: '#0F172A',
   surface: '#1E293B',
   surfaceElevated: '#334155',
   text: '#F8FAFC',
+  textSecondary: '#CBD5E1',
   textMuted: '#94A3B8',
   border: '#475569',
+  borderLight: '#334155',
   success: '#22C55E',
   error: '#EF4444',
+  onPrimary: '#0F172A',
 } as const;
 
 export const theme = {

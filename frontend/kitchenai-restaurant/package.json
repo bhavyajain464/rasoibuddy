@@ -5,12 +5,18 @@
   "scripts": {
     "start": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli start --port 8083",
     "android": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli run:android --port 8083",
+    "android:launch": "bash scripts/launch-android-dev.sh",
+    "android:dev": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli start --port 8083 & sleep 3 && bash scripts/launch-android-dev.sh",
     "ios": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli run:ios --port 8083",
     "web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli start --web --port 8082",
     "build:web": "DOTENV_CONFIG_PATH=prod.env node -r dotenv/config ../node_modules/expo/bin/cli export --platform web",
     "build:web:vercel": "expo export --platform web",
+    "build:android:production": "npx eas-cli build --platform android --profile production",
     "web:staging": "DOTENV_CONFIG_PATH=staging.env node -r dotenv/config ../node_modules/expo/bin/cli start --web --port 8082",
-    "typecheck": "tsc --noEmit"
+    "doctor": "npx expo-doctor",
+    "typecheck": "tsc --noEmit",
+    "generate:staple-image-maps": "node ../kitchenai-frontend/scripts/generate-staple-image-maps.mjs",
+    "verify:android:release": "EXPO_NO_GIT_STATUS=1 npx expo prebuild --clean --platform android --no-install && node scripts/verify-android-manifest.mjs && cd android && ./gradlew :app:processReleaseMainManifest --no-daemon -PreactNativeArchitectures=arm64-v8a"
   },
   "dependencies": {
     "@kitchenai/api-core": "*",
@@ -32,7 +38,7 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.0",
-    "react-native-webview": "^13.16.0"
+    "react-native-webview": "13.15.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",

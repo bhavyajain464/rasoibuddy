@@ -7,7 +7,8 @@ import {
   View,
 } from 'react-native';
 import { ActivityIndicator, Icon, Surface, Text } from 'react-native-paper';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EditMenuItemSheet, IngredientDraft } from '../components/menu/EditMenuItemSheet';
 import OrderDetailSheet from '../components/OrderDetailSheet';
@@ -15,6 +16,7 @@ import { PendingOrdersPanel } from '../components/PendingOrdersPanel';
 import { ProfileHeaderButton } from '../components/ProfileHeaderButton';
 import { QuickActionsCarousel } from '../components/QuickActionsCarousel';
 import { AddShoppingSheet } from '../components/shopping/AddShoppingSheet';
+import { IngredientThumb } from '../components/IngredientThumb';
 import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
 import { openProfile } from '../navigation/rootNavigation';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +24,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { integrationWorkers, InventoryListPage, InventoryRow, MenuItem, MenuListPage, Order, OrderListPage, OutletIntegrationsStatus, PartnerWorkerStatus, RecipeIngredient, ShoppingRow } from '../types';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
+import { partnerHomeStatusLine, partnerStoreTitle } from '../utils/partnerDisplay';
 import { palette } from '../theme';
 
 type HomeSummary = {
@@ -43,19 +46,6 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function partnerStatusLabel(st: OutletIntegrationsStatus | null): string {
-  if (!st) return 'Not configured';
-  const workers = integrationWorkers(st);
-  const running = workers.filter((o) => o.status === 'running');
-  if (running.length > 0) {
-    return running.length === 1 ? '1 worker live' : `${running.length} workers live`;
-  }
-  if (workers.some((o) => o.status === 'login_required')) return 'Reconnect partner session';
-  if (workers.some((o) => o.status === 'error')) return 'Worker error';
-  if (st.session_saved) return workers.length ? 'Connected · idle' : 'Session saved';
-  return 'Not connected';
-}
-
 function primaryRunningWorker(st: OutletIntegrationsStatus | null): PartnerWorkerStatus | undefined {
   const workers = integrationWorkers(st);
   return workers.find((o) => o.status === 'running') ?? workers[0];
@@ -74,7 +64,6 @@ export default function HomeScreen() {
   const [menuSheetOpen, setMenuSheetOpen] = useState(false);
   const [buySheetOpen, setBuySheetOpen] = useState(false);
   const [savingMenu, setSavingMenu] = useState(false);
-  const [savingBuy, setSavingBuy] = useState(false);
   const { catalog } = useIngredientCatalog();
   const [ordersExpanded, setOrdersExpanded] = useState(false);
 
@@ -116,11 +105,7 @@ export default function HomeScreen() {
     }
   }, [outletId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
+  useRefreshOnFocus(load, { enabled: Boolean(outletId) });
 
   useEffect(() => {
     if (!outletId) return;
@@ -174,6 +159,7 @@ export default function HomeScreen() {
       const recipePayload = payload.ingredients
         .filter((d) => d.ingredient_id && d.ingredient_name.trim() && parseFloat(d.qty) > 0)
         .map((d, i) => ({
+          catalog_ingredient_id: d.ingredient_id,
           ingredient_name: d.ingredient_name.trim(),
           qty: parseFloat(d.qty) || 1,
           unit: d.unit.trim() || 'g',
@@ -196,21 +182,22 @@ export default function HomeScreen() {
     }
   };
 
-  const handleAddToBuyList = async (payload: { name: string; qty: number; unit: string }) => {
-    if (!outletId) return;
-    setSavingBuy(true);
+  const handleAddToBuyList = async (rows: { name: string; qty: number; unit: string }[]) => {
+    if (!outletId || !rows.length) return;
     try {
-      await restaurantFetch<ShoppingRow>(`/restaurant/${outletId}/shopping`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      setBuySheetOpen(false);
-      showAppSuccess(`Added "${payload.name}" to buy list`);
+      for (const payload of rows) {
+        await restaurantFetch<ShoppingRow>(`/restaurant/${outletId}/shopping`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+      showAppSuccess(
+        rows.length === 1 ? `Added "${rows[0].name}" to buy list` : `Added ${rows.length} items to buy list`,
+      );
       void load();
     } catch (e) {
-      showAppError(e instanceof Error ? e.message : 'Could not add item');
-    } finally {
-      setSavingBuy(false);
+      showAppError(e instanceof Error ? e.message : 'Could not add items');
+      throw e;
     }
   };
 
@@ -236,7 +223,6 @@ export default function HomeScreen() {
             </Text>
             <Text variant="bodySmall" style={styles.headerSub}>
               {outletDisplayName}
-              {outletId ? ` · ${outletId}` : ''}
             </Text>
           </View>
           <ProfileHeaderButton size={44} />
@@ -278,29 +264,21 @@ export default function HomeScreen() {
                   color={zomatoRunning ? palette.success : palette.primary}
                 />
                 <Text variant="titleSmall" style={styles.zomatoTitle}>
-                  {partnerStatusLabel(integrations)}
+                  {partnerStoreTitle(zomatoWorker)}
                 </Text>
               </View>
-              {zomatoWorker?.partner_store_name || zomatoWorker?.outlet_name ? (
-                <Text style={styles.zomatoMeta}>
-                  {zomatoWorker.partner_store_name ?? zomatoWorker.outlet_name}
-                </Text>
-              ) : null}
-              {zomatoWorker?.last_sync_message ? (
-                <Text style={styles.zomatoMsg} numberOfLines={2}>
-                  {zomatoWorker.last_sync_message}
-                </Text>
-              ) : zomatoWorker?.last_error ? (
-                <Text style={styles.zomatoErr} numberOfLines={2}>
-                  {zomatoWorker.last_error}
-                </Text>
-              ) : zomatoRunning && zomatoWorker?.next_poll_at ? (
-                <Text style={styles.zomatoMeta}>
-                  Next poll {new Date(zomatoWorker.next_poll_at).toLocaleTimeString()}
-                </Text>
-              ) : (
-                <Text style={styles.zomatoMeta}>Tap Profile → Partners to manage workers</Text>
-              )}
+              <Text
+                style={
+                  zomatoWorker?.last_error
+                    ? styles.zomatoErr
+                    : zomatoRunning
+                      ? styles.zomatoMsg
+                      : styles.zomatoMeta
+                }
+                numberOfLines={2}
+              >
+                {partnerHomeStatusLine(integrations, zomatoWorker, zomatoRunning)}
+              </Text>
             </Surface>
           </Pressable>
 
@@ -345,6 +323,7 @@ export default function HomeScreen() {
                       pressed && styles.pressed,
                     ]}
                   >
+                    <IngredientThumb name={item.canonical_name} size={36} resizeMode="contain" />
                     <Text style={styles.panelRowName} numberOfLines={1}>
                       {item.canonical_name}
                     </Text>
@@ -385,7 +364,6 @@ export default function HomeScreen() {
 
       <AddShoppingSheet
         visible={buySheetOpen}
-        saving={savingBuy}
         catalog={catalog}
         onDismiss={() => setBuySheetOpen(false)}
         onSave={handleAddToBuyList}
@@ -448,6 +426,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },

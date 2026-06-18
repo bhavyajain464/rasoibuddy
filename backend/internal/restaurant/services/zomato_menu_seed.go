@@ -10,11 +10,12 @@ import (
 )
 
 type ZomatoMenuSeedResult struct {
-	MenuAdded       []string `json:"menu_added"`
-	MenuSkipped     []string `json:"menu_skipped"`
-	InventoryAdded  []string `json:"inventory_added"`
-	InventoryExists []string `json:"inventory_exists"`
-	Errors          []string `json:"errors,omitempty"`
+	MenuAdded         []string `json:"menu_added"`
+	MenuSkipped       []string `json:"menu_skipped"`
+	MenuImagesUpdated []string `json:"menu_images_updated"`
+	InventoryAdded    []string `json:"inventory_added"`
+	InventoryExists   []string `json:"inventory_exists"`
+	Errors            []string `json:"errors,omitempty"`
 }
 
 func (s *MenuService) upsertInventoryItem(ctx context.Context, kitchenID, userID, name, unit string, qty float64) (string, bool, error) {
@@ -105,11 +106,12 @@ func (s *MenuService) SeedFromZomatoDishes(ctx context.Context, kitchenID, userI
 	}
 
 	result := &ZomatoMenuSeedResult{
-		MenuAdded:       make([]string, 0),
-		MenuSkipped:     make([]string, 0),
-		InventoryAdded:  make([]string, 0),
-		InventoryExists: make([]string, 0),
-		Errors:          make([]string, 0),
+		MenuAdded:         make([]string, 0),
+		MenuSkipped:       make([]string, 0),
+		MenuImagesUpdated: make([]string, 0),
+		InventoryAdded:    make([]string, 0),
+		InventoryExists:   make([]string, 0),
+		Errors:            make([]string, 0),
 	}
 	if warns := attachDishIngredientsFromGroq(ctx, s.cfg, dishes); len(warns) > 0 {
 		result.Errors = append(result.Errors, warns...)
@@ -165,15 +167,22 @@ func (s *MenuService) SeedFromZomatoDishes(ctx context.Context, kitchenID, userI
 			continue
 		}
 		if exists {
+			if updated, err := s.applyZomatoMenuMedia(ctx, kitchenID, dish); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s image: %v", dish.Name, err))
+			} else if updated {
+				result.MenuImagesUpdated = append(result.MenuImagesUpdated, dish.Name)
+			}
 			result.MenuSkipped = append(result.MenuSkipped, dish.Name)
 			continue
 		}
 
 		item, err := s.UpsertMenuItem(ctx, kitchenID, MenuItem{
-			Name:       dish.Name,
-			Category:   dish.Category,
-			PriceCents: dish.PriceCents,
-			IsActive:   true,
+			Name:              dish.Name,
+			Category:          dish.Category,
+			PriceCents:        dish.PriceCents,
+			IsActive:          true,
+			ZomatoCatalogueID: dish.CatalogueID,
+			ImageURL:          zomatoMenuImageURL(dish),
 		})
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", dish.Name, err))
@@ -194,6 +203,40 @@ func (s *MenuService) SeedFromZomatoDishes(ctx context.Context, kitchenID, userI
 	}
 
 	return result, nil
+}
+
+func zomatoMenuImageURL(dish ZomatoMenuDish) string {
+	if u := strings.TrimSpace(dish.ImageURL); u != "" {
+		return u
+	}
+	return strings.TrimSpace(dish.ThumbURL)
+}
+
+// applyZomatoMenuMedia refreshes stored image_url from Zomato for an existing menu row.
+func (s *MenuService) applyZomatoMenuMedia(ctx context.Context, kitchenID string, dish ZomatoMenuDish) (bool, error) {
+	imageURL := zomatoMenuImageURL(dish)
+	if imageURL == "" {
+		return false, nil
+	}
+	catalogueID := strings.TrimSpace(dish.CatalogueID)
+	name := strings.TrimSpace(dish.Name)
+
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE menu_items
+		SET image_url = $3,
+		    zomato_catalogue_id = COALESCE(NULLIF($4, ''), zomato_catalogue_id),
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE kitchen_id = $1
+		  AND (
+		    (NULLIF($4, '') IS NOT NULL AND zomato_catalogue_id = $4)
+		    OR LOWER(TRIM(name)) = LOWER($2)
+		  )
+	`, kitchenID, name, imageURL, catalogueID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 // TopUpLowStock raises inventory rows below kitchen default stock levels (for demo/dev kitchens).
