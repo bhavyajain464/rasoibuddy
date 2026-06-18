@@ -44,7 +44,7 @@ npm run android:dev
 
 ## Android (EAS / Play Store)
 
-EAS project: [@bhavyajain464/kitchenai-restaurant](https://expo.dev/accounts/bhavyajain464/projects/kitchenai-restaurant) (`extra.eas.projectId` in `app.json`).
+EAS project: [@bhavyajain464/rasoi-buddy-partner](https://expo.dev/accounts/bhavyajain464/projects/rasoi-buddy-partner) (`extra.eas.projectId` in `app.json`).
 
 ```bash
 cd frontend/kitchenai-restaurant

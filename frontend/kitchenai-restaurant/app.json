@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Rasoibuddy Partner",
-    "slug": "kitchenai-restaurant",
+    "slug": "rasoi-buddy-partner",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -62,7 +62,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "5ebb2be3-0556-4ba5-a28a-b1b65a8f732a"
+        "projectId": "f30756c1-f103-4cf5-8b9a-55a76c64e849"
       }
     },
     "owner": "bhavyajain464"
