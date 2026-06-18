@@ -59,6 +59,12 @@
         }
       ],
       "./plugins/withAndroidEdgeToEdgeReleaseFix.js"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5ebb2be3-0556-4ba5-a28a-b1b65a8f732a"
+      }
+    },
+    "owner": "bhavyajain464"
   }
 }

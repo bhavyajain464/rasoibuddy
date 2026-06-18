@@ -44,11 +44,10 @@ npm run android:dev
 
 ## Android (EAS / Play Store)
 
+EAS project: [@bhavyajain464/kitchenai-restaurant](https://expo.dev/accounts/bhavyajain464/projects/kitchenai-restaurant) (`extra.eas.projectId` in `app.json`).
+
 ```bash
 cd frontend/kitchenai-restaurant
-
-# One-time: link EAS project (adds extra.eas.projectId to app.json)
-npx eas-cli init
 
 # Internal dev APK
 npx eas-cli build --platform android --profile development
