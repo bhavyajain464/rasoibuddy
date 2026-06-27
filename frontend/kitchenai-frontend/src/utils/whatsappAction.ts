@@ -116,6 +116,9 @@ export function normalizeParsedAction(raw: unknown): WhatsAppParsedAction | null
   const note =
     typeof entitiesRaw.note === 'string' ? entitiesRaw.note.trim() : undefined;
 
+  const meal_slot =
+    typeof entitiesRaw.meal_slot === 'string' ? entitiesRaw.meal_slot.trim() : undefined;
+
   let qty = 1;
   if (typeof entitiesRaw.qty === 'number' && Number.isFinite(entitiesRaw.qty) && entitiesRaw.qty > 0) {
     qty = entitiesRaw.qty;
@@ -133,9 +136,32 @@ export function normalizeParsedAction(raw: unknown): WhatsAppParsedAction | null
       qty,
       unit: unit || 'pcs',
       ...(dish_name ? { dish_name } : {}),
+      ...(meal_slot ? { meal_slot } : {}),
       ...(note ? { note } : {}),
     },
   };
+}
+
+export function normalizeParsedActions(raw: unknown): WhatsAppParsedAction[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => normalizeParsedAction(item))
+      .filter((a): a is WhatsAppParsedAction => a != null);
+  }
+  const single = normalizeParsedAction(raw);
+  return single ? [single] : [];
+}
+
+export function isAppliableAction(action: WhatsAppParsedAction | null | undefined): boolean {
+  return Boolean(
+    action &&
+      action.intent !== 'unknown' &&
+      action.confidence >= 0.5,
+  );
+}
+
+export function appliableActions(actions: WhatsAppParsedAction[]): WhatsAppParsedAction[] {
+  return actions.filter(isAppliableAction);
 }
 
 export function formatConfidence(confidence: number): string {

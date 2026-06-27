@@ -11,7 +11,6 @@ import {
 } from '../inventory/InventoryItemRowEditor';
 import { UserShoppingItem } from '../../types';
 import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
-import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 const EDIT_ROW_KEY = 'edit-row';
@@ -45,7 +44,6 @@ export function EditShoppingItemSheet({
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const stackedRows = windowWidth < STACKED_ROW_BREAKPOINT;
-  const { catalog } = useIngredientCatalog();
   const [draftRow, setDraftRow] = useState<InventoryDraftRow>({
     key: EDIT_ROW_KEY,
     name: '',
@@ -101,7 +99,6 @@ export function EditShoppingItemSheet({
 
       <InventoryItemRowEditor
         row={draftRow}
-        catalog={catalog}
         isLastRow
         isLastInList
         stacked={stackedRows}

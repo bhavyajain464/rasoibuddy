@@ -33,6 +33,8 @@ type UpsertDishInput struct {
 	PairsWith       []string `json:"pairs_with"`
 	Ingredients     []string `json:"ingredients"`
 	KeyIngredients  []string `json:"key_ingredients"`
+	DishFamily      string   `json:"dish_family"`
+	VariantStyle    string   `json:"variant_style"`
 }
 
 // UpsertDish registers or updates one dish and its ingredient lines in Postgres.
@@ -101,13 +103,17 @@ func UpsertDish(ctx context.Context, conn *sql.DB, in UpsertDishInput) error {
 	meta, _ := json.Marshal(map[string]any{
 		"onion_garlic": !in.JainSafe,
 	})
+	dishFamily := strings.TrimSpace(in.DishFamily)
+	if dishFamily == "" {
+		dishFamily = id
+	}
 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO dishes (id, name, display_name, cuisine, diet, meal_type, tags, effort,
 			cook_time_minutes, weekday_friendly, one_pot, frequency_class, half_life_days,
 			spice_level, healthy_score, tasty_score, jain_safe, allergens, pairs_with,
-			verified, metadata, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,true,$20,NOW())
+			verified, metadata, dish_family, variant_style, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,true,$20,$21,$22,NOW())
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			display_name = EXCLUDED.display_name,
@@ -128,13 +134,15 @@ func UpsertDish(ctx context.Context, conn *sql.DB, in UpsertDishInput) error {
 			allergens = EXCLUDED.allergens,
 			pairs_with = EXCLUDED.pairs_with,
 			metadata = EXCLUDED.metadata,
+			dish_family = EXCLUDED.dish_family,
+			variant_style = EXCLUDED.variant_style,
 			updated_at = NOW()
 	`, id, in.Name, display, nullIfEmpty(in.Cuisine), nullIfEmpty(in.Diet),
 		pq.Array(in.MealType), pq.Array(in.Tags), nullIfEmpty(in.Effort),
 		nullInt(in.CookTimeMinutes), in.WeekdayFriendly, in.OnePot,
 		nullIfEmpty(in.FrequencyClass), nullInt(in.HalfLifeDays),
 		nullIfEmpty(in.SpiceLevel), nullInt(in.HealthyScore), nullInt(in.TastyScore),
-		in.JainSafe, pq.Array(in.Allergens), pq.Array(normalizedPairs), meta)
+		in.JainSafe, pq.Array(in.Allergens), pq.Array(normalizedPairs), meta, dishFamily, nullIfEmpty(in.VariantStyle))
 	if err != nil {
 		return fmt.Errorf("upsert dish %q: %w", id, err)
 	}

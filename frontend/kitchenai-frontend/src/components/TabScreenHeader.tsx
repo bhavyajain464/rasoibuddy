@@ -26,6 +26,8 @@ type TabScreenHeaderProps = {
   decoration?: React.ReactNode;
   /** e.g. back row above the title (Meals category drill-in). */
   leading?: React.ReactNode;
+  /** Extra control in the top-right (above profile avatar). */
+  trailing?: React.ReactNode;
 };
 
 export function TabScreenHeader({
@@ -34,6 +36,7 @@ export function TabScreenHeader({
   style,
   decoration,
   leading,
+  trailing,
 }: TabScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -51,7 +54,10 @@ export function TabScreenHeader({
             </Text>
           ) : null}
         </View>
-        <ProfileHeaderButton />
+        <View style={styles.headerTrailing}>
+          {trailing}
+          <ProfileHeaderButton />
+        </View>
       </View>
     </View>
   );
@@ -86,6 +92,11 @@ const styles = StyleSheet.create({
   headerTextBlock: {
     flex: 1,
     minWidth: 0,
+  },
+  headerTrailing: {
+    alignItems: 'flex-end',
+    gap: 8,
+    flexShrink: 0,
   },
   headerTitle: {
     color: '#fff',

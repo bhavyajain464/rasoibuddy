@@ -201,6 +201,7 @@ type Props = {
   onSelectDate: (date: string) => void;
   onDayPress: (date: string) => void;
   loading?: boolean;
+  error?: string | null;
   anchorDate?: string;
 };
 
@@ -244,6 +245,7 @@ export function WeekPlanCarousel({
   onSelectDate,
   onDayPress,
   loading = false,
+  error = null,
   anchorDate,
 }: Props) {
   const { width: screenWidth } = useWindowDimensions();
@@ -296,8 +298,9 @@ export function WeekPlanCarousel({
     return (
       <View style={styles.wrap}>
         <View style={styles.emptyCard}>
-          <Text variant="bodySmall" style={styles.emptyText}>
-            Your 7-day plan appears at midnight (12:00 AM IST).
+          <Text variant="bodySmall" style={error ? styles.emptyError : styles.emptyText}>
+            {error
+              || 'Your 7-day plan appears at midnight (12:00 AM IST). Pull down to refresh once it is ready.'}
           </Text>
         </View>
       </View>
@@ -511,4 +514,5 @@ const styles = StyleSheet.create({
     borderColor: '#EEE',
   },
   emptyText: { color: '#777', textAlign: 'center' },
+  emptyError: { color: '#C62828', textAlign: 'center', lineHeight: 20 },
 });

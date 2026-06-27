@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_HEADER } from '../components/TabScreenHeader';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { useScrollToTopOnTabFocus } from '../hooks/useScrollToTopOnTabFocus';
 import { useAuth } from '../context/AuthContext';
 import { refreshAppliesTo, useAppRefresh } from '../context/AppRefreshContext';
 import * as api from '../services/api';
@@ -31,6 +32,11 @@ import { MealOfDayCard, MealOfDayMeal } from '../components/MealOfDayCard';
 import { todayDateKey } from '../components/meals/WeekPlanCarousel';
 import { parseWeekPlanDays, todayMealsFromWeekPlanDays } from '../utils/weekPlan';
 import { pantryQtyLabel } from '../utils/inventoryBuckets';
+import { TourTarget } from '../components/tour/TourTarget';
+import { TabScreenScrollLayout } from '../components/TabScreenScrollLayout';
+import { useProductTour } from '../context/ProductTourContext';
+import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
+import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -74,6 +80,11 @@ export function HomeScreen({ navigation }: any) {
   const skipMountLoadData = useRef(true);
   const hasMealOfDay = useRef(false);
   const isFocused = useIsFocused();
+  const scrollRef = useRef<ScrollView>(null);
+  const autoStartAttempted = useRef(false);
+  const { requestAutoStartTour, setExpiryStepBody } = useProductTour();
+  const { rememberTargetOffset } = useTourScreenScroll('Home', scrollRef);
+  useScrollToTopOnTabFocus(scrollRef);
   const { version: refreshVersion, scope: refreshScope } = useAppRefresh();
   const loadMealOfDay = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false;
@@ -137,188 +148,231 @@ export function HomeScreen({ navigation }: any) {
     setRefreshing(false);
   }, [loadData]);
 
+  useEffect(() => {
+    setExpiryStepBody(expiringItems.length > 0 || expiredItems.length > 0);
+  }, [expiredItems.length, expiringItems.length, setExpiryStepBody]);
+
+  useEffect(() => {
+    if (!isFocused || loading || autoStartAttempted.current) return;
+    autoStartAttempted.current = true;
+    const timer = setTimeout(() => {
+      requestAutoStartTour();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isFocused, loading, requestAutoStartTour]);
+
   const firstName = user?.name?.split(' ')[0] || 'there';
 
   return (
-    <ScrollView
-      style={styles.container}
+    <>
+    <TabScreenScrollLayout
+      scrollRef={scrollRef}
+      header={
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerText}>
+              <Text variant="bodyMedium" style={styles.greeting}>{getGreeting()},</Text>
+              <Text variant="headlineMedium" style={styles.heroName}>{firstName}</Text>
+            </View>
+            <TourTarget
+              id={APP_TOUR_TARGET_IDS.profile}
+              style={styles.profileTourTarget}
+              onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.profile, y)}
+            >
+              <ProfileHeaderButton size={48} />
+            </TourTarget>
+          </View>
+        </View>
+      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       contentContainerStyle={[
         styles.scrollContent,
         { paddingBottom: contentPaddingBottom(16) },
       ]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      showsVerticalScrollIndicator={false}
     >
-      {/* ── Hero Header ──────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerText}>
-            <Text variant="bodyMedium" style={styles.greeting}>{getGreeting()},</Text>
-            <Text variant="headlineMedium" style={styles.heroName}>{firstName}</Text>
-          </View>
-          <ProfileHeaderButton size={48} />
-        </View>
-      </View>
-
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} size="large" />
       ) : (
         <>
           <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
-          <QuickActionsCarousel
-            onAddItem={() => setInventoryModalOpen(true)}
-            onMealIdea={() =>
-              navigation.navigate('Meals', {
-                generateCategory: 'daily',
-                mealType: 'lunch_dinner',
-              })
-            }
-            onLogMeal={() => setLogMealModalOpen(true)}
-            onAddToList={() => setShoppingModalOpen(true)}
-          />
+          <TourTarget
+            id={APP_TOUR_TARGET_IDS.quickActions}
+            onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.quickActions, y)}
+          >
+            <QuickActionsCarousel
+              onAddItem={() => setInventoryModalOpen(true)}
+              onMealIdea={() =>
+                navigation.navigate('Meals', {
+                  openWeekPlanDate: todayDateKey(),
+                })
+              }
+              onLogMeal={() => setLogMealModalOpen(true)}
+              onAddToList={() => setShoppingModalOpen(true)}
+            />
+          </TourTarget>
 
           <Text variant="titleMedium" style={styles.sectionTitle}>Meal of the Day</Text>
-          <MealOfDayCard
-            meals={mealOfDayMeals}
-            loading={mealOfDayLoading}
-            notReady={mealOfDayNotReady}
-            onPress={() =>
-              navigation.navigate('Meals', {
-                openWeekPlanDate: todayDateKey(),
-                returnToTab: 'Home',
-              })
-            }
-          />
+          <TourTarget
+            id={APP_TOUR_TARGET_IDS.mealOfDay}
+            onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.mealOfDay, y)}
+          >
+            <MealOfDayCard
+              meals={mealOfDayMeals}
+              loading={mealOfDayLoading}
+              notReady={mealOfDayNotReady}
+              onPress={() =>
+                navigation.navigate('Meals', {
+                  openWeekPlanDate: todayDateKey(),
+                  returnToTab: 'Home',
+                })
+              }
+            />
+          </TourTarget>
 
-          {/* ── Expired Items Alert ───────────────────────── */}
-          {expiredItems.length > 0 && (
-            <Pressable
-              onPress={() => navigation.navigate('Inventory', { tab: 'expired' })}
-              style={({ pressed }) => [styles.expiredBanner, pressed && styles.expiredBannerPressed]}
+          {/* ── Expired + expiring alerts ───────────────────── */}
+          {expiredItems.length > 0 || expiringItems.length > 0 ? (
+            <TourTarget
+              id={APP_TOUR_TARGET_IDS.expiry}
+              onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.expiry, y)}
             >
-              <View style={styles.expiredBannerIconWrap}>
-                <Icon source="alert-circle-outline" size={22} color={palette.error} />
-              </View>
-              <View style={styles.expiredBannerText}>
-                <Text variant="titleSmall" style={styles.expiredBannerTitle}>
-                  ⚠️ {expiredItems.length} item{expiredItems.length !== 1 ? 's' : ''} removed from inventory
-                  (Expired)
-                </Text>
-                <Text variant="bodySmall" style={styles.expiredBannerSub}>
-                  Tap to reorder
-                </Text>
-              </View>
-              <Icon source="chevron-right" size={22} color={palette.error} />
-            </Pressable>
-          )}
-
-          {/* ── Expiring Soon ─────────────────────────────── */}
-          {expiringItems.length > 0 && (
-            <View
-              style={[
-                styles.expiringSection,
-                expiredItems.length === 0 && styles.expiringSectionStandalone,
-              ]}
-            >
-              <Surface style={styles.expiringPanel} elevation={1}>
+              {expiredItems.length > 0 ? (
                 <Pressable
-                  onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
-                  style={({ pressed }) => [styles.expiringPanelHeader, pressed && { opacity: 0.92 }]}
+                  onPress={() => navigation.navigate('Inventory', { tab: 'expired' })}
+                  style={({ pressed }) => [styles.expiredBanner, pressed && styles.expiredBannerPressed]}
                 >
-                  <View style={styles.expiringTitleRow}>
-                    <View style={styles.expiringIconWrap}>
-                      <Icon source="clock-alert-outline" size={20} color="#E65100" />
-                    </View>
-                    <Text variant="titleSmall" style={styles.expiringPanelTitle}>
-                      Expiring soon
-                    </Text>
-                    <View style={styles.expiringCountPill}>
-                      <Text style={styles.expiringCountText}>{expiringItems.length}</Text>
-                    </View>
+                  <View style={styles.expiredBannerIconWrap}>
+                    <Icon source="alert-circle-outline" size={22} color={palette.error} />
                   </View>
-                  <Icon source="chevron-right" size={22} color="#E65100" />
+                  <View style={styles.expiredBannerText}>
+                    <Text variant="titleSmall" style={styles.expiredBannerTitle}>
+                      ⚠️ {expiredItems.length} item{expiredItems.length !== 1 ? 's' : ''} removed from inventory
+                      (Expired)
+                    </Text>
+                    <Text variant="bodySmall" style={styles.expiredBannerSub}>
+                      Tap to reorder
+                    </Text>
+                  </View>
+                  <Icon source="chevron-right" size={22} color={palette.error} />
                 </Pressable>
+              ) : null}
 
-                <View style={styles.expiringList}>
-                  {expiringItems.slice(0, EXPIRING_PREVIEW).map((item, index, preview) => {
-                    const { text: daysText, urgent } = expiringDaysLabel(item.days_until_expiry);
-                    const isLast = index === preview.length - 1;
-                    return (
-                      <Pressable
-                        key={item.item_id}
-                        onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
-                        style={({ pressed }) => [
-                          styles.expiringRow,
-                          !isLast && styles.expiringRowBorder,
-                          pressed && styles.expiringRowPressed,
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.expiringRowAccent,
-                            urgent ? styles.expiringRowAccentUrgent : styles.expiringRowAccentWarn,
-                          ]}
-                        />
-                        <View style={styles.expiringRowBody}>
-                          <Text variant="bodyMedium" style={styles.expiringRowName} numberOfLines={1}>
-                            {formatItemName(item.canonical_name)}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.expiringRowQty} numberOfLines={1}>
-                            {pantryQtyLabel(item)}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.expiringDaysPill,
-                            urgent ? styles.expiringDaysPillUrgent : styles.expiringDaysPillWarn,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.expiringDaysText,
-                              urgent ? styles.expiringDaysTextUrgent : styles.expiringDaysTextWarn,
-                            ]}
-                          >
-                            {daysText}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {expiringItems.length > EXPIRING_PREVIEW ? (
+              {expiringItems.length > 0 ? (
+                <View
+                  style={[
+                    styles.expiringSection,
+                    expiredItems.length === 0 && styles.expiringSectionStandalone,
+                  ]}
+                >
+                  <Surface style={styles.expiringPanel} elevation={1}>
                   <Pressable
                     onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
-                    style={({ pressed }) => [styles.expiringMoreBtn, pressed && { opacity: 0.85 }]}
+                    style={({ pressed }) => [styles.expiringPanelHeader, pressed && { opacity: 0.92 }]}
                   >
-                    <Text style={styles.expiringMoreText}>
-                      +{expiringItems.length - EXPIRING_PREVIEW} more · View all
-                    </Text>
+                    <View style={styles.expiringTitleRow}>
+                      <View style={styles.expiringIconWrap}>
+                        <Icon source="clock-alert-outline" size={20} color="#E65100" />
+                      </View>
+                      <Text variant="titleSmall" style={styles.expiringPanelTitle}>
+                        Expiring soon
+                      </Text>
+                      <View style={styles.expiringCountPill}>
+                        <Text style={styles.expiringCountText}>{expiringItems.length}</Text>
+                      </View>
+                    </View>
+                    <Icon source="chevron-right" size={22} color="#E65100" />
                   </Pressable>
-                ) : null}
-              </Surface>
-            </View>
-          )}
 
-          {pantryTotal === 0 ? (
-            <Pressable
-              onPress={() => navigation.navigate('Inventory')}
-              style={styles.emptyPantry}
+                  <View style={styles.expiringList}>
+                    {expiringItems.slice(0, EXPIRING_PREVIEW).map((item, index, preview) => {
+                      const { text: daysText, urgent } = expiringDaysLabel(item.days_until_expiry);
+                      const isLast = index === preview.length - 1;
+                      return (
+                        <Pressable
+                          key={item.item_id}
+                          onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
+                          style={({ pressed }) => [
+                            styles.expiringRow,
+                            !isLast && styles.expiringRowBorder,
+                            pressed && styles.expiringRowPressed,
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.expiringRowAccent,
+                              urgent ? styles.expiringRowAccentUrgent : styles.expiringRowAccentWarn,
+                            ]}
+                          />
+                          <View style={styles.expiringRowBody}>
+                            <Text variant="bodyMedium" style={styles.expiringRowName} numberOfLines={1}>
+                              {formatItemName(item.canonical_name)}
+                            </Text>
+                            <Text variant="bodySmall" style={styles.expiringRowQty} numberOfLines={1}>
+                              {pantryQtyLabel(item)}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.expiringDaysPill,
+                              urgent ? styles.expiringDaysPillUrgent : styles.expiringDaysPillWarn,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.expiringDaysText,
+                                urgent ? styles.expiringDaysTextUrgent : styles.expiringDaysTextWarn,
+                              ]}
+                            >
+                              {daysText}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  {expiringItems.length > EXPIRING_PREVIEW ? (
+                    <Pressable
+                      onPress={() => navigation.navigate('Inventory', { expiringSoon: true })}
+                      style={({ pressed }) => [styles.expiringMoreBtn, pressed && { opacity: 0.85 }]}
+                    >
+                      <Text style={styles.expiringMoreText}>
+                        +{expiringItems.length - EXPIRING_PREVIEW} more · View all
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </Surface>
+                </View>
+              ) : null}
+            </TourTarget>
+          ) : (
+            <TourTarget
+              id={APP_TOUR_TARGET_IDS.pantryFallback}
+              onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.pantryFallback, y)}
             >
-              <Surface style={styles.emptyPantryCard} elevation={1}>
-                <IconButton icon="fridge-outline" size={32} iconColor="#388E3C" style={{ margin: 0 }} />
-                <Text variant="titleSmall" style={styles.emptyPantryTitle}>
-                  Your kitchen is empty
-                </Text>
-                <Text variant="bodySmall" style={styles.emptyPantrySub}>
-                  Scan a bill or add items to get meal ideas
-                </Text>
-              </Surface>
-            </Pressable>
-          ) : null}
+              {pantryTotal === 0 ? (
+                <Pressable
+                  onPress={() => navigation.navigate('Inventory')}
+                  style={styles.emptyPantry}
+                >
+                  <Surface style={styles.emptyPantryCard} elevation={1}>
+                    <IconButton icon="fridge-outline" size={32} iconColor="#388E3C" style={{ margin: 0 }} />
+                    <Text variant="titleSmall" style={styles.emptyPantryTitle}>
+                      Your kitchen is empty
+                    </Text>
+                    <Text variant="bodySmall" style={styles.emptyPantrySub}>
+                      Scan a bill or add items to get meal ideas
+                    </Text>
+                  </Surface>
+                </Pressable>
+              ) : (
+                <View style={styles.pantryTourAnchor} />
+              )}
+            </TourTarget>
+          )}
         </>
       )}
+
+    </TabScreenScrollLayout>
 
       <AddInventoryModal
         visible={inventoryModalOpen}
@@ -332,15 +386,11 @@ export function HomeScreen({ navigation }: any) {
         visible={shoppingModalOpen}
         onDismiss={() => setShoppingModalOpen(false)}
       />
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
   scrollContent: {
     paddingBottom: 20,
   },
@@ -370,6 +420,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 28,
     marginTop: 6,
+  },
+  profileTourTarget: {
+    width: 48,
+    height: 48,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // Sections
   sectionTitle: {
@@ -579,5 +636,11 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 4,
     textAlign: 'center',
+  },
+  pantryTourAnchor: {
+    height: 1,
+    marginHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 20,
   },
 });

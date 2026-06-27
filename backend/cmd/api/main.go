@@ -129,6 +129,8 @@ func main() {
 	api.Handle("/ingredients", middleware.RequireAuth(http.HandlerFunc(handlers.GetIngredientsCatalog()))).Methods("GET", "OPTIONS")
 	api.Handle("/dishes", middleware.RequireAuth(http.HandlerFunc(handlers.GetDishesCatalog()))).Methods("GET", "OPTIONS")
 	api.Handle("/dishes/lookup", middleware.RequireAuth(http.HandlerFunc(handlers.GetDishLookup(cfg)))).Methods("GET", "OPTIONS")
+	api.Handle("/dishes/recipes", middleware.RequireAuth(http.HandlerFunc(handlers.ListDishRecipes(sqlDB)))).Methods("GET", "OPTIONS")
+	api.Handle("/dishes/{dish_id}/recipe", middleware.RequireAuth(http.HandlerFunc(handlers.GetDishRecipe(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventoryFoodGroups(sqlDB)))).Methods("GET", "OPTIONS")
 	api.Handle("/inventory/backfill-food-groups", middleware.RequireAuth(http.HandlerFunc(handlers.BackfillInventoryFoodGroups(sqlDB, cfg)))).Methods("POST", "OPTIONS")
 	api.Handle("/inventory", middleware.RequireAuth(http.HandlerFunc(handlers.GetInventory(sqlDB)))).Methods("GET", "OPTIONS")

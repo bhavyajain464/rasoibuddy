@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { CookRouteParams } from './cookParams';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -12,7 +13,7 @@ export type MainTabParamList = {
     /** When set, in-category Back returns to this tab (e.g. Home → Meal of Day → Back). */
     returnToTab?: 'Home';
   } | undefined;
-  Cook: { dishItems?: string[] } | undefined;
+  Cook: CookRouteParams | undefined;
   Shopping: undefined;
 };
 

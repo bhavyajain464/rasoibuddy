@@ -26,6 +26,9 @@ import {
 } from '../../utils/ingredientPantryMatch';
 import { hiddenMajorIngredientCount, majorIngredients } from '../../utils/mealIngredients';
 import { palette } from '../../theme';
+import { RegenerateMealSheet } from './RegenerateMealSheet';
+import type { MealSuggestionCategoryId, MealTypeFilterId } from '../../constants/mealSuggestionCategories';
+import { cookNavParams, type CookRouteParams } from '../../navigation/cookParams';
 
 const SLOT_ORDER = ['breakfast', 'lunch', 'dinner'] as const;
 
@@ -187,7 +190,9 @@ type WeekPlanMealCardProps = {
   onTogglePair: (item: string) => void;
   onAddToShopping: () => void;
   onSendToCook: () => void;
+  onOpenCook: () => void;
   onPreviewImage: () => void;
+  onViewRecipe: () => void;
 };
 
 function WeekPlanMealCard({
@@ -213,7 +218,9 @@ function WeekPlanMealCard({
   onTogglePair,
   onAddToShopping,
   onSendToCook,
+  onOpenCook,
   onPreviewImage,
+  onViewRecipe,
 }: WeekPlanMealCardProps) {
   const { thumbWidth, onTopRowLayout } = useMealThumbWidth();
   const difficulty = meal.difficulty ?? 'easy';
@@ -314,6 +321,14 @@ function WeekPlanMealCard({
                     {meal.star_count ?? 0}
                   </Text>
                 </View>
+                <IconButton
+                  icon="chef-hat"
+                  iconColor={palette.primary}
+                  size={20}
+                  style={styles.cookShortcutBtn}
+                  onPress={onOpenCook}
+                  accessibilityLabel="Open cooking recipes for this meal"
+                />
                 <View
                   style={[
                     styles.diffBadge,
@@ -409,6 +424,18 @@ function WeekPlanMealCard({
         </View>
 
         <View style={styles.actions}>
+          {meal.dish_id ? (
+            <Button
+              mode="outlined"
+              icon="book-open-page-variant"
+              compact
+              onPress={onViewRecipe}
+              style={styles.actionBtn}
+              contentStyle={{ paddingVertical: 2 }}
+            >
+              View recipe
+            </Button>
+          ) : null}
           <Button
             mode="contained"
             icon="chef-hat"
@@ -460,13 +487,16 @@ export function WeekPlanDaySheet({
   const [inventoryIds, setInventoryIds] = useState<Set<string>>(() => new Set());
   const [previewMeal, setPreviewMeal] = useState<MealOfDayMeal | null>(null);
   const [starringDish, setStarringDish] = useState<string | null>(null);
+  const [regenerateSlot, setRegenerateSlot] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedPairsBySlot({});
   }, [day?.date]);
 
   useEffect(() => {
-    if (!visible) setPreviewMeal(null);
+    if (!visible) {
+      setPreviewMeal(null);
+    }
   }, [visible]);
 
   useEffect(() => {
@@ -502,7 +532,10 @@ export function WeekPlanDaySheet({
 
   useEffect(() => {
     setChangeMenuSlot(null);
-    if (!visible) setSearchSlot(null);
+    if (!visible) {
+      setSearchSlot(null);
+      setRegenerateSlot(null);
+    }
   }, [day?.date, visible]);
 
   const applyDayResponse = (res: WeekPlanDayResponse, successLabel: string) => {
@@ -511,12 +544,22 @@ export function WeekPlanDaySheet({
     showAppSuccess(successLabel);
   };
 
-  const handleRegenerateWithAI = async (mealSlot: string) => {
+  const handleRegenerateWithAI = async (
+    mealSlot: string,
+    category: MealSuggestionCategoryId,
+    userPrompt: string,
+    mealType: MealTypeFilterId,
+  ) => {
     if (!day || !mealSlot) return;
     setRefreshingSlot(mealSlot);
     try {
-      const res = await api.refreshWeekPlanDay(day.date, mealSlot);
+      const res = await api.refreshWeekPlanDay(day.date, mealSlot, {
+        category,
+        userPrompt,
+        mealType,
+      });
       applyDayResponse(res, `${SLOT_LABELS[mealSlot] ?? mealSlot} updated`);
+      setRegenerateSlot(null);
     } catch {
       showAppError('Could not regenerate this meal. Try again.');
     } finally {
@@ -593,16 +636,45 @@ export function WeekPlanDaySheet({
     }
   };
 
+  const cookItemsForMeal = (meal: MealOfDayMeal) => {
+    const slot = meal.meal_slot?.toLowerCase() ?? '';
+    const pairs = selectedPairsBySlot[slot] ?? [];
+    return [meal.name, ...pairs].map((x) => x.trim()).filter(Boolean);
+  };
+
+  const navigateToCook = (params: CookRouteParams) => {
+    onDismiss();
+    navigation.navigate('Cook', cookNavParams(params));
+  };
+
+  const handleOpenCook = (meal: MealOfDayMeal) => {
+    navigateToCook({
+      mode: 'cooking',
+      dishId: meal.dish_id,
+      dishName: meal.name,
+    });
+  };
+
+  const handleViewRecipe = (meal: MealOfDayMeal) => {
+    if (!meal.dish_id?.trim()) return;
+    navigateToCook({
+      mode: 'cooking',
+      dishId: meal.dish_id,
+      dishName: meal.name,
+    });
+  };
+
   const handleSendToCook = (meal: MealOfDayMeal) => {
     if (!cookProfileReady) {
       showAppInfo('Add your cook profile with a WhatsApp number on the Cook tab first.');
-      navigation.navigate('Cook');
+      navigateToCook({ mode: 'cook', dishItems: cookItemsForMeal(meal), dishName: meal.name });
       return;
     }
-    const slot = meal.meal_slot?.toLowerCase() ?? '';
-    const pairs = selectedPairsBySlot[slot] ?? [];
-    onDismiss();
-    navigation.navigate('Cook', { dishItems: [meal.name, ...pairs] });
+    navigateToCook({
+      mode: 'cook',
+      dishItems: cookItemsForMeal(meal),
+      dishName: meal.name,
+    });
   };
 
   return (
@@ -657,7 +729,7 @@ export function WeekPlanDaySheet({
               onCloseChangeMenu={() => setChangeMenuSlot(null)}
               onRegenerateWithAI={() => {
                 setChangeMenuSlot(null);
-                void handleRegenerateWithAI(slot);
+                setRegenerateSlot(slot);
               }}
               onChooseFromCatalog={() => {
                 setChangeMenuSlot(null);
@@ -666,7 +738,9 @@ export function WeekPlanDaySheet({
               onTogglePair={(item) => togglePairSelection(slot, item)}
               onAddToShopping={() => void handleAddToShopping(meal, shopItems)}
               onSendToCook={() => handleSendToCook(meal)}
+              onOpenCook={() => handleOpenCook(meal)}
               onPreviewImage={() => setPreviewMeal(meal)}
+              onViewRecipe={() => handleViewRecipe(meal)}
             />
           );
         })
@@ -678,6 +752,20 @@ export function WeekPlanDaySheet({
       mealSlot={searchSlot ?? undefined}
       onClose={() => setSearchSlot(null)}
       onSelect={(dish) => void handleSelectCatalogDish(dish)}
+    />
+
+    <RegenerateMealSheet
+      visible={regenerateSlot !== null}
+      mealSlot={regenerateSlot ?? ''}
+      loading={regenerateSlot !== null && refreshingSlot === regenerateSlot}
+      onDismiss={() => {
+        if (refreshingSlot === regenerateSlot) return;
+        setRegenerateSlot(null);
+      }}
+      onSelectCategory={(category, userPrompt, mealType) => {
+        if (!regenerateSlot) return;
+        void handleRegenerateWithAI(regenerateSlot, category, userPrompt, mealType);
+      }}
     />
 
     <DishImagePreviewModal
@@ -740,6 +828,7 @@ const styles = StyleSheet.create({
   metaText: { color: '#888' },
   starWrap: { flexDirection: 'row', alignItems: 'center' },
   starBtn: { margin: 0, width: 28, height: 28 },
+  cookShortcutBtn: { margin: 0, width: 28, height: 28 },
   starCountText: { color: '#555', fontWeight: '700', minWidth: 14, marginLeft: -4 },
   diffBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   diffText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },

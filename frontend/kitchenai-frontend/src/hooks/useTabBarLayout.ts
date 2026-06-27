@@ -5,6 +5,11 @@ import { palette } from '../theme';
 /** Tab icons + labels only (excludes system bottom inset). */
 export const TAB_BAR_CONTENT_HEIGHT = 58;
 
+/** Space to keep clear above the tab bar (highlights, tooltips). */
+export function getTabBarReservedHeight(insetsBottom: number, extra = 8): number {
+  return TAB_BAR_CONTENT_HEIGHT + tabBarBottomInset(insetsBottom) + extra;
+}
+
 /**
  * Bottom inset for the tab bar. With Android edge-to-edge, `insets.bottom` is
  * usually the nav bar height; use a small floor when it reads 0 on odd devices.

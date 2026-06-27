@@ -151,6 +151,23 @@ type InventoryBucketCounts struct {
 	Total    int `json:"total"`
 }
 
+// InventoryPageItem is a unified pantry row for paginated GET /inventory.
+type InventoryPageItem struct {
+	ItemID          string       `json:"item_id"`
+	IngredientID    string       `json:"ingredient_id,omitempty"`
+	CanonicalName   string       `json:"canonical_name"`
+	Qty             float64      `json:"qty"`
+	Unit            string       `json:"unit"`
+	FoodGroup       string       `json:"food_group,omitempty"`
+	DisplayQty      string       `json:"display_qty,omitempty"`
+	Catalog         *ItemCatalog `json:"catalog,omitempty"`
+	EstimatedExpiry *time.Time   `json:"estimated_expiry,omitempty"`
+	DaysUntilExpiry *int         `json:"days_until_expiry,omitempty"`
+	IsManual        bool         `json:"is_manual,omitempty"`
+	CreatedAt       time.Time    `json:"created_at,omitempty"`
+	UpdatedAt       time.Time    `json:"updated_at,omitempty"`
+}
+
 // InventoryBucketsResponse is returned by GET /inventory?include=active,expiring,expired.
 // Only requested bucket arrays are populated; counts always cover all buckets.
 type InventoryBucketsResponse struct {

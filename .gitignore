@@ -1,3 +1,6 @@
+# Marketing assets (local-only)
+marketing/
+
 # Environment / secrets
 .env
 .env.*
@@ -48,5 +51,13 @@ credentials.json
 service-account*.json
 backend/scripts/.catalog_keywords_checkpoint.json
 *.checkpoint.json
+
+# Scraper virtualenv and local scrape output
+scripts/scrape_rasoibuddy/.venv/
+.venv-scraper/
+data/rasoibuddy/
+
+# Local Go build artifacts
+backend/seedcatalog
 .vercel
 .env*.local

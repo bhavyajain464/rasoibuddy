@@ -15,6 +15,10 @@ type MessageComposerProps = {
   borderColor?: string;
   submitIcon?: string;
   accessibilityLabel?: string;
+  /** When false, send via keyboard return only (no circular arrow button). */
+  showSubmitButton?: boolean;
+  /** Chat-style multiline input (Enter sends on blurSubmit false). */
+  multiline?: boolean;
 };
 
 export function MessageComposer({
@@ -28,6 +32,8 @@ export function MessageComposer({
   borderColor = '#C8E6C9',
   submitIcon = 'arrow-right',
   accessibilityLabel = 'Send',
+  showSubmitButton = true,
+  multiline = false,
 }: MessageComposerProps) {
   const [focused, setFocused] = useState(false);
   const canSubmit = value.trim().length > 0 && !disabled && !loading;
@@ -38,7 +44,9 @@ export function MessageComposer({
       style={[
         styles.composer,
         { borderColor: focused ? accentColor : borderColor },
+        multiline && styles.composerMultiline,
         focused && styles.composerFocused,
+        !showSubmitButton && styles.composerNoButton,
       ]}
     >
       <TextInput
@@ -54,33 +62,39 @@ export function MessageComposer({
         activeUnderlineColor="transparent"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onSubmitEditing={canSubmit ? onSubmit : undefined}
-        returnKeyType="send"
-        blurOnSubmit
+        onSubmitEditing={canSubmit && !multiline ? onSubmit : undefined}
+        returnKeyType={multiline ? 'default' : 'send'}
+        blurOnSubmit={!multiline}
         editable={!loading && !disabled}
-        multiline={false}
-        numberOfLines={1}
-        textAlign={isEmpty ? 'center' : 'left'}
+        multiline={multiline}
+        numberOfLines={multiline ? 3 : 1}
+        textAlign={isEmpty && !multiline ? 'center' : 'left'}
       />
-      <View style={styles.sendBtnWrap}>
-        <Pressable
-          onPress={onSubmit}
-          disabled={!canSubmit}
-          style={({ pressed }) => [
-            styles.sendBtn,
-            { backgroundColor: canSubmit ? accentColor : '#BDBDBD' },
-            pressed && canSubmit && styles.sendBtnPressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Icon source={submitIcon} size={20} color="#fff" />
-          )}
-        </Pressable>
-      </View>
+      {showSubmitButton ? (
+        <View style={styles.sendBtnWrap}>
+          <Pressable
+            onPress={onSubmit}
+            disabled={!canSubmit}
+            style={({ pressed }) => [
+              styles.sendBtn,
+              { backgroundColor: canSubmit ? accentColor : '#BDBDBD' },
+              pressed && canSubmit && styles.sendBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Icon source={submitIcon} size={20} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      ) : loading ? (
+        <View style={styles.sendBtnWrap}>
+          <ActivityIndicator size="small" color={accentColor} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -98,6 +112,13 @@ const styles = StyleSheet.create({
   },
   composerFocused: {
     backgroundColor: '#fff',
+  },
+  composerMultiline: {
+    alignItems: 'flex-end',
+    minHeight: SEND_SIZE + 28,
+  },
+  composerNoButton: {
+    paddingRight: 12,
   },
   input: {
     flex: 1,

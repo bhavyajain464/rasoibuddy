@@ -3,9 +3,10 @@ import {
   StyleSheet,
   View,
   RefreshControl,
-  ScrollView,
+  FlatList,
   Platform,
   useWindowDimensions,
+  type ScrollView,
 } from 'react-native';
 import {
   Text,
@@ -13,6 +14,7 @@ import {
   SegmentedButtons,
   IconButton,
   Menu,
+  ActivityIndicator,
 } from 'react-native-paper';
 import {
   useRoute,
@@ -37,35 +39,17 @@ import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { useEntitlements } from '../context/EntitlementsContext';
 import { usePlanUpgrade } from '../hooks/usePlanUpgrade';
 import { showUpgradeMessage } from '../utils/upgrade';
-import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
+import { showAppError } from '../utils/alertMessage';
 import { TabScreenHeader, TabScreenToolbarRow } from '../components/TabScreenHeader';
 import { useAppRefresh, refreshAppliesTo } from '../context/AppRefreshContext';
 import type { MainTabParamList } from '../navigation/types';
 import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
-
-/** Web reload restores scroll on the list node after paint; pin repeatedly without user input. */
-function startWebInventoryScrollPin(pin: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
-  const prevRestoration = window.history.scrollRestoration;
-  window.history.scrollRestoration = 'manual';
-  let cancelled = false;
-  const run = () => {
-    if (cancelled) return;
-    pin();
-    window.scrollTo(0, 0);
-  };
-  run();
-  const timers = [0, 50, 100, 200, 350, 500, 700].map((ms) => window.setTimeout(run, ms));
-  const interval = window.setInterval(run, 40);
-  const stopInterval = window.setTimeout(() => window.clearInterval(interval), 720);
-  return () => {
-    cancelled = true;
-    timers.forEach((id) => window.clearTimeout(id));
-    window.clearInterval(interval);
-    window.clearTimeout(stopInterval);
-    window.history.scrollRestoration = prevRestoration;
-  };
-}
+import { TourTarget } from '../components/tour/TourTarget';
+import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
+import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
+import { useScrollToTopOnTabFocus } from '../hooks/useScrollToTopOnTabFocus';
+import { useProductTour } from '../context/ProductTourContext';
+import { scrollFlatListToTop, useFlatListOnEndReached } from '../utils/infiniteScroll';
 
 type TabValue = 'all' | 'expired';
 
@@ -77,15 +61,14 @@ type PantryItem = InventoryItem | ExpiringItem;
 
 type PantryListEntry<T> = { item: T; index: number };
 
+type PendingPantryListEntry = { item: PantryItem; index: number };
+
 type PendingPantryRemove = {
-  inventory?: PantryListEntry<InventoryItem>;
-  expiring?: PantryListEntry<ExpiringItem>;
-  expired?: PantryListEntry<ExpiringItem>;
+  list?: PendingPantryListEntry;
 };
 
 type PendingPantryExpire = {
-  inventory?: PantryListEntry<InventoryItem>;
-  expiring?: PantryListEntry<ExpiringItem>;
+  list?: PendingPantryListEntry;
   addedExpired: PantryListEntry<ExpiringItem>;
 };
 
@@ -124,14 +107,19 @@ function toExpiredPreview(item: InventoryItem | ExpiringItem): ExpiringItem {
 export function InventoryScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const { contentPaddingBottom } = useTabBarLayout();
+  const { isTourActive, activeStepId } = useProductTour();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Inventory'>>();
   const route = useRoute<RouteProp<MainTabParamList, 'Inventory'>>();
   const { entitlements, canBillScan } = useEntitlements();
   const { startUpgrade } = usePlanUpgrade();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
-  const [expiredItems, setExpiredItems] = useState<ExpiringItem[]>([]);
+  const [listItems, setListItems] = useState<PantryItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [groupCounts, setGroupCounts] = useState<Record<string, number>>({});
+  const [bucketCounts, setBucketCounts] = useState({ active: 0, expiring: 0, expired: 0, total: 0 });
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [tab, setTab] = useState<TabValue>(() =>
     route.params?.tab === 'expired' ? 'expired' : 'all',
   );
@@ -147,12 +135,12 @@ export function InventoryScreen() {
   const pendingPantryExpiresRef = useRef<Map<string, PendingPantryExpire>>(new Map());
   const pendingPantryAddToShoppingRef = useRef<Map<string, PendingPantryAddToShopping>>(new Map());
 
-  const inventoryRef = useRef(inventory);
-  const expiringItemsRef = useRef(expiringItems);
-  const expiredItemsRef = useRef(expiredItems);
-  inventoryRef.current = inventory;
-  expiringItemsRef.current = expiringItems;
-  expiredItemsRef.current = expiredItems;
+  const listItemsRef = useRef(listItems);
+  listItemsRef.current = listItems;
+  const requestGen = useRef(0);
+  const nextOffsetRef = useRef(0);
+  const resetEndReachedRef = useRef<() => void>(() => {});
+  const pendingScrollToTopRef = useRef(false);
 
   const [addMenuVisible, setAddMenuVisible] = useState(false);
 
@@ -164,78 +152,52 @@ export function InventoryScreen() {
 
   const [scanSheetVisible, setScanSheetVisible] = useState(false);
 
-  const inventoryScrollRef = useRef<ScrollView>(null);
+  const inventoryScrollRef = useRef<FlatList<PantryItem>>(null);
+  useTourScreenScroll('Inventory', inventoryScrollRef as React.RefObject<ScrollView | null>, { fixedChromeExtra: 130 });
   const skipMountLoadData = useRef(true);
   const skipFilterScrollReset = useRef(true);
   const skipExpiredFilterScrollReset = useRef(true);
-  const pendingScrollPinRef = useRef(false);
-  const loadSeqRef = useRef(0);
-  const webScrollPinCleanupRef = useRef<(() => void) | null>(null);
   const skipInventoryFocusLoadRef = useRef(true);
-  /** Set when expired bucket fetch succeeds; kept for compatibility (not used to skip loads). */
-  const expiredLoadedRef = useRef(false);
   const tabRef = useRef(tab);
   tabRef.current = tab;
   const isFocused = useIsFocused();
   const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
 
   useEffect(
-    () => () => {
-      webScrollPinCleanupRef.current?.();
-      webScrollPinCleanupRef.current = null;
+    () => {
+      if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+      const prev = window.history.scrollRestoration;
+      window.history.scrollRestoration = 'manual';
+      return () => {
+        window.history.scrollRestoration = prev;
+      };
     },
     [],
   );
 
+  const scrollListAfterLayout = useCallback(() => {
+    if (!pendingScrollToTopRef.current) return;
+    pendingScrollToTopRef.current = false;
+    scrollFlatListToTop(inventoryScrollRef);
+  }, []);
+
   const restorePantryEntries = useCallback((pending: PendingPantryRemove) => {
-    if (pending.inventory) {
-      const { item, index } = pending.inventory;
-      setInventory((prev) => {
-        if (prev.some((i) => i.item_id === item.item_id)) return prev;
-        const list = [...prev];
-        list.splice(Math.min(index, list.length), 0, item);
-        return list;
-      });
-    }
-    if (pending.expiring) {
-      const { item, index } = pending.expiring;
-      setExpiringItems((prev) => {
-        if (prev.some((i) => i.item_id === item.item_id)) return prev;
-        const list = [...prev];
-        list.splice(Math.min(index, list.length), 0, item);
-        return list;
-      });
-    }
-    if (pending.expired) {
-      const { item, index } = pending.expired;
-      setExpiredItems((prev) => {
-        if (prev.some((i) => i.item_id === item.item_id)) return prev;
-        const list = [...prev];
-        list.splice(Math.min(index, list.length), 0, item);
-        return list;
-      });
-    }
+    if (!pending.list) return;
+    const { item, index } = pending.list;
+    setListItems((prev) => {
+      if (prev.some((i) => i.item_id === item.item_id)) return prev;
+      const list = [...prev];
+      list.splice(Math.min(index, list.length), 0, item);
+      return list;
+    });
   }, []);
 
   const optimisticallyRemovePantryItem = useCallback((itemId: string): PendingPantryRemove => {
+    const list = listItemsRef.current;
+    const index = list.findIndex((i) => i.item_id === itemId);
     const captured: PendingPantryRemove = {};
-
-    const inv = inventoryRef.current;
-    const invIndex = inv.findIndex((i) => i.item_id === itemId);
-    if (invIndex >= 0) captured.inventory = { item: inv[invIndex], index: invIndex };
-
-    const expiring = expiringItemsRef.current;
-    const expiringIndex = expiring.findIndex((i) => i.item_id === itemId);
-    if (expiringIndex >= 0) captured.expiring = { item: expiring[expiringIndex], index: expiringIndex };
-
-    const expired = expiredItemsRef.current;
-    const expiredIndex = expired.findIndex((i) => i.item_id === itemId);
-    if (expiredIndex >= 0) captured.expired = { item: expired[expiredIndex], index: expiredIndex };
-
-    setInventory((prev) => prev.filter((i) => i.item_id !== itemId));
-    setExpiringItems((prev) => prev.filter((i) => i.item_id !== itemId));
-    setExpiredItems((prev) => prev.filter((i) => i.item_id !== itemId));
-
+    if (index >= 0) captured.list = { item: list[index], index };
+    setListItems((prev) => prev.filter((i) => i.item_id !== itemId));
     return captured;
   }, []);
 
@@ -260,42 +222,22 @@ export function InventoryScreen() {
   }, [commitPantryRemove, cancelCommit]);
 
   const restorePantryExpire = useCallback((pending: PendingPantryExpire) => {
-    const expiredId = pending.addedExpired.item.item_id;
-    setExpiredItems((prev) => prev.filter((i) => i.item_id !== expiredId));
-    restorePantryEntries({
-      inventory: pending.inventory,
-      expiring: pending.expiring,
-    });
+    if (pending.list) {
+      restorePantryEntries({ list: pending.list });
+    }
   }, [restorePantryEntries]);
 
   const optimisticallyExpirePantryItem = useCallback((item: PantryItem): PendingPantryExpire => {
     const itemId = item.item_id;
-
-    const inv = inventoryRef.current;
-    const invIndex = inv.findIndex((i) => i.item_id === itemId);
-
-    const expiring = expiringItemsRef.current;
-    const expiringIndex = expiring.findIndex((i) => i.item_id === itemId);
-
-    const source =
-      (invIndex >= 0 ? inv[invIndex] : undefined) ??
-      (expiringIndex >= 0 ? expiring[expiringIndex] : undefined) ??
-      item;
+    const list = listItemsRef.current;
+    const index = list.findIndex((i) => i.item_id === itemId);
+    const source = index >= 0 ? list[index] : item;
     const preview = toExpiredPreview(source);
-
     const captured: PendingPantryExpire = {
       addedExpired: { item: preview, index: 0 },
     };
-    if (invIndex >= 0) captured.inventory = { item: inv[invIndex], index: invIndex };
-    if (expiringIndex >= 0) captured.expiring = { item: expiring[expiringIndex], index: expiringIndex };
-
-    setInventory((prev) => prev.filter((i) => i.item_id !== itemId));
-    setExpiringItems((prev) => prev.filter((i) => i.item_id !== itemId));
-    setExpiredItems((prev) => {
-      const without = prev.filter((i) => i.item_id !== itemId);
-      return [preview, ...without];
-    });
-
+    if (index >= 0) captured.list = { item: list[index], index };
+    setListItems((prev) => prev.filter((i) => i.item_id !== itemId));
     return captured;
   }, []);
 
@@ -352,109 +294,94 @@ export function InventoryScreen() {
   }, [flushPendingPantryRemoves, flushPendingPantryExpires, flushPendingPantryAddToShopping]);
 
   const scrollListToTop = useCallback(() => {
-    inventoryScrollRef.current?.scrollTo({ y: 0, animated: false });
-    if (Platform.OS === 'web') {
-      const node = inventoryScrollRef.current as unknown as {
-        getScrollableNode?: () => HTMLElement | null;
-      } | null;
-      const el = node?.getScrollableNode?.();
-      if (el) {
-        el.scrollTop = 0;
-      }
-    }
+    pendingScrollToTopRef.current = true;
+    scrollFlatListToTop(inventoryScrollRef);
   }, []);
 
-  /** Pin list after content height changes (post–loadData); beats async browser scroll restoration on web. */
-  const pinListScrollToTop = useCallback(() => {
-    scrollListToTop();
-    if (Platform.OS !== 'web') return;
-    requestAnimationFrame(scrollListToTop);
-    setTimeout(scrollListToTop, 0);
-    setTimeout(scrollListToTop, 50);
-    setTimeout(scrollListToTop, 150);
-  }, [scrollListToTop]);
+  useScrollToTopOnTabFocus(inventoryScrollRef as React.RefObject<ScrollView | null>, {
+    onScrollToTop: scrollListToTop,
+  });
 
-  const startWebListScrollPin = useCallback(() => {
-    webScrollPinCleanupRef.current?.();
-    webScrollPinCleanupRef.current = startWebInventoryScrollPin(scrollListToTop);
-  }, [scrollListToTop]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  /** After filter pill / expiring-soon change — same web scroll restoration as reload. */
-  const resetListScrollForFilterChange = useCallback(() => {
-    pendingScrollPinRef.current = true;
-    scrollListToTop();
-    if (Platform.OS === 'web') {
-      startWebListScrollPin();
+  const loadPage = useCallback(async (offset: number, append: boolean) => {
+    const gen = ++requestGen.current;
+    if (append) {
+      setLoadingMore(true);
     } else {
-      pinListScrollToTop();
+      setLoading(true);
+      nextOffsetRef.current = 0;
+      resetEndReachedRef.current();
+      pendingScrollToTopRef.current = true;
     }
-  }, [scrollListToTop, startWebListScrollPin, pinListScrollToTop]);
-
-  const loadInStock = useCallback(async () => {
-    const seq = ++loadSeqRef.current;
-    setLoading(true);
+    const isExpiredTab = tabRef.current === 'expired';
     try {
-      const [data, groups] = await Promise.all([
-        api.fetchInventoryBuckets(['active', 'expiring']),
-        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
-      ]);
-      if (seq !== loadSeqRef.current) return;
-      setInventory(Array.isArray(data.active) ? data.active : []);
-      setExpiringItems(Array.isArray(data.expiring) ? data.expiring : []);
-      setFoodGroups(Array.isArray(groups) ? groups : []);
+      const page = await api.fetchInventoryPage({
+        include: isExpiredTab ? ['expired'] : ['active', 'expiring'],
+        q: debouncedSearch,
+        foodGroup: isExpiredTab ? expiredGroupFilter : groupFilter,
+        expiringOnly: !isExpiredTab && expiringSoonFilter,
+        offset,
+      });
+      if (gen !== requestGen.current) return;
+      setListItems((prev) => (append ? [...prev, ...page.items] : page.items));
+      nextOffsetRef.current = offset + page.items.length;
+      setTotal(page.total);
+      setHasMore(page.has_more);
+      setGroupCounts(page.group_counts ?? {});
+      setBucketCounts(page.counts);
     } catch (e) {
-      if (seq !== loadSeqRef.current) return;
+      if (gen !== requestGen.current) return;
       console.error('Failed to load inventory:', e);
-      setInventory([]);
-      setExpiringItems([]);
-    } finally {
-      if (seq !== loadSeqRef.current) return;
-      setLoading(false);
-      pendingScrollPinRef.current = true;
-      if (Platform.OS === 'web') {
-        startWebListScrollPin();
+      if (!append) {
+        setListItems([]);
+        setTotal(0);
+        setHasMore(false);
+        setGroupCounts({});
       }
-    }
-  }, [startWebListScrollPin]);
-
-  const loadExpired = useCallback(async () => {
-    const seq = ++loadSeqRef.current;
-    setLoading(true);
-    try {
-      const [data, groups] = await Promise.all([
-        api.fetchInventoryBuckets(['expired']),
-        api.fetchInventoryFoodGroups().catch(() => [] as InventoryFoodGroup[]),
-      ]);
-      if (seq !== loadSeqRef.current) return;
-      setExpiredItems(Array.isArray(data.expired) ? data.expired : []);
-      setFoodGroups(Array.isArray(groups) ? groups : []);
-      expiredLoadedRef.current = true;
-    } catch (e) {
-      if (seq !== loadSeqRef.current) return;
-      console.error('Failed to load expired inventory:', e);
-      setExpiredItems([]);
     } finally {
-      if (seq !== loadSeqRef.current) return;
+      if (gen !== requestGen.current) return;
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, []);
+  }, [debouncedSearch, groupFilter, expiredGroupFilter, expiringSoonFilter]);
 
   const loadData = useCallback(async () => {
-    if (tabRef.current === 'expired') {
-      await loadExpired();
-      return;
-    }
-    await loadInStock();
-  }, [loadInStock, loadExpired]);
+    await loadPage(0, false);
+  }, [loadPage]);
 
-  // Reload the active segment whenever In stock ↔ Expired changes.
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    await loadPage(nextOffsetRef.current, true);
+  }, [loadingMore, hasMore, loadPage]);
+
+  const { flatListProps, resetEndReached } = useFlatListOnEndReached({
+    onLoadMore: loadMore,
+    hasMore,
+    loading,
+    loadingMore,
+  });
+  resetEndReachedRef.current = resetEndReached;
+
+  // Reload when tab, search, or filters change.
   useEffect(() => {
-    if (tab === 'expired') {
-      void loadExpired();
-    } else {
-      void loadInStock();
+    void loadPage(0, false);
+  }, [tab, debouncedSearch, groupFilter, expiredGroupFilter, expiringSoonFilter, loadPage]);
+
+  useEffect(() => {
+    void api.fetchInventoryFoodGroups()
+      .then((groups) => setFoodGroups(Array.isArray(groups) ? groups : []))
+      .catch(() => setFoodGroups([]));
+  }, []);
+
+  useEffect(() => {
+    if (isTourActive && activeStepId?.startsWith('inventory-')) {
+      setTab('all');
     }
-  }, [tab, loadInStock, loadExpired]);
+  }, [isTourActive, activeStepId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -462,12 +389,8 @@ export function InventoryScreen() {
         skipInventoryFocusLoadRef.current = false;
         return;
       }
-      if (tabRef.current === 'expired') {
-        void loadExpired();
-      } else {
-        void loadInStock();
-      }
-    }, [loadInStock, loadExpired]),
+      void loadData();
+    }, [loadData]),
   );
 
   // Global inventory refresh (e.g. add item modal) while this tab is focused.
@@ -545,7 +468,7 @@ export function InventoryScreen() {
       flushPendingPantryActions();
 
       const captured = optimisticallyRemovePantryItem(itemId);
-      if (!captured.inventory && !captured.expiring && !captured.expired) return;
+      if (!captured.list) return;
 
       pendingPantryRemovesRef.current.set(itemId, captured);
 
@@ -575,7 +498,7 @@ export function InventoryScreen() {
       flushPendingPantryActions();
 
       const captured = optimisticallyRemovePantryItem(itemId);
-      if (!captured.inventory && !captured.expiring && !captured.expired) return;
+      if (!captured.list) return;
 
       pendingPantryAddToShoppingRef.current.set(itemId, {
         ...captured,
@@ -681,51 +604,12 @@ export function InventoryScreen() {
     setScanSheetVisible(true);
   };
 
-  // ── Filtered lists ──────────────────────────────────────────
-
-  const searchLower = search.toLowerCase();
-
-  const inStockItems = useMemo((): PantryItem[] => {
-    const combined: PantryItem[] = [...inventory, ...expiringItems];
-    return combined.sort((a, b) => {
-      const aExp = a.estimated_expiry
-        ? new Date(a.estimated_expiry).getTime()
-        : Number.MAX_SAFE_INTEGER;
-      const bExp = b.estimated_expiry
-        ? new Date(b.estimated_expiry).getTime()
-        : Number.MAX_SAFE_INTEGER;
-      if (aExp !== bExp) return aExp - bExp;
-      return a.canonical_name.localeCompare(b.canonical_name);
-    });
-  }, [inventory, expiringItems]);
+  // ── Filter pills (counts from backend) ─────────────────────
 
   const groupMeta = useMemo(
     () => [...foodGroups].sort((a, b) => a.sort - b.sort),
     [foodGroups],
   );
-
-  const itemGroupId = useCallback((foodGroup?: string) => {
-    const raw = foodGroup || 'other';
-    return raw === 'protein' ? 'non_veg' : raw;
-  }, []);
-
-  const groupCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const item of inStockItems) {
-      const gid = itemGroupId(item.food_group);
-      counts[gid] = (counts[gid] ?? 0) + 1;
-    }
-    return counts;
-  }, [inStockItems, itemGroupId]);
-
-  const expiredGroupCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const item of expiredItems) {
-      const gid = itemGroupId(item.food_group);
-      counts[gid] = (counts[gid] ?? 0) + 1;
-    }
-    return counts;
-  }, [expiredItems, itemGroupId]);
 
   const groupFilterOptions = useMemo(() => {
     return [...groupMeta]
@@ -735,9 +619,9 @@ export function InventoryScreen() {
 
   const expiredGroupFilterOptions = useMemo(() => {
     return [...groupMeta]
-      .filter((g) => (expiredGroupCounts[g.id] ?? 0) > 0)
+      .filter((g) => (groupCounts[g.id] ?? 0) > 0)
       .sort((a, b) => a.sort - b.sort);
-  }, [groupMeta, expiredGroupCounts]);
+  }, [groupMeta, groupCounts]);
 
   useEffect(() => {
     if (groupFilter && (groupCounts[groupFilter] ?? 0) === 0) {
@@ -746,34 +630,16 @@ export function InventoryScreen() {
   }, [groupFilter, groupCounts]);
 
   useEffect(() => {
-    if (expiredGroupFilter && (expiredGroupCounts[expiredGroupFilter] ?? 0) === 0) {
+    if (expiredGroupFilter && (groupCounts[expiredGroupFilter] ?? 0) === 0) {
       setExpiredGroupFilter(null);
     }
-  }, [expiredGroupFilter, expiredGroupCounts]);
+  }, [expiredGroupFilter, groupCounts]);
 
   useEffect(() => {
-    if (expiringItems.length === 0 && expiringSoonFilter) {
+    if (bucketCounts.expiring === 0 && expiringSoonFilter) {
       setExpiringSoonFilter(false);
     }
-  }, [expiringItems.length, expiringSoonFilter]);
-
-  const filteredInventory = useMemo(
-    () => {
-      const source = expiringSoonFilter ? expiringItems : inStockItems;
-      return source
-        .filter((item) => item.canonical_name.toLowerCase().includes(searchLower))
-        .filter((item) => !groupFilter || itemGroupId(item.food_group) === groupFilter);
-    },
-    [inStockItems, expiringItems, expiringSoonFilter, searchLower, groupFilter, itemGroupId],
-  );
-
-  const filteredExpired = useMemo(
-    () =>
-      expiredItems
-        .filter((item) => item.canonical_name.toLowerCase().includes(searchLower))
-        .filter((item) => !expiredGroupFilter || itemGroupId(item.food_group) === expiredGroupFilter),
-    [expiredItems, searchLower, expiredGroupFilter, itemGroupId],
-  );
+  }, [bucketCounts.expiring, expiringSoonFilter]);
 
   // User changed filter pills (skip first run on mount).
   useLayoutEffect(() => {
@@ -782,8 +648,8 @@ export function InventoryScreen() {
       skipFilterScrollReset.current = false;
       return;
     }
-    resetListScrollForFilterChange();
-  }, [groupFilter, expiringSoonFilter, tab, resetListScrollForFilterChange]);
+    scrollListToTop();
+  }, [groupFilter, expiringSoonFilter, tab, scrollListToTop]);
 
   useLayoutEffect(() => {
     if (tab !== 'expired') return;
@@ -791,24 +657,8 @@ export function InventoryScreen() {
       skipExpiredFilterScrollReset.current = false;
       return;
     }
-    resetListScrollForFilterChange();
-  }, [expiredGroupFilter, tab, resetListScrollForFilterChange]);
-
-  const inventoryListKey = loading
-    ? 'inventory-list-loading'
-    : `inventory-list-${groupFilter ?? 'all'}-${expiringSoonFilter ? 'expiring' : 'all'}`;
-
-  const expiredListKey = loading
-    ? 'expired-list-loading'
-    : `expired-list-${expiredGroupFilter ?? 'all'}`;
-
-  const handleListContentSizeChange = useCallback(() => {
-    if (!pendingScrollPinRef.current) return;
-    pendingScrollPinRef.current = false;
-    pinListScrollToTop();
-  }, [pinListScrollToTop]);
-
-  // ── Render ────────────────────────────────────────────────
+    scrollListToTop();
+  }, [expiredGroupFilter, tab, scrollListToTop]);
 
   const listBottomPad = contentPaddingBottom(24);
   const gridCellWidth = useMemo(() => {
@@ -821,25 +671,85 @@ export function InventoryScreen() {
     [gridCellWidth],
   );
 
+  const listFooter = loadingMore ? (
+    <ActivityIndicator color="#2E7D32" style={styles.footerLoader} />
+  ) : null;
+
+  const renderInStockItem = useCallback(
+    ({ item }: { item: PantryItem }) => (
+      <View style={gridCellStyle}>
+        <InventoryListItem
+          variant="grid"
+          kind="in_stock"
+          item={item}
+          menuActions={buildInStockMenu(item)}
+          onSwipeLeft={() => void performExpire(item)}
+          onSwipeRight={() => void performRemoveFromPantry(item)}
+        />
+      </View>
+    ),
+    [gridCellStyle, buildInStockMenu, performExpire, performRemoveFromPantry],
+  );
+
+  const renderExpiredItem = useCallback(
+    ({ item }: { item: PantryItem }) => (
+      <View style={gridCellStyle}>
+        <InventoryListItem
+          variant="grid"
+          kind="expired"
+          item={item as ExpiringItem}
+          menuActions={buildExpiredMenu(item as ExpiringItem)}
+          onSwipeLeft={() => void performAddToShopping(item as ExpiringItem)}
+          onSwipeRight={() => void performRemoveFromPantry(item)}
+        />
+      </View>
+    ),
+    [gridCellStyle, buildExpiredMenu, performAddToShopping, performRemoveFromPantry],
+  );
+
+  const inStockEmpty = (
+    <Text variant="bodyMedium" style={styles.emptyText}>
+      {loading
+        ? 'Loading...'
+        : groupFilter
+          ? 'No items in this group.'
+          : expiringSoonFilter
+            ? 'No items expiring soon — you\'re in good shape!'
+            : debouncedSearch
+              ? `No items match "${debouncedSearch}".`
+              : 'No items yet. Use + next to search to add or scan a bill.'}
+    </Text>
+  );
+
+  const expiredEmpty = (
+    <Text variant="bodyMedium" style={styles.emptyText}>
+      {loading
+        ? 'Loading...'
+        : expiredGroupFilter
+          ? 'No expired items in this group.'
+          : debouncedSearch
+            ? `No expired items match "${debouncedSearch}".`
+            : 'No expired items — great job managing your kitchen!'}
+    </Text>
+  );
+
+  const inventoryListKey = `inventory-list-${groupFilter ?? 'all'}-${expiringSoonFilter ? 'expiring' : 'all'}`;
+
+  const expiredListKey = `expired-list-${expiredGroupFilter ?? 'all'}`;
+
+  // ── Render ────────────────────────────────────────────────
+
   const listContentStyle = useMemo(
     () => [
       styles.list,
-      filteredInventory.length === 0 && styles.listContentGrow,
+      listItems.length === 0 && styles.listContentGrow,
       { paddingBottom: listBottomPad },
       Platform.OS === 'web' ? ({ overflowAnchor: 'none' } as const) : null,
     ],
-    [filteredInventory.length, listBottomPad],
+    [listItems.length, listBottomPad],
   );
 
-  const expiredListContentStyle = useMemo(
-    () => [
-      styles.list,
-      filteredExpired.length === 0 && styles.listContentGrow,
-      { paddingBottom: listBottomPad },
-      Platform.OS === 'web' ? ({ overflowAnchor: 'none' } as const) : null,
-    ],
-    [filteredExpired.length, listBottomPad],
-  );
+  const expiredListContentStyle = listContentStyle;
 
   return (
     <View style={styles.container}>
@@ -848,57 +758,58 @@ export function InventoryScreen() {
         subtitle={loading ? 'Loading your kitchen…' : 'Your kitchen, perfectly tracked'}
       />
 
-      <TabScreenToolbarRow>
-        <Searchbar
-          placeholder="Search items…"
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchbarInRow}
-          inputStyle={styles.searchInput}
-          iconColor="#2E7D32"
-          elevation={2}
-        />
-        <Menu
-          visible={addMenuVisible}
-          onDismiss={() => setAddMenuVisible(false)}
-          anchor={
-            <IconButton
-              icon="plus"
-              mode="contained"
-              containerColor="#2E7D32"
-              iconColor="#fff"
-              size={22}
-              onPress={() => setAddMenuVisible(true)}
-              style={styles.searchAddBtn}
-              accessibilityLabel="Add inventory item"
+      <TourTarget id={APP_TOUR_TARGET_IDS.inventoryToolbar}>
+        <TabScreenToolbarRow>
+          <Searchbar
+            placeholder="Search items…"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchbarInRow}
+            inputStyle={styles.searchInput}
+            iconColor="#2E7D32"
+            elevation={2}
+          />
+          <Menu
+            visible={addMenuVisible}
+            onDismiss={() => setAddMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="plus"
+                mode="contained"
+                containerColor="#2E7D32"
+                iconColor="#fff"
+                size={22}
+                onPress={() => setAddMenuVisible(true)}
+                style={styles.searchAddBtn}
+                accessibilityLabel="Add inventory item"
+              />
+            }
+            anchorPosition="bottom"
+          >
+            <Menu.Item
+              leadingIcon="pencil-plus"
+              title="Add Manually"
+              onPress={() => {
+                setAddMenuVisible(false);
+                setAddModalVisible(true);
+              }}
             />
-          }
-          anchorPosition="bottom"
-        >
-          <Menu.Item
-            leadingIcon="pencil-plus"
-            title="Add Manually"
-            onPress={() => {
-              setAddMenuVisible(false);
-              setAddModalVisible(true);
-            }}
-          />
-          <Menu.Item
-            leadingIcon="camera"
-            title="Scan & Add"
-            onPress={() => {
-              setAddMenuVisible(false);
-              openScanSheet();
-            }}
-          />
-        </Menu>
-      </TabScreenToolbarRow>
+            <Menu.Item
+              leadingIcon="camera"
+              title="Scan & Add"
+              onPress={() => {
+                setAddMenuVisible(false);
+                openScanSheet();
+              }}
+            />
+          </Menu>
+        </TabScreenToolbarRow>
+      </TourTarget>
 
       <SegmentedButtons
         value={tab}
         onValueChange={(v) => {
           setTab(v as TabValue);
-          pendingScrollPinRef.current = true;
           scrollListToTop();
         }}
         buttons={[
@@ -913,17 +824,17 @@ export function InventoryScreen() {
           <FilterPillRow style={styles.filterPillRow}>
             <FilterPill
               key="all"
-              label={`All (${inStockItems.length})`}
+              label={`All (${expiringSoonFilter || groupFilter || debouncedSearch ? total : bucketCounts.active + bucketCounts.expiring})`}
               selected={groupFilter === null && !expiringSoonFilter}
               onPress={() => {
                 setGroupFilter(null);
                 setExpiringSoonFilter(false);
               }}
             />
-            {expiringItems.length > 0 ? (
+            {bucketCounts.expiring > 0 ? (
               <FilterPill
                 key="expiring"
-                label={`Expiring Soon (${expiringItems.length})`}
+                label={`Expiring Soon (${bucketCounts.expiring})`}
                 selected={expiringSoonFilter}
                 onPress={() => {
                   setExpiringSoonFilter((on) => {
@@ -950,45 +861,27 @@ export function InventoryScreen() {
             })}
           </FilterPillRow>
           <View style={styles.carouselListSeparator} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-          <ScrollView
-            key={inventoryListKey}
-            ref={inventoryScrollRef}
-            style={styles.listFlex}
-            contentContainerStyle={listContentStyle}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            scrollEnabled={!loading}
-            onContentSizeChange={handleListContentSizeChange}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          >
-            {filteredInventory.length === 0 ? (
-              <Text variant="bodyMedium" style={styles.emptyText}>
-                {loading
-                  ? 'Loading...'
-                  : groupFilter
-                    ? 'No items in this group.'
-                    : expiringSoonFilter
-                      ? 'No items expiring soon — you\'re in good shape!'
-                      : 'No items yet. Use + next to search to add or scan a bill.'}
-              </Text>
-            ) : (
-              <View style={styles.grid}>
-                {filteredInventory.map((item) => (
-                  <View key={item.item_id} style={gridCellStyle}>
-                    <InventoryListItem
-                      variant="grid"
-                      kind="in_stock"
-                      item={item}
-                      menuActions={buildInStockMenu(item)}
-                      onSwipeLeft={() => void performExpire(item)}
-                      onSwipeRight={() => void performRemoveFromPantry(item)}
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
-          </ScrollView>
+          <View style={styles.listSlot}>
+            <FlatList
+              key={inventoryListKey}
+              ref={inventoryScrollRef}
+              data={listItems}
+              numColumns={INVENTORY_GRID_COLUMNS}
+              keyExtractor={(item) => item.item_id}
+              renderItem={renderInStockItem}
+              style={styles.listFlex}
+              contentContainerStyle={listContentStyle}
+              columnWrapperStyle={listItems.length > 0 ? styles.gridRow : undefined}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              scrollEnabled={!loading}
+              onContentSizeChange={scrollListAfterLayout}
+              ListEmptyComponent={inStockEmpty}
+              ListFooterComponent={listFooter}
+              {...flatListProps}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            />
+          </View>
         </View>
       )}
 
@@ -997,12 +890,12 @@ export function InventoryScreen() {
           <FilterPillRow style={styles.filterPillRow}>
             <FilterPill
               key="all"
-              label={`All (${expiredItems.length})`}
+              label={`All (${expiredGroupFilter || debouncedSearch ? total : bucketCounts.expired})`}
               selected={expiredGroupFilter === null}
               onPress={() => setExpiredGroupFilter(null)}
             />
             {expiredGroupFilterOptions.map((g) => {
-              const count = expiredGroupCounts[g.id] ?? 0;
+              const count = groupCounts[g.id] ?? 0;
               const selected = expiredGroupFilter === g.id;
               return (
                 <FilterPill
@@ -1015,64 +908,54 @@ export function InventoryScreen() {
             })}
           </FilterPillRow>
           <View style={styles.carouselListSeparator} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-          <ScrollView
-            key={expiredListKey}
-            ref={inventoryScrollRef}
-            style={styles.listFlex}
-            contentContainerStyle={expiredListContentStyle}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            scrollEnabled={!loading}
-            onContentSizeChange={handleListContentSizeChange}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          >
-            {filteredExpired.length === 0 ? (
-              <Text variant="bodyMedium" style={styles.emptyText}>
-                {loading
-                  ? 'Loading...'
-                  : expiredGroupFilter
-                    ? 'No expired items in this group.'
-                    : 'No expired items — great job managing your kitchen!'}
-              </Text>
-            ) : (
-              <View style={styles.grid}>
-                {filteredExpired.map((item) => (
-                  <View key={item.item_id} style={gridCellStyle}>
-                    <InventoryListItem
-                      variant="grid"
-                      kind="expired"
-                      item={item}
-                      menuActions={buildExpiredMenu(item)}
-                      onSwipeLeft={() => void performAddToShopping(item)}
-                      onSwipeRight={() => void performRemoveFromPantry(item)}
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
-          </ScrollView>
+          <View style={styles.listSlot}>
+            <FlatList
+              key={expiredListKey}
+              ref={inventoryScrollRef}
+              data={listItems}
+              numColumns={INVENTORY_GRID_COLUMNS}
+              keyExtractor={(item) => item.item_id}
+              renderItem={renderExpiredItem}
+              style={styles.listFlex}
+              contentContainerStyle={expiredListContentStyle}
+              columnWrapperStyle={listItems.length > 0 ? styles.gridRow : undefined}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              scrollEnabled={!loading}
+              onContentSizeChange={scrollListAfterLayout}
+              ListEmptyComponent={expiredEmpty}
+              ListFooterComponent={listFooter}
+              {...flatListProps}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            />
+          </View>
         </View>
       )}
 
-      <AddInventoryModal
-        visible={addModalVisible}
-        onDismiss={() => setAddModalVisible(false)}
-      />
+      {addModalVisible ? (
+        <AddInventoryModal
+          visible
+          onDismiss={() => setAddModalVisible(false)}
+        />
+      ) : null}
 
-      <EditInventoryItemSheet
-        visible={editItem !== null}
-        item={editItem}
-        onDismiss={() => !editSaving && setEditItem(null)}
-        onSave={handleSaveEdit}
-        saving={editSaving}
-      />
+      {editItem ? (
+        <EditInventoryItemSheet
+          visible
+          item={editItem}
+          onDismiss={() => !editSaving && setEditItem(null)}
+          onSave={handleSaveEdit}
+          saving={editSaving}
+        />
+      ) : null}
 
-      <ScanBillBottomSheet
-        visible={scanSheetVisible}
-        onDismiss={() => setScanSheetVisible(false)}
-        groupMeta={groupMeta}
-      />
+      {scanSheetVisible ? (
+        <ScanBillBottomSheet
+          visible
+          onDismiss={() => setScanSheetVisible(false)}
+          groupMeta={groupMeta}
+        />
+      ) : null}
 
       {undoSnackbar}
     </View>
@@ -1116,8 +999,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#EBEBEB',
     marginTop: 6,
   },
+  listSlot: {
+    flex: 1,
+    minHeight: 0,
+  },
   listFlex: {
     flex: 1,
+    minHeight: 0,
+  },
+  footerLoader: {
+    marginVertical: 16,
+    alignSelf: 'center',
   },
   list: {
     paddingTop: 8,
@@ -1126,6 +1018,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    columnGap: INVENTORY_GRID_GAP,
+  },
+  gridRow: {
     columnGap: INVENTORY_GRID_GAP,
   },
   listContentGrow: {

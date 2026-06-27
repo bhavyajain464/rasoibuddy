@@ -12,6 +12,7 @@ import {
 import { IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CatalogIngredient } from '../types';
+import { useIngredientSearch } from '../hooks/useIngredientSearch';
 import {
   MAX_FULLSCREEN_OPTIONS,
   OPTION_MIN_HEIGHT,
@@ -22,7 +23,9 @@ import { palette } from '../theme';
 
 type Props = {
   visible: boolean;
-  catalog: CatalogIngredient[];
+  catalog?: CatalogIngredient[];
+  /** When true (default if catalog empty), search via GET /ingredients?q= */
+  remoteSearch?: boolean;
   initialQuery?: string;
   selectedId?: string;
   title?: string;
@@ -32,7 +35,8 @@ type Props = {
 
 export function IngredientSearchOverlay({
   visible,
-  catalog,
+  catalog = [],
+  remoteSearch,
   initialQuery = '',
   selectedId,
   title = 'Search ingredients',
@@ -50,10 +54,13 @@ export function IngredientSearchOverlay({
     return () => clearTimeout(timer);
   }, [visible, initialQuery]);
 
-  const options = useMemo(
-    () => filterCatalog(catalog, query, MAX_FULLSCREEN_OPTIONS),
-    [catalog, query],
-  );
+  const useRemote = remoteSearch ?? catalog.length === 0;
+  const { results: remoteResults, loading: remoteLoading } = useIngredientSearch(query, visible && useRemote);
+
+  const options = useMemo(() => {
+    if (useRemote) return remoteResults.slice(0, MAX_FULLSCREEN_OPTIONS);
+    return filterCatalog(catalog, query, MAX_FULLSCREEN_OPTIONS);
+  }, [useRemote, remoteResults, catalog, query]);
 
   return (
     <Modal
@@ -99,7 +106,9 @@ export function IngredientSearchOverlay({
             { paddingBottom: Math.max(insets.bottom, 16) },
           ]}
           ListEmptyComponent={(
-            <Text style={styles.empty}>No ingredients match</Text>
+            <Text style={styles.empty}>
+              {remoteLoading ? 'Searching…' : useRemote ? 'Type to search ingredients' : 'No ingredients match'}
+            </Text>
           )}
           renderItem={({ item }) => {
             const active = selectedId === item.ingredient_id;
