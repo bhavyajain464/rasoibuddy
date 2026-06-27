@@ -3,7 +3,7 @@ import { Platform, type FlatList } from 'react-native';
 
 const END_REACHED_THRESHOLD = 0.35;
 
-function getListScrollElement<T>(listRef: RefObject<FlatList<T> | null>): HTMLElement | null {
+export function getListScrollElement<T>(listRef: RefObject<FlatList<T> | null>): HTMLElement | null {
   const node = listRef.current as unknown as {
     getScrollableNode?: () => HTMLElement | null;
   } | null;

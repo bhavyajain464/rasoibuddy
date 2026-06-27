@@ -7,6 +7,8 @@ import {
   Platform,
   useWindowDimensions,
   type ScrollView,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import {
   Text,
@@ -19,7 +21,6 @@ import {
 import {
   useRoute,
   useNavigation,
-  useFocusEffect,
   useIsFocused,
   RouteProp,
 } from '@react-navigation/native';
@@ -47,9 +48,8 @@ import { useUndoSnackbar } from '../hooks/useUndoSnackbar';
 import { TourTarget } from '../components/tour/TourTarget';
 import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
 import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
-import { useScrollToTopOnTabFocus } from '../hooks/useScrollToTopOnTabFocus';
 import { useProductTour } from '../context/ProductTourContext';
-import { scrollFlatListToTop, useFlatListOnEndReached } from '../utils/infiniteScroll';
+import { scrollFlatListToTop, getListScrollElement, useFlatListOnEndReached } from '../utils/infiniteScroll';
 
 type TabValue = 'all' | 'expired';
 
@@ -140,7 +140,6 @@ export function InventoryScreen() {
   const requestGen = useRef(0);
   const nextOffsetRef = useRef(0);
   const resetEndReachedRef = useRef<() => void>(() => {});
-  const pendingScrollToTopRef = useRef(false);
 
   const [addMenuVisible, setAddMenuVisible] = useState(false);
 
@@ -154,10 +153,8 @@ export function InventoryScreen() {
 
   const inventoryScrollRef = useRef<FlatList<PantryItem>>(null);
   useTourScreenScroll('Inventory', inventoryScrollRef as React.RefObject<ScrollView | null>, { fixedChromeExtra: 130 });
-  const skipMountLoadData = useRef(true);
   const skipFilterScrollReset = useRef(true);
   const skipExpiredFilterScrollReset = useRef(true);
-  const skipInventoryFocusLoadRef = useRef(true);
   const tabRef = useRef(tab);
   tabRef.current = tab;
   const isFocused = useIsFocused();
@@ -175,11 +172,33 @@ export function InventoryScreen() {
     [],
   );
 
-  const scrollListAfterLayout = useCallback(() => {
-    if (!pendingScrollToTopRef.current) return;
-    pendingScrollToTopRef.current = false;
-    scrollFlatListToTop(inventoryScrollRef);
+  // Web only: the browser restores this list's inner scroll-div position after the
+  // content grows back to its previous height. That dumped users deep into the list
+  // on first load (and the restore scroll triggered onEndReached, auto-loading every
+  // page to rebuild that height). window scroll-restoration above only covers the
+  // window itself, not this overflow div. Gate on a real user gesture: until the user
+  // scrolls/touches, snap the list back to the top on every scroll event (see
+  // handleListScrollWeb), which defeats the restore whenever it lands — independent of
+  // how long the data fetch takes — and keeps onEndReached from auto-loading.
+  const userScrolledRef = useRef(false);
+  // Last scroll offset we accept as user-driven. Used to cancel the browser's stuck
+  // scroll-restore, which force-jumps the list to the bottom whenever content grows.
+  const intendedScrollYRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const markScrolled = () => {
+      userScrolledRef.current = true;
+    };
+    window.addEventListener('wheel', markScrolled, { passive: true });
+    window.addEventListener('touchstart', markScrolled, { passive: true });
+    window.addEventListener('keydown', markScrolled);
+    return () => {
+      window.removeEventListener('wheel', markScrolled);
+      window.removeEventListener('touchstart', markScrolled);
+      window.removeEventListener('keydown', markScrolled);
+    };
   }, []);
+
 
   const restorePantryEntries = useCallback((pending: PendingPantryRemove) => {
     if (!pending.list) return;
@@ -294,13 +313,18 @@ export function InventoryScreen() {
   }, [flushPendingPantryRemoves, flushPendingPantryExpires, flushPendingPantryAddToShopping]);
 
   const scrollListToTop = useCallback(() => {
-    pendingScrollToTopRef.current = true;
+    // Offset 0 is always valid, so this lands at the top deterministically
+    // even when the list shrinks under us (e.g. a reset back to page 1).
+    // The extra rAF pass re-pins the top after the shorter content lays out.
     scrollFlatListToTop(inventoryScrollRef);
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => scrollFlatListToTop(inventoryScrollRef));
+    }
   }, []);
 
-  useScrollToTopOnTabFocus(inventoryScrollRef as React.RefObject<ScrollView | null>, {
-    onScrollToTop: scrollListToTop,
-  });
+  // No scroll-to-top on plain tab focus: like Instagram/YouTube we keep the user's
+  // scroll position when switching away and back. Re-tapping the active tab (tabPress
+  // handler below) is the explicit "jump to top" gesture.
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
@@ -315,7 +339,6 @@ export function InventoryScreen() {
       setLoading(true);
       nextOffsetRef.current = 0;
       resetEndReachedRef.current();
-      pendingScrollToTopRef.current = true;
     }
     const isExpiredTab = tabRef.current === 'expired';
     try {
@@ -328,6 +351,7 @@ export function InventoryScreen() {
       });
       if (gen !== requestGen.current) return;
       setListItems((prev) => (append ? [...prev, ...page.items] : page.items));
+      if (!append) scrollListToTop();
       nextOffsetRef.current = offset + page.items.length;
       setTotal(page.total);
       setHasMore(page.has_more);
@@ -347,16 +371,55 @@ export function InventoryScreen() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [debouncedSearch, groupFilter, expiredGroupFilter, expiringSoonFilter]);
+  }, [debouncedSearch, groupFilter, expiredGroupFilter, expiringSoonFilter, scrollListToTop]);
 
   const loadData = useCallback(async () => {
     await loadPage(0, false);
   }, [loadPage]);
 
   const loadMore = useCallback(async () => {
+    // On web, onEndReached / the browser's scroll-restore can fire on first load
+    // before any real interaction and pull every page at once, defeating pagination.
+    // Only fetch the next page after the user has actually scrolled.
+    if (Platform.OS === 'web' && !userScrolledRef.current) return;
     if (loadingMore || !hasMore) return;
     await loadPage(nextOffsetRef.current, true);
   }, [loadingMore, hasMore, loadPage]);
+
+  // Web scroll handler. Before the first real gesture: snap back to the top (defeats
+  // the browser's scroll-restore). After it: drive pagination off the scroll position,
+  // because mouse-wheel scrolling on web does not emit the momentum/drag events that
+  // the FlatList onEndReached guard relies on, so onEndReached never fires here.
+  const handleListScrollWeb = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (Platform.OS !== 'web') return;
+      // Before the first real gesture, hold the list at the top (defeats the restore
+      // landing us mid-list on load).
+      if (!userScrolledRef.current) {
+        scrollFlatListToTop(inventoryScrollRef);
+        intendedScrollYRef.current = 0;
+        return;
+      }
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      const y = contentOffset.y;
+      // Real wheel/touch scrolling moves the offset in small per-event steps (~tens of
+      // px). The browser's stuck scroll-restore force-jumps hundreds of px in a single
+      // event to pull the list to the bottom as content grows, which then cascades
+      // loadMore. Cancel those unsolicited downward jumps by snapping back.
+      const MAX_USER_STEP = 200;
+      if (y - intendedScrollYRef.current > MAX_USER_STEP) {
+        const el = getListScrollElement(inventoryScrollRef);
+        if (el) el.scrollTop = intendedScrollYRef.current;
+        return;
+      }
+      intendedScrollYRef.current = y;
+      const distanceFromBottom = contentSize.height - layoutMeasurement.height - y;
+      if (distanceFromBottom < layoutMeasurement.height * 0.5) {
+        void loadMore();
+      }
+    },
+    [loadMore],
+  );
 
   const { flatListProps, resetEndReached } = useFlatListOnEndReached({
     onLoadMore: loadMore,
@@ -383,26 +446,18 @@ export function InventoryScreen() {
     }
   }, [isTourActive, activeStepId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (skipInventoryFocusLoadRef.current) {
-        skipInventoryFocusLoadRef.current = false;
-        return;
-      }
-      void loadData();
-    }, [loadData]),
-  );
-
-  // Global inventory refresh (e.g. add item modal) while this tab is focused.
+  // Reload only when the data actually changed (add / edit / scan / expire bumps
+  // the refresh version), not on every tab focus. Reloading on plain focus used to
+  // discard the loaded pages and the scroll position. We track the last handled
+  // version so a focus toggle alone never triggers a reload.
+  const lastHandledRefreshRef = useRef(refreshVersion);
   useEffect(() => {
     if (!isFocused) return;
-    if (skipMountLoadData.current) {
-      skipMountLoadData.current = false;
-      return;
-    }
+    if (refreshVersion === lastHandledRefreshRef.current) return;
+    lastHandledRefreshRef.current = refreshVersion;
     if (!refreshAppliesTo(refreshScope, 'inventory')) return;
     void loadData();
-  }, [isFocused, loadData, refreshVersion, refreshScope]);
+  }, [isFocused, refreshVersion, refreshScope, loadData]);
 
   // Deep links from Home (expired banner / expiring soon). Use primitive deps only —
   // `route.params` object identity changes every render on web and caused setParams loops.
@@ -428,6 +483,17 @@ export function InventoryScreen() {
     await loadData();
     setRefreshing(false);
   }, [loadData]);
+
+  // Re-tapping the already-focused tab jumps back to the top and reloads page 1
+  // (standard tab-bar behavior). Fires only when this tab is already active.
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress', () => {
+      if (!navigation.isFocused()) return;
+      scrollListToTop();
+      void loadData();
+    });
+    return unsub;
+  }, [navigation, scrollListToTop, loadData]);
 
   const openEditItem = useCallback((item: PantryItem) => {
     setEditItem(item);
@@ -755,7 +821,7 @@ export function InventoryScreen() {
     <View style={styles.container}>
       <TabScreenHeader
         title="Inventory"
-        subtitle={loading ? 'Loading your kitchen…' : 'Your kitchen, perfectly tracked'}
+        subtitle={loading && listItems.length === 0 ? 'Loading your kitchen…' : 'Your kitchen, perfectly tracked'}
       />
 
       <TourTarget id={APP_TOUR_TARGET_IDS.inventoryToolbar}>
@@ -874,8 +940,9 @@ export function InventoryScreen() {
               columnWrapperStyle={listItems.length > 0 ? styles.gridRow : undefined}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              scrollEnabled={!loading}
-              onContentSizeChange={scrollListAfterLayout}
+              scrollEnabled={listItems.length > 0 || !loading}
+              onScroll={handleListScrollWeb}
+              scrollEventThrottle={16}
               ListEmptyComponent={inStockEmpty}
               ListFooterComponent={listFooter}
               {...flatListProps}
@@ -921,8 +988,9 @@ export function InventoryScreen() {
               columnWrapperStyle={listItems.length > 0 ? styles.gridRow : undefined}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              scrollEnabled={!loading}
-              onContentSizeChange={scrollListAfterLayout}
+              scrollEnabled={listItems.length > 0 || !loading}
+              onScroll={handleListScrollWeb}
+              scrollEventThrottle={16}
               ListEmptyComponent={expiredEmpty}
               ListFooterComponent={listFooter}
               {...flatListProps}

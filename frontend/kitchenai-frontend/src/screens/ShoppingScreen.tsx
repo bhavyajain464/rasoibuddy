@@ -5,6 +5,9 @@ import {
   ScrollView,
   RefreshControl,
   useWindowDimensions,
+  Platform,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import {
   Text,
@@ -14,7 +17,9 @@ import {
   ActivityIndicator,
   Icon,
 } from 'react-native-paper';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '../navigation/types';
 import * as api from '../services/api';
 import { CommercePartner, OrderSuggestItem, OrderSuggestResponse, UserShoppingItem } from '../types';
 import { OrderOnlineSheet } from '../components/OrderOnlineSheet';
@@ -62,7 +67,18 @@ export function ShoppingScreen() {
 
   const [items, setItems] = useState<UserShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const requestGen = useRef(0);
+  const nextOffsetRef = useRef(0);
+  // Web: same scroll handling as Inventory. userScrolledRef gates pagination until a
+  // real gesture; intendedScrollYRef lets us cancel the browser's stuck scroll-restore
+  // that force-jumps the list to the bottom as content grows.
+  const userScrolledRef = useRef(false);
+  const intendedScrollYRef = useRef(0);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editItem, setEditItem] = useState<UserShoppingItem | null>(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -84,8 +100,8 @@ export function ShoppingScreen() {
   const [orderSheetVisible, setOrderSheetVisible] = useState(false);
   const lastSuggestNamesRef = useRef<string[]>([]);
   const skipMountLoadSuggestions = useRef(true);
-  const skipMountLoadItems = useRef(true);
   const isFocused = useIsFocused();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Shopping'>>();
   const { version: refreshVersion, scope: refreshScope, bump } = useAppRefresh();
 
   const selectedList = useMemo(
@@ -93,16 +109,99 @@ export function ShoppingScreen() {
     [items, selectedIds],
   );
 
-  const loadItems = useCallback(async () => {
+  const loadPage = useCallback(async (offset: number, append: boolean) => {
+    const gen = ++requestGen.current;
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      nextOffsetRef.current = 0;
+    }
     try {
-      const all = await api.getShoppingItems();
-      setItems(Array.isArray(all) ? all : []);
+      const page = await api.fetchShoppingPage({ offset });
+      if (gen !== requestGen.current) return;
+      setItems((prev) => (append ? [...prev, ...page.items] : page.items));
+      nextOffsetRef.current = offset + page.items.length;
+      setHasMore(page.has_more);
     } catch {
-      setItems([]);
+      if (gen !== requestGen.current) return;
+      if (!append) {
+        setItems([]);
+        setHasMore(false);
+      }
     } finally {
+      if (gen !== requestGen.current) return;
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  // Page-1 reload. Keeps the name used by refresh / focus / edit callers.
+  const loadItems = useCallback(async () => {
+    await loadPage(0, false);
+  }, [loadPage]);
+
+  const loadMore = useCallback(async () => {
+    if (Platform.OS === 'web' && !userScrolledRef.current) return;
+    if (loadingMore || !hasMore) return;
+    await loadPage(nextOffsetRef.current, true);
+  }, [loadingMore, hasMore, loadPage]);
+
+  // Mark a real user gesture (web only) so pagination/scroll-restore handling can tell
+  // genuine scrolling apart from the browser's automatic scroll-restore.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const markScrolled = () => {
+      userScrolledRef.current = true;
+    };
+    window.addEventListener('wheel', markScrolled, { passive: true });
+    window.addEventListener('touchstart', markScrolled, { passive: true });
+    window.addEventListener('keydown', markScrolled);
+    return () => {
+      window.removeEventListener('wheel', markScrolled);
+      window.removeEventListener('touchstart', markScrolled);
+      window.removeEventListener('keydown', markScrolled);
+    };
+  }, []);
+
+  const getScrollEl = useCallback((): HTMLElement | null => {
+    const node = scrollRef.current as unknown as {
+      getScrollableNode?: () => HTMLElement | null;
+    } | null;
+    return node?.getScrollableNode?.() ?? null;
+  }, []);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      const y = contentOffset.y;
+      if (Platform.OS === 'web') {
+        // Hold at the top until the first real gesture (defeats restore landing us
+        // mid-list on load).
+        if (!userScrolledRef.current) {
+          const el = getScrollEl();
+          if (el) el.scrollTop = 0;
+          scrollRef.current?.scrollTo({ y: 0, animated: false });
+          intendedScrollYRef.current = 0;
+          return;
+        }
+        // Cancel the browser's unsolicited large downward jumps (real scrolling moves
+        // only tens of px per event; the restore jumps hundreds).
+        const MAX_USER_STEP = 200;
+        if (y - intendedScrollYRef.current > MAX_USER_STEP) {
+          const el = getScrollEl();
+          if (el) el.scrollTop = intendedScrollYRef.current;
+          return;
+        }
+        intendedScrollYRef.current = y;
+      }
+      const distanceFromBottom = contentSize.height - layoutMeasurement.height - y;
+      if (distanceFromBottom < layoutMeasurement.height * 0.5) {
+        void loadMore();
+      }
+    },
+    [getScrollEl, loadMore],
+  );
 
   const applyOrderSuggestResponse = useCallback((data: OrderSuggestResponse) => {
     if (data.source === 'error') {
@@ -134,11 +233,19 @@ export function ShoppingScreen() {
 
   const loadOrderSuggestions = refillSuggestionPool;
 
+  // Initial list load (once on mount / first focus). Subsequent focuses keep the
+  // loaded pages + scroll position; the list reloads only on a real data change
+  // (see the refresh-version effect below), matching Inventory.
+  useEffect(() => {
+    void loadItems();
+  }, [loadItems]);
+
+  // Order suggestions are a small header carousel (not the scroll list), so refreshing
+  // them on focus is cheap and doesn't disturb scroll position.
   useFocusEffect(
     useCallback(() => {
-      void loadItems();
       void loadOrderSuggestions();
-    }, [loadItems, loadOrderSuggestions]),
+    }, [loadOrderSuggestions]),
   );
 
   // Commerce surface is server-controlled (COMMERCE_ENABLED + partner list). Client has no store URLs.
@@ -155,13 +262,14 @@ export function ShoppingScreen() {
     };
   }, []);
 
-  // Shopping list changed elsewhere while this tab is focused.
+  // Reload the list only when the data actually changed (add / edit / purchase /
+  // delete bump the refresh version), not on every focus. A focus toggle alone never
+  // reloads, so loaded pages + scroll position persist across tab switches.
+  const lastHandledRefreshRef = useRef(refreshVersion);
   useEffect(() => {
     if (!isFocused) return;
-    if (skipMountLoadItems.current) {
-      skipMountLoadItems.current = false;
-      return;
-    }
+    if (refreshVersion === lastHandledRefreshRef.current) return;
+    lastHandledRefreshRef.current = refreshVersion;
     if (!refreshAppliesTo(refreshScope, 'shopping')) return;
     void loadItems();
   }, [isFocused, loadItems, refreshVersion, refreshScope]);
@@ -183,6 +291,19 @@ export function ShoppingScreen() {
     await loadOrderSuggestions();
     setRefreshing(false);
   }, [loadItems, loadOrderSuggestions]);
+
+  // Re-tapping the already-focused tab jumps back to the top and reloads page 1
+  // (standard tab-bar behavior). Fires only when this tab is already active.
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress', () => {
+      if (!navigation.isFocused()) return;
+      const el = getScrollEl();
+      if (el) el.scrollTop = 0;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      void loadItems();
+    });
+    return unsub;
+  }, [navigation, getScrollEl, loadItems]);
 
   const displaySuggestions = useMemo(
     () => orderSuggestions.filter((s) => s.name.trim()).slice(0, SUGGEST_DISPLAY_LIMIT),
@@ -471,7 +592,12 @@ export function ShoppingScreen() {
 
   return (
     <View style={styles.root}>
+      <TabScreenHeader
+        title="Shopping List"
+        subtitle="Groceries shaped by your meal plan"
+      />
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         contentContainerStyle={[
           styles.scrollContent,
@@ -480,12 +606,9 @@ export function ShoppingScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
-        <TabScreenHeader
-          title="Shopping List"
-          subtitle="Groceries shaped by your meal plan"
-        />
-
         <Surface style={styles.suggestCard} elevation={0}>
           <View style={styles.suggestHeader}>
             <View style={styles.suggestTitleRow}>
@@ -596,6 +719,9 @@ export function ShoppingScreen() {
             <View style={styles.grid}>
               {items.map(renderItem)}
             </View>
+            {loadingMore ? (
+              <ActivityIndicator color="#2E7D32" style={styles.footerLoader} />
+            ) : null}
           </View>
         ) : (
           <Surface style={styles.emptyCard} elevation={1}>
@@ -750,6 +876,7 @@ const styles = StyleSheet.create({
   },
 
   listWrap: { paddingHorizontal: SHOPPING_GRID_PAD, marginTop: 8 },
+  footerLoader: { marginVertical: 16, alignSelf: 'center' },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
