@@ -114,11 +114,6 @@ export function ProductTourOverlay({
     return null;
   }
 
-  const isCenterStep = step.placement === 'center' || !step.targetId;
-  if (!isCenterStep && !highlight) {
-    return null;
-  }
-
   const isLastStep = stepIndex >= stepCount - 1;
 
   return (

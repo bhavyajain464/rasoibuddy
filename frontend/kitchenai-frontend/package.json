@@ -31,7 +31,8 @@
       "reactNativeDirectoryCheck": {
         "exclude": [
           "react-native-razorpay",
-          "react-native-vector-icons"
+          "react-native-vector-icons",
+          "@react-native-voice/voice"
         ],
         "listUnknownPackages": false
       }

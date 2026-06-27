@@ -87,7 +87,7 @@ async function navigateToTab(tab: TourTab): Promise<void> {
       break;
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 420));
+  await new Promise((resolve) => setTimeout(resolve, tab === 'Home' ? 420 : 560));
 }
 
 async function ensureTourStartsOnHome(
@@ -133,7 +133,6 @@ export function ProductTourProvider({ children, paywallVisible }: ProductTourPro
   const scrollHandlersRef = useRef<Map<TourTab, ScrollToTargetFn>>(new Map());
   const pendingAutoStartRef = useRef(false);
   const pendingStartOptionsRef = useRef<StartTourOptions | undefined>(undefined);
-  const measuringRef = useRef(false);
   const measureGenerationRef = useRef(0);
 
   const [visible, setVisible] = useState(false);
@@ -157,11 +156,16 @@ export function ProductTourProvider({ children, paywallVisible }: ProductTourPro
   const activeTargetId = currentStep ? resolveTargetId(currentStep) : null;
   const activeStepId = currentStep?.id ?? null;
 
-  const waitForTargetRegistration = useCallback(async (targetId: string, generation: number) => {
-    for (let attempt = 0; attempt < 24; attempt += 1) {
+  const waitForTargetRegistration = useCallback(async (
+    targetId: string,
+    generation: number,
+    tab: TourTab,
+  ) => {
+    const attempts = tab === 'Home' ? 24 : 40;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
       if (generation !== measureGenerationRef.current) return false;
       if (targetsRef.current.has(targetId)) return true;
-      await new Promise((resolve) => setTimeout(resolve, 40));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
     return targetsRef.current.has(targetId);
   }, []);
@@ -255,7 +259,7 @@ export function ProductTourProvider({ children, paywallVisible }: ProductTourPro
       return;
     }
 
-    const registered = await waitForTargetRegistration(targetId, generation);
+    const registered = await waitForTargetRegistration(targetId, generation, step.tab);
     if (generation !== measureGenerationRef.current) return;
 
     const scrollFn = scrollHandlersRef.current.get(step.tab);
@@ -270,7 +274,7 @@ export function ProductTourProvider({ children, paywallVisible }: ProductTourPro
 
     let rect = registered ? await settleTargetRect(targetId, generation) : null;
     if ((!rect || !isValidTargetRect(rect)) && step.fallbackTargetId) {
-      await waitForTargetRegistration(step.fallbackTargetId, generation);
+      await waitForTargetRegistration(step.fallbackTargetId, generation, step.tab);
       rect = await settleTargetRect(step.fallbackTargetId, generation);
     }
     if (generation !== measureGenerationRef.current) return;
@@ -326,11 +330,8 @@ export function ProductTourProvider({ children, paywallVisible }: ProductTourPro
   }, [paywallVisible, startTourInternal]);
 
   useEffect(() => {
-    if (!visible || measuringRef.current) return;
-    measuringRef.current = true;
-    void refreshTargetRect(stepIndex).finally(() => {
-      measuringRef.current = false;
-    });
+    if (!visible) return;
+    void refreshTargetRect(stepIndex);
   }, [stepIndex, visible, refreshTargetRect]);
 
   const setExpiryStepBody = useCallback((hasExpiryAlerts: boolean) => {

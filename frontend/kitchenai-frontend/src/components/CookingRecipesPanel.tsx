@@ -20,8 +20,9 @@ type Props = {
 const THUMB_SIZE = 72;
 
 function formatTime(summary: DishRecipeSummary) {
-  const mins = summary.total_time_minutes || summary.cook_time_minutes || summary.prep_time_minutes;
-  return mins > 0 ? `${mins} min` : null;
+  const mins = summary.total_time_minutes ?? summary.cook_time_minutes ?? summary.prep_time_minutes;
+  if (mins == null || mins <= 0) return null;
+  return `${mins} min`;
 }
 
 function metaLine(item: DishRecipeSummary) {

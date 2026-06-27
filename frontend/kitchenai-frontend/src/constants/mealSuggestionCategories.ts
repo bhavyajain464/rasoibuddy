@@ -26,6 +26,6 @@ export type MealTypeFilterId = (typeof MEAL_TYPE_FILTERS)[number]['id'];
 export function defaultMealTypeForSlot(slot: string): MealTypeFilterId {
   const normalized = slot.toLowerCase();
   if (normalized === 'breakfast') return 'breakfast';
-  if (normalized === 'dinner') return 'dinner';
+  if (normalized === 'dinner') return 'lunch_dinner';
   return 'lunch_dinner';
 }

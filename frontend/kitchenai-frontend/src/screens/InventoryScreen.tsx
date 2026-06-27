@@ -6,7 +6,6 @@ import {
   FlatList,
   Platform,
   useWindowDimensions,
-  type ScrollView,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
@@ -107,7 +106,7 @@ function toExpiredPreview(item: InventoryItem | ExpiringItem): ExpiringItem {
 export function InventoryScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const { contentPaddingBottom } = useTabBarLayout();
-  const { isTourActive, activeStepId } = useProductTour();
+  const { isTourActive, activeStepId, requestTargetRemeasure } = useProductTour();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Inventory'>>();
   const route = useRoute<RouteProp<MainTabParamList, 'Inventory'>>();
   const { entitlements, canBillScan } = useEntitlements();
@@ -152,7 +151,7 @@ export function InventoryScreen() {
   const [scanSheetVisible, setScanSheetVisible] = useState(false);
 
   const inventoryScrollRef = useRef<FlatList<PantryItem>>(null);
-  useTourScreenScroll('Inventory', inventoryScrollRef as React.RefObject<ScrollView | null>, { fixedChromeExtra: 130 });
+  useTourScreenScroll('Inventory', inventoryScrollRef, { fixedChromeExtra: 130 });
   const skipFilterScrollReset = useRef(true);
   const skipExpiredFilterScrollReset = useRef(true);
   const tabRef = useRef(tab);
@@ -445,6 +444,11 @@ export function InventoryScreen() {
       setTab('all');
     }
   }, [isTourActive, activeStepId]);
+
+  useEffect(() => {
+    if (!isTourActive || activeStepId !== 'inventory-toolbar' || loading) return;
+    requestTargetRemeasure(APP_TOUR_TARGET_IDS.inventoryToolbar);
+  }, [activeStepId, isTourActive, loading, requestTargetRemeasure]);
 
   // Reload only when the data actually changed (add / edit / scan / expire bumps
   // the refresh version), not on every tab focus. Reloading on plain focus used to

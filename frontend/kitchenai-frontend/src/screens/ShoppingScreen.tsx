@@ -25,6 +25,10 @@ import { CommercePartner, OrderSuggestItem, OrderSuggestResponse, UserShoppingIt
 import { OrderOnlineSheet } from '../components/OrderOnlineSheet';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { TabScreenHeader } from '../components/TabScreenHeader';
+import { TourTarget } from '../components/tour/TourTarget';
+import { useProductTour } from '../context/ProductTourContext';
+import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
+import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
 import { showAppError, showAppSuccess } from '../utils/alertMessage';
 import { AddShoppingModal } from '../components/modals/AddShoppingModal';
 import { EditShoppingItemSheet } from '../components/shopping/EditShoppingItemSheet';
@@ -72,6 +76,9 @@ export function ShoppingScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
+  const { rememberTargetOffset } = useTourScreenScroll('Shopping', scrollRef);
+  const { isTourActive, activeStepId, requestTargetRemeasure } = useProductTour();
+  const onShoppingSuggestionsStep = isTourActive && activeStepId === 'shopping-suggestions';
   const requestGen = useRef(0);
   const nextOffsetRef = useRef(0);
   // Web: same scroll handling as Inventory. userScrolledRef gates pagination until a
@@ -247,6 +254,16 @@ export function ShoppingScreen() {
       void loadOrderSuggestions();
     }, [loadOrderSuggestions]),
   );
+
+  useEffect(() => {
+    if (!onShoppingSuggestionsStep || orderLoading) return;
+    requestTargetRemeasure(APP_TOUR_TARGET_IDS.shoppingSuggestions);
+  }, [onShoppingSuggestionsStep, orderLoading, requestTargetRemeasure]);
+
+  useEffect(() => {
+    if (!isTourActive || activeStepId !== 'shopping-list' || loading) return;
+    requestTargetRemeasure(APP_TOUR_TARGET_IDS.shoppingList);
+  }, [activeStepId, isTourActive, loading, requestTargetRemeasure]);
 
   // Commerce surface is server-controlled (COMMERCE_ENABLED + partner list). Client has no store URLs.
   useEffect(() => {
@@ -609,6 +626,10 @@ export function ShoppingScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
+        <TourTarget
+          id={APP_TOUR_TARGET_IDS.shoppingSuggestions}
+          onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.shoppingSuggestions, y)}
+        >
         <Surface style={styles.suggestCard} elevation={0}>
           <View style={styles.suggestHeader}>
             <View style={styles.suggestTitleRow}>
@@ -657,7 +678,12 @@ export function ShoppingScreen() {
             </Text>
           )}
         </Surface>
+        </TourTarget>
 
+        <TourTarget
+          id={APP_TOUR_TARGET_IDS.shoppingList}
+          onLayoutY={(y) => rememberTargetOffset(APP_TOUR_TARGET_IDS.shoppingList, y)}
+        >
         <Text variant="labelLarge" style={styles.listSectionTitle}>Your list</Text>
 
         {!loading ? (
@@ -733,6 +759,7 @@ export function ShoppingScreen() {
             </Text>
           </Surface>
         )}
+        </TourTarget>
 
         <View style={{ height: 32 }} />
       </ScrollView>

@@ -39,6 +39,7 @@ import {
   type CookMessageLang,
 } from '../utils/cookMessageTemplates';
 import { TourTarget } from '../components/tour/TourTarget';
+import { useProductTour } from '../context/ProductTourContext';
 import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
 import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
 import { CookModeToggle } from '../components/CookModeToggle';
@@ -62,6 +63,8 @@ export function CookScreen() {
   const consumedCookingNavAt = useRef(0);
   useTourScreenScroll('Cook', scrollRef, { fixedChromeExtra: 260 });
   useScrollToTopOnTabFocus(scrollRef);
+  const { isTourActive, activeStepId, requestTargetRemeasure } = useProductTour();
+  const onCookTourStep = isTourActive && activeStepId === 'cook-composer';
   const [screenMode, setScreenMode] = useState<CookScreenMode>('cook');
   const [cookingSearch, setCookingSearch] = useState('');
   const [expandDishId, setExpandDishId] = useState('');
@@ -130,9 +133,22 @@ export function CookScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (isTourActive && activeStepId === 'cook-composer') return undefined;
       applyRouteParams();
-    }, [applyRouteParams]),
+      return undefined;
+    }, [activeStepId, applyRouteParams, isTourActive]),
   );
+
+  useEffect(() => {
+    if (onCookTourStep) {
+      setScreenMode('cook');
+    }
+  }, [onCookTourStep]);
+
+  useEffect(() => {
+    if (!onCookTourStep || profileLoading) return;
+    requestTargetRemeasure(APP_TOUR_TARGET_IDS.cookComposer);
+  }, [onCookTourStep, profileLoading, requestTargetRemeasure]);
 
   const loadProfile = useCallback(async () => {
     try {
