@@ -46,7 +46,7 @@ func normalizeInventoryFoodGroup(group string) string {
 
 func inventoryFromClause() string {
 	return `FROM inventory i
-		LEFT JOIN restaurant_ingredients ri ON ri.name_normalized = LOWER(TRIM(i.canonical_name))`
+		` + inventoryCatalogJoin()
 }
 
 func inventoryResolvedGroupExpr() string {

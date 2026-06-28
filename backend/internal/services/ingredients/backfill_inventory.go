@@ -53,7 +53,7 @@ func BackfillInventoryCatalog(ctx context.Context, db *sql.DB, kitchenID string)
 			targetGroup = "other"
 		}
 
-		nameSame := strings.EqualFold(strings.TrimSpace(row.CanonicalName), targetName)
+		nameSame := strings.TrimSpace(row.CanonicalName) == targetName
 		groupSame := strings.EqualFold(strings.TrimSpace(row.FoodGroup), targetGroup)
 		if nameSame && groupSame {
 			// Still set ingredient_id if missing.

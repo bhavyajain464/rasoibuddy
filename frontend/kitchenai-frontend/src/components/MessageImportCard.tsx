@@ -30,7 +30,7 @@ export function MessageImportCard() {
             AI Buddy
           </Text>
           <Text variant="bodySmall" style={styles.subtitle} numberOfLines={2}>
-            Tell your kitchen buddy — you approve before anything changes.
+            Chat with your kitchen buddy — you approve before anything changes.
           </Text>
         </View>
       </View>

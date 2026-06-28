@@ -1,3 +1,6 @@
+import { compactQtyUnit } from './units';
+import { MAX_QTY } from './qty';
+
 const FOOD_GROUP_LABELS: Record<string, string> = {
   vegetables: 'Vegetables',
   fruits: 'Fruits',
@@ -45,7 +48,11 @@ export function formatFoodGroupLabel(group?: string): string {
 }
 
 export function formatQty(qty: number, unit: string): string {
-  const u = unit.trim() || 'pcs';
-  const q = qty % 1 === 0 ? String(Math.round(qty)) : qty.toFixed(2).replace(/\.?0+$/, '');
+  const compacted = compactQtyUnit(qty, unit, MAX_QTY);
+  const u = compacted.unit.trim() || 'pcs';
+  const q =
+    compacted.qty % 1 === 0
+      ? String(Math.round(compacted.qty))
+      : compacted.qty.toFixed(2).replace(/\.?0+$/, '');
   return `${q} ${u}`;
 }

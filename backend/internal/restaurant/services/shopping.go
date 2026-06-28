@@ -67,26 +67,23 @@ func (s *ShoppingService) Add(ctx context.Context, kitchenID, userID, name strin
 		qty = 0
 	}
 
-	var catalogName, catalogUnit, catalogFoodGroup string
-	err := s.db.QueryRowContext(ctx, `
-		SELECT name, default_unit, COALESCE(NULLIF(TRIM(food_group), ''), 'other')
-		FROM restaurant_ingredients WHERE name_normalized = $1
-	`, normalizeIngredientName(name)).Scan(&catalogName, &catalogUnit, &catalogFoodGroup)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("ingredient not in catalog")
-	}
+	catalog, err := resolveGlobalCatalogIngredient(ctx, s.db, name)
 	if err != nil {
 		return nil, err
 	}
-	name = catalogName
-	foodGroup := normalizeInventoryFoodGroup(catalogFoodGroup)
+	name = catalog.Name
+	foodGroup := normalizeInventoryFoodGroup(catalog.FoodGroup)
 
 	unit = units.Normalize(strings.TrimSpace(unit))
 	if unit == "" {
-		unit = units.Normalize(catalogUnit)
+		unit = units.Normalize(catalog.DefaultUnit)
 	}
 	if unit == "" {
 		unit = "pcs"
+	}
+	qty, unit, err = units.NormalizeStoredQty(qty, unit)
+	if err != nil {
+		return nil, err
 	}
 
 	var item ShoppingItem

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OrderDetailSheet from '../components/OrderDetailSheet';
 import { FilterPill, FilterPillRow } from '../components/FilterPill';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
@@ -92,6 +93,12 @@ export default function OrdersScreen() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load orders'))
       .finally(() => setLoading(false));
   }, [fetchPage]);
+
+  const reloadOnFocus = useCallback(() => {
+    fetchPage().catch((e) => setError(e instanceof Error ? e.message : 'Failed to load orders'));
+  }, [fetchPage]);
+
+  useRefreshOnFocus(reloadOnFocus, { enabled: Boolean(kitchenId) });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -364,19 +371,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 8,
+    paddingTop: 8,
+    paddingBottom: 2,
+    gap: 6,
   },
-  filterRowWrap: { backgroundColor: palette.background },
+  filterRowWrap: { backgroundColor: palette.background, overflow: 'visible', zIndex: 2 },
   searchbar: {
     flex: 1,
+    minWidth: 0,
+    height: 40,
+    minHeight: 40,
     backgroundColor: palette.surfaceElevated,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: palette.border,
   },
-  searchInput: { color: palette.text, fontSize: 14 },
+  searchInput: {
+    color: palette.text,
+    fontSize: 14,
+    minHeight: 0,
+    height: 40,
+    paddingVertical: 0,
+    marginVertical: 0,
+  },
   processAllBtn: { borderRadius: 10, marginVertical: 0 },
   loader: { marginTop: 48 },
   list: { flex: 1 },

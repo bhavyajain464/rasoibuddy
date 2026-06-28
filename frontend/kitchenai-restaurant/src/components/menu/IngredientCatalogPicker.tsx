@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
+import { IngredientThumb } from '../IngredientThumb';
 import { CatalogIngredient, InventoryRow } from '../../types';
 import { palette } from '../../theme';
 
@@ -42,7 +43,7 @@ export function IngredientCatalogPicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const blurTimer = useRef<ReturnType<typeof setTimeout>>();
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const selected = useMemo(() => {
     if (ingredientId) {
@@ -135,10 +136,18 @@ export function IngredientCatalogPicker({
                     onPress={() => pick(item)}
                     style={[styles.option, active && styles.optionActive]}
                   >
-                    <Text style={styles.optionName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.optionMeta}>{item.default_unit}</Text>
+                    <IngredientThumb
+                      name={item.name}
+                      ingredientId={item.ingredient_id}
+                      size={32}
+                      resizeMode="contain"
+                    />
+                    <View style={styles.optionText}>
+                      <Text style={styles.optionName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={styles.optionMeta}>{item.default_unit}</Text>
+                    </View>
                   </Pressable>
                 );
               })
@@ -170,14 +179,15 @@ const styles = StyleSheet.create({
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
   },
   optionActive: { backgroundColor: 'rgba(245, 158, 11, 0.12)' },
-  optionName: { color: palette.text, flex: 1, paddingRight: 8, fontWeight: '600' },
-  optionMeta: { color: palette.textMuted, fontSize: 12 },
+  optionText: { flex: 1, minWidth: 0 },
+  optionName: { color: palette.text, fontWeight: '600' },
+  optionMeta: { color: palette.textMuted, fontSize: 12, marginTop: 2 },
   empty: { color: palette.textMuted, fontSize: 12, padding: 12 },
 });

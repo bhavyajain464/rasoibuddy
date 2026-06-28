@@ -23,6 +23,7 @@ export type PartnerWorkerStatus = {
   last_sync_message?: string;
   last_sync_ok?: boolean;
   orders_imported_count?: number;
+  orders_fetched_last_hour?: number;
   poll_interval_minutes?: number;
   next_poll_at?: string;
   sync_mode?: string;
@@ -83,6 +84,8 @@ export type MenuItem = {
   price_cents: number;
   category: string;
   is_active: boolean;
+  zomato_catalogue_id?: string;
+  image_url?: string;
 };
 
 export type MenuListPage = {
@@ -95,7 +98,8 @@ export type MenuListPage = {
 };
 
 export type RecipeIngredient = {
-  ingredient_id?: string;
+  recipe_ingredient_id?: string;
+  catalog_ingredient_id?: string;
   recipe_id?: string;
   ingredient_name: string;
   qty: number;
@@ -171,7 +175,9 @@ export type CatalogIngredient = {
   ingredient_id: string;
   name: string;
   default_unit: string;
+  units?: string[];
   food_group?: string;
+  synonyms?: string[];
 };
 
 export type InventoryListPage = {

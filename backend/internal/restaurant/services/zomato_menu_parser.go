@@ -30,11 +30,22 @@ type zomatoCategoryWrapper struct {
 	} `json:"subCategoryWrappers"`
 }
 
+type zomatoCatalogueMedia struct {
+	URL      string `json:"url"`
+	ThumbURL string `json:"thumbUrl"`
+}
+
+type zomatoCatalogue struct {
+	CatalogueID string                 `json:"catalogueId"`
+	Name        string                 `json:"name"`
+	ImageURL    string                 `json:"imageUrl"`
+	ImageURLV2  string                 `json:"imageUrlV2"`
+	ThumbURL    string                 `json:"thumbUrl"`
+	Media       []zomatoCatalogueMedia `json:"media"`
+}
+
 type zomatoCatalogueWrapper struct {
-	Catalogue struct {
-		CatalogueID string `json:"catalogueId"`
-		Name        string `json:"name"`
-	} `json:"catalogue"`
+	Catalogue       zomatoCatalogue `json:"catalogue"`
 	VariantWrappers []struct {
 		VariantPrices []struct {
 			Service   string  `json:"service"`
@@ -46,11 +57,13 @@ type zomatoCatalogueWrapper struct {
 
 // ZomatoMenuDish is one catalogue item linked to a Zomato category.
 type ZomatoMenuDish struct {
-	Name         string `json:"name"`
-	Category     string `json:"category"`
-	CatalogueID  string `json:"catalogue_id"`
-	PriceCents   int    `json:"price_cents"`
-	Ingredients  []string
+	Name        string `json:"name"`
+	Category    string `json:"category"`
+	CatalogueID string `json:"catalogue_id"`
+	PriceCents  int    `json:"price_cents"`
+	ImageURL    string `json:"image_url"`
+	ThumbURL    string `json:"thumb_url,omitempty"`
+	Ingredients []string
 }
 
 func zomatoDeliveryPriceCents(cw zomatoCatalogueWrapper) int {
@@ -64,8 +77,37 @@ func zomatoDeliveryPriceCents(cw zomatoCatalogueWrapper) int {
 	return 0
 }
 
+// zomatoCatalogueImageURL picks the best Zomato-hosted photo URL from a catalogue row.
+func zomatoCatalogueImageURL(cat zomatoCatalogue) (imageURL, thumbURL string) {
+	for _, field := range []string{
+		strings.TrimSpace(cat.ImageURL),
+		strings.TrimSpace(cat.ImageURLV2),
+	} {
+		if field != "" {
+			imageURL = field
+			break
+		}
+	}
+	thumbURL = strings.TrimSpace(cat.ThumbURL)
+	if imageURL == "" {
+		for _, m := range cat.Media {
+			if u := strings.TrimSpace(m.URL); u != "" {
+				imageURL = u
+				if thumbURL == "" {
+					thumbURL = strings.TrimSpace(m.ThumbURL)
+				}
+				break
+			}
+		}
+	}
+	if thumbURL == "" {
+		thumbURL = imageURL
+	}
+	return imageURL, thumbURL
+}
+
 // ParseZomatoMenu reads a Zomato menu export JSON and returns catalogue dishes
-// with category, name, catalogue id, and delivery price.
+// with category, name, catalogue id, delivery price, and Zomato image URLs.
 func ParseZomatoMenu(path string) ([]ZomatoMenuDish, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -88,10 +130,13 @@ func ParseZomatoMenuJSON(raw []byte) ([]ZomatoMenuDish, error) {
 		if id == "" {
 			continue
 		}
+		imageURL, thumbURL := zomatoCatalogueImageURL(cw.Catalogue)
 		catalogueByID[id] = ZomatoMenuDish{
 			Name:        strings.TrimSpace(cw.Catalogue.Name),
 			CatalogueID: id,
 			PriceCents:  zomatoDeliveryPriceCents(cw),
+			ImageURL:    imageURL,
+			ThumbURL:    thumbURL,
 		}
 	}
 

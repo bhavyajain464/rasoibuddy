@@ -3,9 +3,10 @@ import {
   Alert,
   Platform,
   RefreshControl,
-  SectionList,
+  ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,11 +15,17 @@ import { AddShoppingSheet } from '../components/shopping/AddShoppingSheet';
 import { ShoppingListItem } from '../components/shopping/ShoppingListItem';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
-import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
+import { useGridFilterScroll } from '../hooks/useGridFilterScroll';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
 import { ShoppingRow } from '../types';
 import { formatFoodGroupLabel, normalizeFoodGroup, STATIC_FOOD_GROUPS } from '../utils/foodGroup';
+import {
+  INGREDIENT_GRID_GAP,
+  INGREDIENT_GRID_PAD,
+  useIngredientGridCellWidth,
+} from '../utils/ingredientGrid';
 import { showAppError } from '../utils/alertMessage';
 import { palette } from '../theme';
 
@@ -44,6 +51,12 @@ async function confirmRemove(name: string): Promise<boolean> {
 
 export default function ShoppingScreen() {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const gridCellWidth = useIngredientGridCellWidth(windowWidth);
+  const gridCellStyle = useMemo(
+    () => ({ width: gridCellWidth, marginBottom: INGREDIENT_GRID_GAP }),
+    [gridCellWidth],
+  );
   const { kitchen } = useRestaurant();
   const kitchenId = kitchen?.kitchen_id ?? '';
   const [items, setItems] = useState<ShoppingRow[]>([]);
@@ -53,17 +66,15 @@ export default function ShoppingScreen() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const { catalog } = useIngredientCatalog();
   const loadGenRef = useRef(0);
-  const listMountKey = `buy-${groupFilter}-${loading ? 'loading' : 'ready'}`;
   const {
-    listRef,
+    scrollRef,
     handleListScroll,
     handleContentSizeChange,
     resetForFilterChange,
-  } = useSectionListFilterScroll<ShoppingRow>(groupFilter, loading);
+  } = useGridFilterScroll(groupFilter, loading);
 
   const selectGroupFilter = useCallback(
     (filter: BuyFilter) => {
@@ -100,6 +111,15 @@ export default function ShoppingScreen() {
         setHasLoadedOnce(true);
       });
   }, [load]);
+
+  const reloadOnFocus = useCallback(() => {
+    load().catch((e) => {
+      setItems([]);
+      setError(e instanceof Error ? e.message : 'Failed to load buy list');
+    });
+  }, [load]);
+
+  useRefreshOnFocus(reloadOnFocus, { enabled: Boolean(kitchenId) });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -152,54 +172,31 @@ export default function ShoppingScreen() {
           const group = formatFoodGroupLabel(item.food_group).toLowerCase();
           return name.includes(searchLower) || group.includes(searchLower);
         });
-    return [...base].sort((a, b) => {
-      const ga = normalizeFoodGroup(a.food_group);
-      const gb = normalizeFoodGroup(b.food_group);
-      const ai = STATIC_FOOD_GROUPS.indexOf(ga as (typeof STATIC_FOOD_GROUPS)[number]);
-      const bi = STATIC_FOOD_GROUPS.indexOf(gb as (typeof STATIC_FOOD_GROUPS)[number]);
-      const orderA = ai === -1 ? STATIC_FOOD_GROUPS.length : ai;
-      const orderB = bi === -1 ? STATIC_FOOD_GROUPS.length : bi;
-      if (orderA !== orderB) return orderA - orderB;
-      return a.name.localeCompare(b.name);
-    });
+    return [...base].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, searchLower, groupFilter]);
 
-  const showGroupedSections = groupFilter === 'all';
+  const listSections = useMemo(
+    (): BuySection[] => [{ key: String(groupFilter), title: '', data: filteredItems }],
+    [filteredItems, groupFilter],
+  );
 
-  const listSections = useMemo((): BuySection[] => {
-    if (!showGroupedSections) {
-      return [{ key: String(groupFilter), title: '', data: filteredItems }];
-    }
-    const grouped = new Map<string, ShoppingRow[]>();
-    for (const item of filteredItems) {
-      const key = normalizeFoodGroup(item.food_group);
-      const bucket = grouped.get(key) ?? [];
-      bucket.push(item);
-      grouped.set(key, bucket);
-    }
-    return STATIC_FOOD_GROUPS.filter((key) => (grouped.get(key)?.length ?? 0) > 0).map((key) => ({
-      key,
-      title: formatFoodGroupLabel(key),
-      data: grouped.get(key) ?? [],
-    }));
-  }, [filteredItems, groupFilter, showGroupedSections]);
-
-  const handleAdd = async (payload: { name: string; qty: number; unit: string }) => {
-    if (!kitchenId) return;
-    setSaving(true);
+  const handleAdd = async (rows: { name: string; qty: number; unit: string }[]) => {
+    if (!kitchenId || !rows.length) return;
     try {
-      const created = await restaurantFetch<ShoppingRow>(`/restaurant/${kitchenId}/shopping`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      setItems((prev) => [created, ...prev]);
-      setSheetOpen(false);
+      const created: ShoppingRow[] = [];
+      for (const payload of rows) {
+        const row = await restaurantFetch<ShoppingRow>(`/restaurant/${kitchenId}/shopping`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        created.push(row);
+      }
+      setItems((prev) => [...created.reverse(), ...prev]);
       setGroupFilter('all');
       resetForFilterChange();
     } catch (e) {
-      showAppError(e instanceof Error ? e.message : 'Could not add item');
-    } finally {
-      setSaving(false);
+      showAppError(e instanceof Error ? e.message : 'Could not add items');
+      throw e;
     }
   };
 
@@ -239,7 +236,7 @@ export default function ShoppingScreen() {
           mode="contained"
           containerColor={palette.primary}
           iconColor="#0F172A"
-          size={22}
+          size={20}
           onPress={() => setSheetOpen(true)}
           style={styles.addBtn}
           accessibilityLabel="Add buy list item"
@@ -271,19 +268,14 @@ export default function ShoppingScreen() {
       {loading && !hasLoadedOnce ? (
         <ActivityIndicator color={palette.primary} style={styles.loader} />
       ) : (
-        <SectionList
-          key={listMountKey}
-          ref={listRef}
-          sections={listSections}
+        <ScrollView
+          ref={scrollRef}
           style={styles.list}
           scrollEnabled={!loading}
-          keyExtractor={(item) => item.id}
-          stickySectionHeadersEnabled={false}
           contentContainerStyle={[
             styles.listContent,
             filteredItems.length === 0 && styles.listEmpty,
             { paddingBottom: insets.bottom + 24 },
-            Platform.OS === 'web' ? ({ overflowAnchor: 'none' } as const) : null,
           ]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
@@ -291,44 +283,52 @@ export default function ShoppingScreen() {
           onScroll={handleListScroll}
           onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
-          ListEmptyComponent={
-            loading ? (
-              <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
-            ) : (
-              <Text style={styles.empty}>
-                {searchLower || groupFilter !== 'all'
-                  ? 'No items match your filters'
-                  : 'Nothing to buy — tap + to add ingredients'}
-              </Text>
-            )
-          }
-          renderSectionHeader={({ section }) =>
-            section.title ? (
-              <Text variant="titleSmall" style={styles.sectionHeader}>
-                {section.title}
-              </Text>
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <ShoppingListItem
-              item={item}
-              menuActions={[
-                {
-                  key: 'remove',
-                  label: 'Remove from list',
-                  icon: 'delete-outline',
-                  destructive: true,
-                  onPress: () => handleRemove(item),
-                },
-              ]}
-            />
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {loading ? (
+            <ActivityIndicator color={palette.primary} style={styles.footerLoader} />
+          ) : filteredItems.length === 0 ? (
+            <Text style={styles.empty}>
+              {searchLower || groupFilter !== 'all'
+                ? 'No items match your filters'
+                : 'Nothing to buy — tap + to add ingredients'}
+            </Text>
+          ) : (
+            listSections.map((section) => (
+              <View key={section.key}>
+                {section.title ? (
+                  <Text variant="titleSmall" style={styles.sectionHeader}>
+                    {section.title}
+                  </Text>
+                ) : null}
+                <View style={styles.grid}>
+                  {section.data.map((item) => (
+                    <View key={item.id} style={gridCellStyle}>
+                      <ShoppingListItem
+                        item={item}
+                        variant="grid"
+                        menuActions={[
+                          {
+                            key: 'remove',
+                            label: 'Remove from list',
+                            icon: 'delete-outline',
+                            destructive: true,
+                            onPress: () => handleRemove(item),
+                          },
+                        ]}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))
           )}
-        />
+        </ScrollView>
       )}
 
       <AddShoppingSheet
         visible={sheetOpen}
-        saving={saving}
         catalog={catalog}
         onDismiss={() => setSheetOpen(false)}
         onSave={handleAdd}
@@ -343,24 +343,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 8,
+    paddingTop: 8,
+    paddingBottom: 2,
+    gap: 6,
   },
   searchbar: {
     flex: 1,
+    minWidth: 0,
+    height: 40,
+    minHeight: 40,
     backgroundColor: palette.surfaceElevated,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: palette.border,
   },
-  searchInput: { color: palette.text, fontSize: 14 },
-  addBtn: { margin: 0 },
-  filterRowWrap: { backgroundColor: palette.background },
+  searchInput: {
+    color: palette.text,
+    fontSize: 14,
+    minHeight: 0,
+    height: 40,
+    paddingVertical: 0,
+    marginVertical: 0,
+  },
+  addBtn: { margin: 0, width: 40, height: 40 },
+  filterRowWrap: { backgroundColor: palette.background, overflow: 'visible', zIndex: 2 },
   loader: { marginTop: 48 },
   list: { flex: 1 },
   footerLoader: { marginVertical: 16 },
-  listContent: { paddingHorizontal: 16, paddingTop: 4 },
+  listContent: {
+    paddingHorizontal: INGREDIENT_GRID_PAD,
+    paddingTop: 4,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: INGREDIENT_GRID_GAP,
+  },
   sectionHeader: {
     color: palette.textMuted,
     fontWeight: '700',

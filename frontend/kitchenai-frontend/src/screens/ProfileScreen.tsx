@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { closeProfile } from '../navigation/rootNavigation';
 import type { RootStackParamList } from '../navigation/types';
 import { useUpgradePaywall } from '../context/UpgradePaywallContext';
+import { useProductTour } from '../context/ProductTourContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfirmDialog } from '../components/AppConfirmDialog';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../components/BottomSheet';
@@ -57,6 +58,7 @@ export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Profile'>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Profile'>>();
   const { openUpgrade } = useUpgradePaywall();
+  const { startTour } = useProductTour();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const {
@@ -75,6 +77,10 @@ export function ProfileScreen() {
   const openProfileUpgrade = useCallback(() => {
     openUpgrade({ source: 'profile' });
   }, [openUpgrade]);
+
+  const handleTakeTour = useCallback(() => {
+    void startTour('app', { force: true });
+  }, [startTour]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -546,6 +552,27 @@ export function ProfileScreen() {
           />
 
           <Surface style={styles.section} elevation={1}>
+            <Text variant="titleSmall" style={styles.secTitle}>Help</Text>
+            <Pressable
+              onPress={handleTakeTour}
+              style={({ pressed }) => [styles.tourRow, pressed && { opacity: 0.88 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Take a tour of the home screen"
+            >
+              <View style={styles.tourRowLeft}>
+                <IconButton icon="map-marker-path" size={20} iconColor="#2E7D32" style={styles.tourRowIcon} />
+                <View style={styles.tourRowText}>
+                  <Text variant="bodyMedium" style={styles.tourRowTitle}>Take a tour</Text>
+                  <Text variant="bodySmall" style={styles.tourRowSub}>
+                    Walkthrough of Home, Inventory, Meals, Cook & Shopping
+                  </Text>
+                </View>
+              </View>
+              <IconButton icon="chevron-right" size={20} iconColor="#888" style={styles.tourRowChevron} />
+            </Pressable>
+          </Surface>
+
+          <Surface style={styles.section} elevation={1}>
             <Text variant="titleSmall" style={styles.secTitle}>Shared Kitchen</Text>
             {kitchenLoading ? (
               <ActivityIndicator size="small" />
@@ -919,6 +946,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   secTitle: { fontWeight: '700', color: '#333', marginBottom: 12 },
+
+  tourRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  tourRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  tourRowIcon: { margin: 0, marginRight: 4 },
+  tourRowText: { flex: 1, minWidth: 0 },
+  tourRowTitle: { fontWeight: '600', color: '#333' },
+  tourRowSub: { color: '#888', marginTop: 2 },
+  tourRowChevron: { margin: 0 },
 
   settRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   settLabel: { color: '#888' },

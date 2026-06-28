@@ -28,6 +28,10 @@ func TestFormatPurchaseQtyWeight(t *testing.T) {
 	if got != "1 kg" {
 		t.Fatalf("FormatPurchaseQty(onion) = %q, want 1 kg", got)
 	}
+	got = FormatPurchaseQty(1500, "g", onion)
+	if got != "1.5 kg" {
+		t.Fatalf("FormatPurchaseQty(1500g) = %q, want 1.5 kg", got)
+	}
 }
 
 func TestFormatPurchaseQtyZeroCountHidesUnit(t *testing.T) {

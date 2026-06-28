@@ -2,7 +2,7 @@ package services
 
 func catalogJoinFrom() string {
 	return `FROM shopping_items si
-		LEFT JOIN restaurant_ingredients ri ON ri.name_normalized = LOWER(TRIM(si.name))`
+		` + shoppingCatalogJoin()
 }
 
 func catalogJoinFoodGroupSelect() string {

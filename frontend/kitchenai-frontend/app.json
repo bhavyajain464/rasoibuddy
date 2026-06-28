@@ -23,6 +23,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Rasoi Buddy needs camera access to scan grocery bills.",
         "NSPhotoLibraryUsageDescription": "Rasoi Buddy needs photo library access to select grocery bill images.",
+        "NSMicrophoneUsageDescription": "Rasoi Buddy uses the microphone so you can tell AI Buddy what to do by voice.",
+        "NSSpeechRecognitionUsageDescription": "Rasoi Buddy converts your speech into kitchen tasks for AI Buddy.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
           "tez",

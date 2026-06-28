@@ -823,7 +823,8 @@ func finalizeMealCategories(categories []MealCategory, category, userPrompt stri
 		}
 		var meals []SmartMeal
 		if pick, ok := services.RandomCandidateForPrompt(candidates, userPrompt, exclude); ok {
-			meal := smartMealFromCatalog(pick.Dish, inventory, expiringNames, catID, globalStars, userStarred)
+			dish := services.ResolveFamilyVariantByInventory(pick.Dish, inventoryNames(inventory), inventoryIngredientIDs(inventory))
+			meal := smartMealFromCatalog(dish, inventory, expiringNames, catID, globalStars, userStarred)
 			if groq := firstGroqMealMatching(cat.Meals, userPrompt, pick.Dish.Name); groq != nil {
 				meal = mergeGroqMeal(meal, *groq)
 			}
@@ -931,12 +932,13 @@ func fallbackMealsFromCandidates(candidates []services.RankedDish, category stri
 	if !ok {
 		pick = candidates[0]
 	}
+	dish := services.ResolveFamilyVariantByInventory(pick.Dish, inventoryNames(inventory), inventoryIngredientIDs(inventory))
 
 	return []MealCategory{{
 		ID:          category,
 		Title:       meta.Title,
 		Description: meta.Desc,
-		Meals:       []SmartMeal{smartMealFromCatalog(pick.Dish, inventory, expiringNames, category, globalStars, userStarred)},
+		Meals:       []SmartMeal{smartMealFromCatalog(dish, inventory, expiringNames, category, globalStars, userStarred)},
 	}}
 }
 

@@ -12,6 +12,7 @@ import {
 import { Icon, Text } from 'react-native-paper';
 import { IngredientSearchOverlay } from './IngredientSearchOverlay';
 import { CatalogIngredient } from '../types';
+import { useIngredientSearch } from '../hooks/useIngredientSearch';
 import { defaultUnitForCatalogItem, resolveCatalogItem } from '../utils/ingredientUnits';
 import {
   MAX_INLINE_OPTIONS,
@@ -32,7 +33,8 @@ export type IngredientPick = {
 };
 
 type Props = {
-  catalog: CatalogIngredient[];
+  /** Optional legacy full catalog; when omitted, search uses GET /ingredients?q= */
+  catalog?: CatalogIngredient[];
   value: string;
   ingredientId?: string;
   onChangeText: (text: string) => void;
@@ -62,7 +64,7 @@ function formatUnits(item: CatalogIngredient): string {
 }
 
 export function IngredientNamePicker({
-  catalog,
+  catalog = [],
   value,
   ingredientId,
   onChangeText,
@@ -116,9 +118,17 @@ export function IngredientNamePicker({
     return () => clearTimeout(timer);
   }, [autoFocus, useFullScreenSearch]);
 
-  const options = useMemo(
-    () => filterCatalog(catalog, query, MAX_INLINE_OPTIONS),
-    [catalog, query],
+  const useRemoteSearch = catalog.length === 0;
+  const searchEnabled = useRemoteSearch && (open || overlayVisible);
+  const { results: remoteResults, loading: remoteLoading } = useIngredientSearch(query, searchEnabled);
+
+  const options = useMemo(() => {
+    if (useRemoteSearch) return remoteResults.slice(0, MAX_INLINE_OPTIONS);
+    return filterCatalog(catalog, query, MAX_INLINE_OPTIONS);
+  }, [useRemoteSearch, remoteResults, catalog, query]);
+
+  const showDropdown = open && !useFullScreenSearch && (
+    useRemoteSearch ? query.trim().length > 0 : catalog.length > 0
   );
 
   const applyPick = (item: CatalogIngredient) => {
@@ -224,11 +234,15 @@ export function IngredientNamePicker({
           fieldBox
         )}
 
-        {open && !useFullScreenSearch && catalog.length > 0 ? (
+        {showDropdown ? (
           <View style={styles.dropdown}>
             <ScrollView style={styles.list} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-              {options.length === 0 ? (
-                <Text style={styles.empty}>No ingredients match</Text>
+              {remoteLoading ? (
+                <Text style={styles.empty}>Searching…</Text>
+              ) : options.length === 0 ? (
+                <Text style={styles.empty}>
+                  {useRemoteSearch ? 'Type to search ingredients' : 'No ingredients match'}
+                </Text>
               ) : (
                 options.map((item) => {
                   const active = selected?.ingredient_id === item.ingredient_id;
@@ -255,6 +269,7 @@ export function IngredientNamePicker({
         <IngredientSearchOverlay
           visible={overlayVisible}
           catalog={catalog}
+          remoteSearch={useRemoteSearch}
           initialQuery={query || displayValue}
           selectedId={selected?.ingredient_id}
           title="Search ingredients"

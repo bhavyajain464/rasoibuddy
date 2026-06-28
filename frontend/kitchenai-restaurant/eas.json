@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 18.12.3",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://kitchenai-backend-staging-208103249970.asia-south1.run.app/api/v1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "208103249970-qg4bv6ilknfe52eqks8u662hp3toneua.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "208103249970-5j9v2282v0f9r0d8859shqmnurpc93lp.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "208103249970-3ajg7i1c481m0scdd8h3raf0h5j04csi.apps.googleusercontent.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

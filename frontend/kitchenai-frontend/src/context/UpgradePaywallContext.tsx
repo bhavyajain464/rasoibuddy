@@ -22,6 +22,7 @@ export type UpgradePaywallOptions = {
 
 type UpgradePaywallContextValue = {
   openUpgrade: (options?: UpgradePaywallOptions) => void;
+  paywallVisible: boolean;
 };
 
 const UpgradePaywallContext = createContext<UpgradePaywallContextValue | null>(null);
@@ -39,7 +40,7 @@ export function UpgradePaywallProvider({ children }: { children: React.ReactNode
 
   const close = useCallback(() => setVisible(false), []);
 
-  const value: UpgradePaywallContextValue = { openUpgrade };
+  const value: UpgradePaywallContextValue = { openUpgrade, paywallVisible: visible };
 
   useEffect(() => {
     upgradePaywallRef.current = value;

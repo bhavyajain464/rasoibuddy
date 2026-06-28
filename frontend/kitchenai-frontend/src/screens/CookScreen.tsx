@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,12 +17,14 @@ import {
   ActivityIndicator,
   Icon,
 } from 'react-native-paper';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as api from '../services/api';
 import { showAppError, showAppInfo, showAppSuccess } from '../utils/alertMessage';
 import { buildWaMeUrl, isIosHomeScreenWeb, openWhatsAppUrl } from '../utils/openWhatsApp';
 import { CookedLogEntry, CookProfile } from '../types';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
+import { useScrollToTopOnTabFocus } from '../hooks/useScrollToTopOnTabFocus';
 import { TabScreenHeader, TabScreenToolbarRow } from '../components/TabScreenHeader';
 import { MessageComposer } from '../components/MessageComposer';
 import { BottomSheet, bottomSheetInput, bottomSheetPrimaryBtn } from '../components/BottomSheet';
@@ -36,6 +38,14 @@ import {
   normalizeCookLang,
   type CookMessageLang,
 } from '../utils/cookMessageTemplates';
+import { TourTarget } from '../components/tour/TourTarget';
+import { useProductTour } from '../context/ProductTourContext';
+import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
+import { useTourScreenScroll } from '../hooks/useTourScreenScroll';
+import { CookModeToggle } from '../components/CookModeToggle';
+import { CookingRecipesPanel } from '../components/CookingRecipesPanel';
+import { normalizeCookMode, type CookRouteParams, type CookScreenMode } from '../navigation/cookParams';
+import type { MainTabParamList } from '../navigation/types';
 
 const COOK_ACCENT = '#2E7D32';
 const COOK_BORDER = '#C8E6C9';
@@ -46,8 +56,19 @@ function primaryDishFromMessage(message: string): string {
 }
 
 export function CookScreen() {
-  const route = useRoute<any>();
+  const route = useRoute<{ key: string; name: string; params?: CookRouteParams }>();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, 'Cook'>>();
   const { contentPaddingBottom } = useTabBarLayout();
+  const scrollRef = useRef<ScrollView>(null);
+  const consumedCookingNavAt = useRef(0);
+  useTourScreenScroll('Cook', scrollRef, { fixedChromeExtra: 260 });
+  useScrollToTopOnTabFocus(scrollRef);
+  const { isTourActive, activeStepId, requestTargetRemeasure } = useProductTour();
+  const onCookTourStep = isTourActive && activeStepId === 'cook-composer';
+  const [screenMode, setScreenMode] = useState<CookScreenMode>('cook');
+  const [cookingSearch, setCookingSearch] = useState('');
+  const [expandDishId, setExpandDishId] = useState('');
+  const [cookingIntentToken, setCookingIntentToken] = useState(0);
   const [cookProfile, setCookProfile] = useState<CookProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
@@ -64,9 +85,23 @@ export function CookScreen() {
   const [cookMessages, setCookMessages] = useState<CookedLogEntry[]>([]);
   const [whatsappFallbackUrl, setWhatsappFallbackUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!cookProfile?.configured) return;
-    const rawItems = route.params?.dishItems;
+  const applyRouteParams = useCallback(() => {
+    const params = route.params;
+    const nextMode = normalizeCookMode(params?.mode);
+    const navAt = params?.at ?? 0;
+    setScreenMode(nextMode);
+
+    const dishId = params?.dishId?.trim() ?? '';
+    const dishName = params?.dishName?.trim() ?? '';
+    if (nextMode === 'cooking' && navAt > consumedCookingNavAt.current) {
+      consumedCookingNavAt.current = navAt;
+      setCookingIntentToken(navAt);
+      setCookingSearch(dishName);
+      setExpandDishId(dishId);
+    }
+
+    if (!cookProfile?.configured || nextMode !== 'cook') return;
+    const rawItems = params?.dishItems;
     if (Array.isArray(rawItems) && rawItems.length > 0) {
       const items = rawItems.map((x) => String(x).trim()).filter(Boolean);
       if (items.length > 0) {
@@ -74,16 +109,46 @@ export function CookScreen() {
         return;
       }
     }
-    const dish = route.params?.dishName ? String(route.params.dishName).trim() : '';
-    if (dish) {
-      setMessage(buildCookMessage(dish, cookProfile.preferred_lang));
+    if (dishName) {
+      setMessage(buildCookMessage(dishName, cookProfile.preferred_lang));
     }
   }, [
-    route.params?.dishItems,
-    route.params?.dishName,
+    route.params,
     cookProfile?.configured,
     cookProfile?.preferred_lang,
   ]);
+
+  const clearCookingNavigationIntent = useCallback(() => {
+    setCookingSearch('');
+    setExpandDishId('');
+    setCookingIntentToken(0);
+    navigation.setParams({
+      mode: undefined,
+      dishId: undefined,
+      dishName: undefined,
+      dishItems: undefined,
+      at: undefined,
+    } as CookRouteParams);
+  }, [navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isTourActive && activeStepId === 'cook-composer') return undefined;
+      applyRouteParams();
+      return undefined;
+    }, [activeStepId, applyRouteParams, isTourActive]),
+  );
+
+  useEffect(() => {
+    if (onCookTourStep) {
+      setScreenMode('cook');
+    }
+  }, [onCookTourStep]);
+
+  useEffect(() => {
+    if (!onCookTourStep || profileLoading) return;
+    requestTargetRemeasure(APP_TOUR_TARGET_IDS.cookComposer);
+  }, [onCookTourStep, profileLoading, requestTargetRemeasure]);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -268,15 +333,22 @@ export function CookScreen() {
     <>
     <View style={styles.root}>
       <TabScreenHeader
-        title="Cook Communication"
-        subtitle="Your cook, connected to the plan"
+        title="Cook"
+        subtitle={screenMode === 'cooking' ? 'Step-by-step recipe' : 'Message your household cook'}
         decoration={
           <IconButton icon="chef-hat" iconColor="rgba(255,255,255,0.4)" size={40} style={styles.headerBg} />
         }
       />
 
+      <View style={styles.toggleRow}>
+        <CookModeToggle value={screenMode} onChange={setScreenMode} />
+      </View>
+
+      {screenMode === 'cook' ? (
+      <>
       <TabScreenToolbarRow block style={styles.toolbarChrome}>
-        <Surface style={styles.composeCard} elevation={1}>
+        <TourTarget id={APP_TOUR_TARGET_IDS.cookComposer}>
+          <Surface style={styles.composeCard} elevation={1}>
           <View style={styles.sendTitleRow}>
             <View style={styles.sendTitleIcon}>
               <Icon source="message-text-outline" size={18} color={COOK_ACCENT} />
@@ -310,8 +382,8 @@ export function CookScreen() {
             disabled={!canMessageCook || sending}
             accentColor={COOK_ACCENT}
             borderColor={COOK_BORDER}
-            submitIcon="arrow-right"
             accessibilityLabel="Send message"
+            showSubmitButton={false}
           />
 
           {whatsappFallbackUrl ? (
@@ -326,10 +398,12 @@ export function CookScreen() {
               </Text>
             </Pressable>
           ) : null}
-        </Surface>
+          </Surface>
+        </TourTarget>
       </TabScreenToolbarRow>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom(56) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -337,7 +411,7 @@ export function CookScreen() {
         keyboardShouldPersistTaps="handled"
       >
       {/* Cook profile — compact row; edit opens bottom sheet */}
-      <Surface style={styles.profileCard} elevation={1}>
+        <Surface style={styles.profileCard} elevation={1}>
         <View style={styles.profileHeader}>
           <View style={styles.profileHeaderLeft}>
             <View style={styles.profileAvatar}>
@@ -424,6 +498,16 @@ export function CookScreen() {
 
       <View style={{ height: 32 }} />
       </ScrollView>
+      </>
+      ) : (
+        <CookingRecipesPanel
+          intentToken={cookingIntentToken}
+          initialSearch={cookingSearch}
+          expandDishId={expandDishId}
+          contentPaddingBottom={contentPaddingBottom(56)}
+          onIntentConsumed={clearCookingNavigationIntent}
+        />
+      )}
     </View>
 
     <BottomSheet
@@ -505,10 +589,21 @@ const styles = StyleSheet.create({
 
   headerBg: { position: 'absolute', top: 8, right: 8, opacity: 0.15 },
 
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    zIndex: 2,
+  },
+
   toolbarChrome: {
     zIndex: 2,
     elevation: 4,
     backgroundColor: '#FAFAFA',
+    gap: 10,
+    marginTop: 0,
   },
 
   composeCard: {

@@ -2,9 +2,11 @@ import { Platform } from 'react-native';
 import { BRAND_DISPLAY_NAME } from '../constants/brand';
 import { BILL_SCAN_ALERT_MESSAGE } from '../utils/billScanMessage';
 import {
+  appliableActions,
   clampWhatsAppMessageText,
   logImportError,
   normalizeParsedAction,
+  normalizeParsedActions,
   toUserFacingMessage,
   unknownWhatsAppAction,
 } from '../utils/whatsappAction';
@@ -14,6 +16,7 @@ import {
   InventoryFoodGroup,
   InventoryBucket,
   InventoryBucketsResponse,
+  InventoryListPage,
   ExpiringItem,
   RescueMealResponse,
   LowStockItem,
@@ -26,6 +29,7 @@ import {
   WhatsAppResult,
   WhatsAppParsedAction,
   WhatsAppParseResponse,
+  BuddyChatHistoryTurn,
   WhatsAppApplyResponse,
   CookInfo,
   CookProfile,
@@ -45,6 +49,10 @@ import {
   OrderLinkResponse,
   CatalogDishSearchItem,
   DishLookupResponse,
+  DishRecipe,
+  DishRecipeSummary,
+  DishRecipeListPage,
+  ShoppingListPage,
 } from '../types';
 import type { MealOfDayMeal } from '../components/MealOfDayCard';
 import { normalizeInventoryBucketsResponse } from '../utils/inventoryBuckets';
@@ -335,6 +343,56 @@ export async function fetchInventoryBuckets(
   return normalizeInventoryBucketsResponse(raw, include);
 }
 
+export const INVENTORY_PAGE_SIZE = 30;
+
+async function parseInventoryListResponse(res: Response): Promise<InventoryListPage> {
+  const data: unknown = await res.json();
+  if (data && typeof data === 'object' && Array.isArray((data as InventoryListPage).items)) {
+    const page = data as InventoryListPage;
+    return {
+      items: page.items ?? [],
+      total: page.total ?? 0,
+      offset: page.offset ?? 0,
+      limit: page.limit ?? INVENTORY_PAGE_SIZE,
+      has_more: Boolean(page.has_more),
+      counts: page.counts ?? { active: 0, expiring: 0, expired: 0, total: 0 },
+      group_counts: page.group_counts ?? {},
+    };
+  }
+  const buckets = normalizeInventoryBucketsResponse(data, ['active', 'expiring', 'expired']);
+  const items = [...(buckets.active ?? []), ...(buckets.expiring ?? []), ...(buckets.expired ?? [])];
+  return {
+    items,
+    total: items.length,
+    offset: 0,
+    limit: items.length,
+    has_more: false,
+    counts: buckets.counts,
+    group_counts: {},
+  };
+}
+
+/** Paginated pantry browse (search + filters on server). */
+export async function fetchInventoryPage(opts: {
+  include: InventoryBucket[];
+  q?: string;
+  foodGroup?: string | null;
+  expiringOnly?: boolean;
+  offset?: number;
+  limit?: number;
+}): Promise<InventoryListPage> {
+  const params = new URLSearchParams({ include: opts.include.join(',') });
+  if (opts.q?.trim()) params.set('q', opts.q.trim());
+  if (opts.foodGroup) params.set('food_group', opts.foodGroup);
+  if (opts.expiringOnly) params.set('expiring_only', 'true');
+  const limit = opts.limit ?? INVENTORY_PAGE_SIZE;
+  params.set('limit', String(limit));
+  params.set('offset', String(opts.offset ?? 0));
+  const res = await authFetch(`${API_BASE_URL}/inventory?${params.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseInventoryListResponse(res);
+}
+
 export async function fetchInventoryFoodGroups(): Promise<InventoryFoodGroup[]> {
   const res = await authFetch(`${API_BASE_URL}/inventory/food-groups`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -372,6 +430,75 @@ export async function lookupDish(opts: {
   if (opts.name?.trim()) params.set('name', opts.name.trim());
   const res = await authFetch(`${API_BASE_URL}/dishes/lookup?${params.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export const DISH_RECIPE_PAGE_SIZE = 30;
+
+async function parseDishRecipeListResponse(res: Response): Promise<DishRecipeListPage> {
+  const data: unknown = await res.json();
+  if (Array.isArray(data)) {
+    const items = data as DishRecipeSummary[];
+    return {
+      items,
+      total: items.length,
+      offset: 0,
+      limit: items.length,
+      has_more: false,
+    };
+  }
+  const page = data as DishRecipeListPage;
+  return {
+    items: page.items ?? [],
+    total: page.total ?? 0,
+    offset: page.offset ?? 0,
+    limit: page.limit ?? DISH_RECIPE_PAGE_SIZE,
+    has_more: Boolean(page.has_more),
+  };
+}
+
+/** Paginated recipe browse (pass offset for pages; legacy array responses are normalized). */
+export async function fetchDishRecipePage(opts?: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+  page?: number;
+}): Promise<DishRecipeListPage> {
+  const params = new URLSearchParams();
+  if (opts?.q?.trim()) params.set('q', opts.q.trim());
+  const limit = opts?.limit ?? DISH_RECIPE_PAGE_SIZE;
+  params.set('limit', String(limit));
+  if (opts?.offset != null && opts.offset >= 0) {
+    params.set('offset', String(opts.offset));
+  } else if (opts?.page != null && opts.page > 0) {
+    params.set('page', String(opts.page));
+  } else {
+    params.set('offset', '0');
+  }
+  const res = await authFetch(`${API_BASE_URL}/dishes/recipes?${params.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseDishRecipeListResponse(res);
+}
+
+/** Legacy helper: full list via non-paginated API (backward compatible). */
+export async function fetchDishRecipes(opts?: {
+  q?: string;
+  limit?: number;
+}): Promise<DishRecipeSummary[]> {
+  const params = new URLSearchParams();
+  if (opts?.q?.trim()) params.set('q', opts.q.trim());
+  if (opts?.limit != null && opts.limit > 0) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  const res = await authFetch(`${API_BASE_URL}/dishes/recipes${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await parseDishRecipeListResponse(res)).items;
+}
+
+export async function fetchDishRecipe(dishId: string): Promise<DishRecipe> {
+  const id = dishId.trim();
+  if (!id) throw new Error('dish_id is required');
+  const res = await authFetch(`${API_BASE_URL}/dishes/${encodeURIComponent(id)}/recipe`);
+  if (!res.ok) throw new Error(res.status === 404 ? 'Recipe not found' : `HTTP ${res.status}`);
   return res.json();
 }
 
@@ -557,7 +684,10 @@ function parseApiErrorMessage(body: string, status: number): string {
   }
 }
 
-export async function parseWhatsAppMessage(text: string): Promise<WhatsAppParseResponse> {
+export async function parseWhatsAppMessage(
+  text: string,
+  history?: BuddyChatHistoryTurn[],
+): Promise<WhatsAppParseResponse> {
   const trimmed = clampWhatsAppMessageText(text);
   if (!trimmed) {
     throw new Error('Message is empty');
@@ -568,7 +698,10 @@ export async function parseWhatsAppMessage(text: string): Promise<WhatsAppParseR
     res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: trimmed }),
+      body: JSON.stringify({
+        text: trimmed,
+        history: history?.length ? history : undefined,
+      }),
     });
   } catch (cause) {
     const rawMessage = cause instanceof Error ? cause.message : String(cause);
@@ -599,23 +732,33 @@ export async function parseWhatsAppMessage(text: string): Promise<WhatsAppParseR
     });
     throw new Error('Invalid response from server');
   }
-  const action = normalizeParsedAction(data?.action) ?? unknownWhatsAppAction();
+  const actions = normalizeParsedActions(
+    data?.actions?.length ? data.actions : data?.action,
+  );
+  const action = actions[0] ?? unknownWhatsAppAction();
   if (__DEV__) {
     console.log('[RASOIBUDDY import/parse] ok', {
-      intent: action.intent,
-      confidence: action.confidence,
-      summary: action.summary,
+      count: actions.length,
+      intents: actions.map((a) => a.intent),
     });
   }
-  return { action, raw_text: typeof data?.raw_text === 'string' ? data.raw_text : trimmed };
+  return {
+    action,
+    actions: actions.length ? actions : [action],
+    reply: typeof data?.reply === 'string' ? data.reply : undefined,
+    raw_text: typeof data?.raw_text === 'string' ? data.raw_text : trimmed,
+  };
 }
 
-export async function applyWhatsAppAction(action: WhatsAppParsedAction): Promise<WhatsAppApplyResponse> {
-  const safe = normalizeParsedAction(action);
-  if (!safe) {
-    throw new Error('Invalid action');
-  }
-  if (safe.intent === 'unknown' || safe.confidence < 0.5) {
+export async function applyWhatsAppActions(
+  actions: WhatsAppParsedAction[],
+): Promise<WhatsAppApplyResponse> {
+  const safe = appliableActions(
+    actions
+      .map((a) => normalizeParsedAction(a))
+      .filter((a): a is WhatsAppParsedAction => a != null),
+  );
+  if (safe.length === 0) {
     throw new Error('This message was not understood well enough to apply.');
   }
   const url = `${API_BASE_URL}/whatsapp/apply`;
@@ -624,7 +767,7 @@ export async function applyWhatsAppAction(action: WhatsAppParsedAction): Promise
     res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: safe }),
+      body: JSON.stringify({ actions: safe }),
     });
   } catch (cause) {
     const rawMessage = cause instanceof Error ? cause.message : String(cause);
@@ -651,6 +794,10 @@ export async function applyWhatsAppAction(action: WhatsAppParsedAction): Promise
     throw new Error(toUserFacingMessage(raw));
   }
   return data;
+}
+
+export async function applyWhatsAppAction(action: WhatsAppParsedAction): Promise<WhatsAppApplyResponse> {
+  return applyWhatsAppActions([action]);
 }
 
 // ─── Rescue Meals ────────────────────────────────────────────
@@ -701,6 +848,49 @@ export async function getShoppingItems(): Promise<UserShoppingItem[]> {
   const data = await res.json();
   const items = Array.isArray(data) ? data : data?.items;
   return Array.isArray(items) ? items : [];
+}
+
+export const SHOPPING_PAGE_SIZE = 30;
+
+async function parseShoppingListResponse(res: Response): Promise<ShoppingListPage> {
+  const data: unknown = await res.json();
+  if (data && typeof data === 'object' && Array.isArray((data as ShoppingListPage).items) && 'has_more' in (data as ShoppingListPage)) {
+    const page = data as ShoppingListPage;
+    return {
+      items: page.items ?? [],
+      total: page.total ?? 0,
+      offset: page.offset ?? 0,
+      limit: page.limit ?? SHOPPING_PAGE_SIZE,
+      has_more: Boolean(page.has_more),
+      count: page.count ?? page.total ?? 0,
+    };
+  }
+  const items = Array.isArray(data) ? data : (data as { items?: UserShoppingItem[] })?.items ?? [];
+  const list = Array.isArray(items) ? items : [];
+  return {
+    items: list,
+    total: list.length,
+    offset: 0,
+    limit: list.length,
+    has_more: false,
+    count: list.length,
+  };
+}
+
+/** Paginated shopping list browse (search on server). */
+export async function fetchShoppingPage(opts?: {
+  q?: string;
+  offset?: number;
+  limit?: number;
+}): Promise<ShoppingListPage> {
+  const params = new URLSearchParams();
+  if (opts?.q?.trim()) params.set('q', opts.q.trim());
+  const limit = opts?.limit ?? SHOPPING_PAGE_SIZE;
+  params.set('limit', String(limit));
+  params.set('offset', String(opts?.offset ?? 0));
+  const res = await authFetch(`${API_BASE_URL}/shopping?${params.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseShoppingListResponse(res);
 }
 
 export async function addShoppingItem(name: string, qty: number = 0, unit: string = 'pcs'): Promise<any> {
@@ -877,11 +1067,22 @@ export async function getWeekPlan(): Promise<{
 export async function refreshWeekPlanDay(
   date: string,
   mealSlot?: string,
+  options?: {
+    category?: string;
+    userPrompt?: string;
+    mealType?: string;
+  },
 ): Promise<WeekPlanDayResponse> {
   const res = await authFetch(`${API_BASE_URL}/meals/week-plan/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date, meal_slot: mealSlot || undefined }),
+    body: JSON.stringify({
+      date,
+      meal_slot: mealSlot || undefined,
+      category: options?.category || undefined,
+      user_prompt: options?.userPrompt?.trim() || undefined,
+      meal_type: options?.mealType || undefined,
+    }),
   });
   if (!res.ok) await parseApiError(res, 'Failed to refresh meal plan');
   return res.json();

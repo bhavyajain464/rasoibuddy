@@ -6,6 +6,7 @@ import {
   SectionList,
   StyleSheet,
   View,
+  ViewStyle,
 } from 'react-native';
 import { ActivityIndicator, IconButton, Menu, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { EditMenuItemSheet, IngredientDraft } from '../components/menu/EditMenuItemSheet';
 import { MenuListItem } from '../components/menu/MenuListItem';
 import { useIngredientCatalog } from '../hooks/useIngredientCatalog';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useSectionListFilterScroll } from '../hooks/useSectionListFilterScroll';
 import { useRestaurant } from '../context/RestaurantContext';
 import { restaurantFetch } from '../services/api';
@@ -155,6 +157,12 @@ export default function MenuScreen() {
       });
   }, [fetchPage]);
 
+  const reloadOnFocus = useCallback(() => {
+    void Promise.all([fetchPage(), loadInventory()]);
+  }, [fetchPage, loadInventory]);
+
+  useRefreshOnFocus(reloadOnFocus, { enabled: Boolean(kitchenId) });
+
   useEffect(() => {
     if (!groupFilter || categoryCounts[groupFilter] != null) return;
     setItems([]);
@@ -246,21 +254,26 @@ export default function MenuScreen() {
         }),
       });
       const recipePayload = payload.ingredients
-        .filter((d) => d.ingredient_id && d.ingredient_name.trim() && parseFloat(d.qty) > 0)
+        .filter((d) => d.ingredient_name.trim() && parseFloat(d.qty) > 0)
         .map((d, i) => ({
+          catalog_ingredient_id: d.ingredient_id,
           ingredient_name: d.ingredient_name.trim(),
           qty: parseFloat(d.qty) || 1,
           unit: d.unit.trim() || 'g',
           inventory_item_id: d.inventory_item_id || undefined,
           sort_order: i + 1,
         }));
-      const ings = await restaurantFetch<RecipeIngredient[]>(
-        `/restaurant/${kitchenId}/menu/${saved.menu_item_id}/ingredients`,
-        {
-          method: 'PUT',
-          body: JSON.stringify(recipePayload),
-        },
-      );
+      const shouldUpdateRecipe =
+        recipePayload.length > 0 || (editingItem ? editingIngredients.length === 0 : true);
+      const ings = shouldUpdateRecipe
+        ? await restaurantFetch<RecipeIngredient[]>(
+            `/restaurant/${kitchenId}/menu/${saved.menu_item_id}/ingredients`,
+            {
+              method: 'PUT',
+              body: JSON.stringify(recipePayload),
+            },
+          )
+        : editingIngredients;
       setIngredientsByItem((prev) => ({ ...prev, [saved.menu_item_id]: ings ?? [] }));
       if (editingItem) {
         setItems((prev) => prev.map((i) => (i.menu_item_id === saved.menu_item_id ? saved : i)));
@@ -400,7 +413,7 @@ export default function MenuScreen() {
               mode="contained"
               containerColor={palette.primary}
               iconColor="#0F172A"
-              size={22}
+              size={20}
               loading={seeding || exporting || importing}
               onPress={() => setAddMenuOpen(true)}
               style={styles.addBtn}
@@ -474,7 +487,7 @@ export default function MenuScreen() {
             styles.listContent,
             filteredItems.length === 0 && styles.listEmpty,
             { paddingBottom: insets.bottom + 24 },
-            Platform.OS === 'web' ? ({ overflowAnchor: 'none' } as const) : null,
+            Platform.OS === 'web' ? ({ overflowAnchor: 'none' } as unknown as ViewStyle) : null,
           ]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} />
@@ -549,22 +562,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    gap: 8,
+    paddingTop: 8,
+    paddingBottom: 2,
+    gap: 6,
   },
   filterRowWrap: {
     backgroundColor: palette.background,
+    overflow: 'visible',
+    zIndex: 2,
   },
   searchbar: {
     flex: 1,
+    minWidth: 0,
+    height: 40,
+    minHeight: 40,
     backgroundColor: palette.surfaceElevated,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: palette.border,
   },
-  searchInput: { color: palette.text, fontSize: 14 },
-  addBtn: { margin: 0 },
+  searchInput: {
+    color: palette.text,
+    fontSize: 14,
+    minHeight: 0,
+    height: 40,
+    paddingVertical: 0,
+    marginVertical: 0,
+  },
+  addBtn: { margin: 0, width: 40, height: 40 },
   loader: { marginTop: 48 },
   list: { flex: 1 },
   footerLoader: { marginVertical: 16 },

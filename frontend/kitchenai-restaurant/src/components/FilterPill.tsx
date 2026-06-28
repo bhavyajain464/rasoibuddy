@@ -212,13 +212,14 @@ export function FilterPillRow({ children, style, inset = H_PAD }: FilterPillRowP
 const styles = StyleSheet.create({
   wrap: {
     marginBottom: 10,
-    zIndex: 1,
+    zIndex: 2,
+    overflow: 'visible',
   },
   carouselFrame: {
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
-  carouselScroll: Platform.OS === 'web' ? { overflow: 'hidden' as const } : {},
+  carouselScroll: Platform.OS === 'web' ? { overflow: 'visible' as const } : {},
   scrollContent: {
     flexGrow: 0,
     paddingVertical: 2,

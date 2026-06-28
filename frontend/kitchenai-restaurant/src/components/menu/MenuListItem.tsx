@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
-import { IconButton, Menu, Text } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { Image, Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Icon, IconButton, Menu, Text } from 'react-native-paper';
 import { MenuItem, RecipeIngredient } from '../../types';
 import { palette } from '../../theme';
 
@@ -33,7 +33,26 @@ function ingredientsPreview(ings: RecipeIngredient[]): string {
 export function MenuListItem({ item, ingredients, menuActions, onPress, style }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const showMenuButton = Platform.OS !== 'web' || hovered || menuOpen;
+  const imageUri = item.image_url?.trim() ?? '';
+
+  useEffect(() => {
+    setImageError(false);
+  }, [imageUri, item.menu_item_id]);
+
+  const thumb = imageUri && !imageError ? (
+    <Image
+      source={{ uri: imageUri }}
+      style={styles.thumb}
+      resizeMode="cover"
+      onError={() => setImageError(true)}
+    />
+  ) : (
+    <View style={styles.thumbPlaceholder}>
+      {imageUri ? <Icon source="image-off-outline" size={22} color={palette.textMuted} /> : null}
+    </View>
+  );
 
   const menuControl = (
     <Menu
@@ -76,6 +95,7 @@ export function MenuListItem({ item, ingredients, menuActions, onPress, style }:
         : {})}
     >
       <View style={styles.row}>
+        {thumb}
         <Pressable onPress={onPress} style={styles.mainPress} disabled={!onPress}>
           <View style={styles.titleRow}>
             <Text variant="bodyLarge" style={styles.name} numberOfLines={1}>
@@ -107,7 +127,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
   },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  thumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: palette.surface,
+  },
+  thumbPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mainPress: { flex: 1, minWidth: 0 },
   titleRow: {
     flexDirection: 'row',

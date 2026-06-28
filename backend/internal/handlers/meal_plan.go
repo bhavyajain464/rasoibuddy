@@ -350,7 +350,7 @@ func GenerateAndCacheWeekPlanForKitchen(
 				Category:         services.MealOfDayCategoryID,
 				MealType:         slot.MealType,
 				MealOfDayForUser: true,
-				Exclude:          append([]string(nil), exclude...),
+				Exclude:          services.ExpandExcludeByDishFamilies(append([]string(nil), exclude...)),
 				PlanDate:         planDate,
 				SeedKey:          kitchenID,
 			})
@@ -481,8 +481,32 @@ func StartWeekPlanScheduler(
 
 // WeekPlanRefreshRequest is the body for POST /meals/week-plan/refresh.
 type WeekPlanRefreshRequest struct {
-	Date     string `json:"date"`
-	MealSlot string `json:"meal_slot,omitempty"` // breakfast|lunch|dinner; empty = whole day
+	Date       string `json:"date"`
+	MealSlot   string `json:"meal_slot,omitempty"`   // breakfast|lunch|dinner; empty = whole day
+	Category   string `json:"category,omitempty"`    // daily|rescue_meal|most_healthy|…
+	UserPrompt string `json:"user_prompt,omitempty"`
+	MealType   string `json:"meal_type,omitempty"`
+}
+
+func normalizeWeekPlanRefreshCategory(category string) string {
+	category = strings.TrimSpace(category)
+	if category == "" || category == "today_plan" {
+		return services.MealOfDayCategoryID
+	}
+	if category == "meal_of_day" {
+		return services.MealOfDayCategoryID
+	}
+	return category
+}
+
+func mealTypeForSlot(slot struct {
+	Slot     string
+	MealType string
+}, override string) string {
+	if override != "" {
+		return override
+	}
+	return slot.MealType
 }
 
 // RefreshWeekPlanDay regenerates one day (or one slot) in the kitchen week plan.
@@ -496,6 +520,9 @@ func RefreshWeekPlanDay(
 	primaryUserID string,
 	dateKey string,
 	mealSlot string,
+	category string,
+	userPrompt string,
+	mealTypeOverride string,
 ) (*services.WeekPlanDay, error) {
 	if cache == nil || !cache.Enabled() {
 		return nil, fmt.Errorf("redis not configured")
@@ -546,7 +573,14 @@ func RefreshWeekPlanDay(
 		return nil, err
 	}
 	nonce := fmt.Sprintf("%d", time.Now().UnixNano())
+	genCategory := normalizeWeekPlanRefreshCategory(category)
 	meta := categoryMeta[services.MealOfDayCategoryID]
+	if m, ok := categoryMeta[genCategory]; ok && genCategory != services.MealOfDayCategoryID {
+		meta = m
+	}
+	useMealOfDayForUser := genCategory == services.MealOfDayCategoryID
+	userPrompt = strings.TrimSpace(userPrompt)
+	mealTypeOverride = strings.TrimSpace(mealTypeOverride)
 
 	slotsToGen := mealOfDaySlots
 	if mealSlot != "" {
@@ -581,10 +615,11 @@ func RefreshWeekPlanDay(
 		}
 		resp, err := generateSmartMeals(ctx, db, cfg, cookedLog, smartMealsGenerateInput{
 			UserID:           primaryUserID,
-			Category:         services.MealOfDayCategoryID,
-			MealType:         slot.MealType,
-			MealOfDayForUser: true,
-			Exclude:          slotExclude,
+			Category:         genCategory,
+			MealType:         mealTypeForSlot(slot, mealTypeOverride),
+			UserPrompt:       userPrompt,
+			MealOfDayForUser: useMealOfDayForUser,
+			Exclude:          services.ExpandExcludeByDishFamilies(slotExclude),
 			PlanDate:         planDate,
 			SeedKey:          kitchenID,
 			RefreshNonce:     nonce + "|" + slot.Slot,
@@ -897,7 +932,10 @@ func PostRefreshWeekPlan(
 		if pErr != nil || primaryUser == "" {
 			primaryUser = userID
 		}
-		day, err := RefreshWeekPlanDay(r.Context(), db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser, req.Date, req.MealSlot)
+		day, err := RefreshWeekPlanDay(
+			r.Context(), db, cfg, cookedLog, cache, kitchen.KitchenID, primaryUser,
+			req.Date, req.MealSlot, req.Category, req.UserPrompt, req.MealType,
+		)
 		if err != nil {
 			log.Printf("[meal-plan] refresh kitchen=%s date=%s slot=%s: %v", kitchen.KitchenID, req.Date, req.MealSlot, err)
 			w.WriteHeader(http.StatusInternalServerError)

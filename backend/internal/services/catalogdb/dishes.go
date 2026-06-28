@@ -41,6 +41,8 @@ type DishRow struct {
 	JainSafe        bool
 	HealthyScore    int
 	TastyScore      int
+	DishFamily      string
+	VariantStyle    string
 }
 
 var (
@@ -59,7 +61,8 @@ func LoadDishes(ctx context.Context, conn *sql.DB) ([]DishRow, error) {
 			COALESCE(d.diet,''), d.meal_type, COALESCE(d.effort,''), COALESCE(d.cook_time_minutes,0),
 			d.weekday_friendly, d.one_pot, d.pairs_with, COALESCE(d.frequency_class,''),
 			COALESCE(d.half_life_days,0), d.tags, COALESCE(d.spice_level,''), d.allergens,
-			d.jain_safe, COALESCE(d.healthy_score,0), COALESCE(d.tasty_score,0)
+			d.jain_safe, COALESCE(d.healthy_score,0), COALESCE(d.tasty_score,0),
+			COALESCE(NULLIF(TRIM(d.dish_family), ''), d.id), COALESCE(d.variant_style,'')
 		FROM dishes d
 		WHERE d.verified = true
 		ORDER BY d.name
@@ -80,7 +83,8 @@ func LoadDishes(ctx context.Context, conn *sql.DB) ([]DishRow, error) {
 		if err := rows.Scan(&d.ID, &d.Name, &d.DisplayName, &d.Cuisine, &d.Diet,
 			pq.Array(&d.MealType), &d.Effort, &d.CookTimeMinutes, &d.WeekdayFriendly, &d.OnePot,
 			pq.Array(&d.PairsWith), &d.FrequencyClass, &d.HalfLifeDays, pq.Array(&d.Tags),
-			&d.SpiceLevel, pq.Array(&d.Allergens), &d.JainSafe, &d.HealthyScore, &d.TastyScore); err != nil {
+			&d.SpiceLevel, pq.Array(&d.Allergens), &d.JainSafe, &d.HealthyScore, &d.TastyScore,
+			&d.DishFamily, &d.VariantStyle); err != nil {
 			return nil, err
 		}
 		lines := ingredientsByDish[d.ID]

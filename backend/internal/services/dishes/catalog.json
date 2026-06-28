@@ -47,7 +47,8 @@
       "core-staple"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-moong"
   },
   {
     "allergens": [
@@ -100,7 +101,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-rice"
   },
   {
     "allergens": [
@@ -151,7 +153,8 @@
       "light-comfort"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-rice"
   },
   {
     "allergens": [],
@@ -204,7 +207,8 @@
       "core-staple"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -259,7 +263,8 @@
       "north-indian"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-tehri"
   },
   {
     "allergens": [
@@ -312,7 +317,8 @@
       "south-indian"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lemon-rice"
   },
   {
     "allergens": [],
@@ -360,7 +366,8 @@
       "south-indian"
     ],
     "tasty_score": 63,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-rice"
   },
   {
     "allergens": [
@@ -412,7 +419,8 @@
       "core-staple"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "curd-rice"
   },
   {
     "allergens": [
@@ -469,7 +477,8 @@
       "traditional"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bisi-bele-bath"
   },
   {
     "allergens": [],
@@ -522,7 +531,9 @@
       "daily-dal"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "tadka"
   },
   {
     "allergens": [
@@ -576,7 +587,9 @@
       "daily-dal"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "fry"
   },
   {
     "allergens": [
@@ -631,7 +644,9 @@
       "rajasthani"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "panchmel"
   },
   {
     "allergens": [],
@@ -684,7 +699,8 @@
       "north-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chana-masala"
   },
   {
     "allergens": [],
@@ -736,7 +752,8 @@
       "north-indian"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rajma-masala"
   },
   {
     "allergens": [],
@@ -784,7 +801,8 @@
       "light-comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lobia-masala"
   },
   {
     "allergens": [],
@@ -833,7 +851,9 @@
       "daily-veggie"
     ],
     "tasty_score": 65,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-gobi",
+    "variant_style": "dry"
   },
   {
     "allergens": [],
@@ -881,7 +901,8 @@
       "homestyle"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-matar-gravy"
   },
   {
     "allergens": [],
@@ -928,7 +949,8 @@
       "seasonal"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-methi"
   },
   {
     "allergens": [],
@@ -974,7 +996,8 @@
       "capsicum"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-shimla-mirch"
   },
   {
     "allergens": [],
@@ -1022,7 +1045,8 @@
       "light-comfort"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-patta-gobi"
   },
   {
     "allergens": [],
@@ -1069,7 +1093,8 @@
       "daily-veggie"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bhindi-masala"
   },
   {
     "allergens": [],
@@ -1114,7 +1139,8 @@
       "dry-sabzi"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bhindi-fry"
   },
   {
     "allergens": [],
@@ -1161,7 +1187,8 @@
       "watery-veggie"
     ],
     "tasty_score": 32,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lauki-sabzi"
   },
   {
     "allergens": [
@@ -1210,7 +1237,8 @@
       "pantry-staple"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "jeera-aloo"
   },
   {
     "allergens": [
@@ -1260,7 +1288,8 @@
       "north-indian"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "baingan-bharta"
   },
   {
     "allergens": [
@@ -1310,7 +1339,8 @@
       "homestyle"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "baingan-aloo-sabzi"
   },
   {
     "allergens": [],
@@ -1357,7 +1387,8 @@
       "healthy"
     ],
     "tasty_score": 36,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "turai-sabzi"
   },
   {
     "allergens": [
@@ -1411,7 +1442,8 @@
       "maharashtrian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-kolhapuri"
   },
   {
     "allergens": [
@@ -1469,7 +1501,8 @@
       "south-indian"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-kurma"
   },
   {
     "allergens": [],
@@ -1522,7 +1555,9 @@
       "high-protein"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "mixed-veg-sambar"
   },
   {
     "allergens": [],
@@ -1573,7 +1608,9 @@
       "south-indian"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "tomato-rasam"
   },
   {
     "allergens": [
@@ -1627,7 +1664,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadai-paneer"
   },
   {
     "allergens": [
@@ -1680,7 +1718,8 @@
       "classic"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-paneer"
   },
   {
     "allergens": [
@@ -1734,7 +1773,9 @@
       "gravy"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "matar-paneer",
+    "variant_style": "default"
   },
   {
     "allergens": [
@@ -1785,7 +1826,8 @@
       "dry-sabzi"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-bhurji"
   },
   {
     "allergens": [
@@ -1842,7 +1884,8 @@
       "popular"
     ],
     "tasty_score": 90,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-butter-masala"
   },
   {
     "allergens": [
@@ -1892,7 +1935,8 @@
       "vegan-substitute"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadai-tofu"
   },
   {
     "allergens": [
@@ -1946,7 +1990,8 @@
       "north-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dum-aloo"
   },
   {
     "allergens": [],
@@ -1998,7 +2043,8 @@
       "non-veg-gravy"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "home-style-chicken-curry"
   },
   {
     "allergens": [
@@ -2049,7 +2095,8 @@
       "eggetarian-gravy"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-curry"
   },
   {
     "allergens": [
@@ -2099,7 +2146,8 @@
       "dry-egg"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-bhurji"
   },
   {
     "allergens": [],
@@ -2149,7 +2197,9 @@
       "quick-save"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -2204,7 +2254,9 @@
       "regional-classic"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadhi",
+    "variant_style": "punjabi-kadhi"
   },
   {
     "allergens": [],
@@ -2252,7 +2304,8 @@
       "pantry-staple"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tariwale-aloo"
   },
   {
     "allergens": [
@@ -2301,7 +2354,8 @@
       "pantry-staple"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dahi-aloo"
   },
   {
     "allergens": [],
@@ -2351,7 +2405,8 @@
       "single-pan"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "besan-chilla"
   },
   {
     "allergens": [],
@@ -2399,7 +2454,8 @@
       "light-comfort"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "oats-chilla"
   },
   {
     "allergens": [
@@ -2445,7 +2501,9 @@
       "no-veggie-meal"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -2498,7 +2556,8 @@
       "snack-dinner"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-bhurji-sandwich"
   },
   {
     "allergens": [],
@@ -2543,7 +2602,9 @@
       "quick-save"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -2590,7 +2651,8 @@
       "fasting-style"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-sabudana"
   },
   {
     "allergens": [
@@ -2644,7 +2706,9 @@
       "weekend-special"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "dal",
+    "variant_style": "makhani"
   },
   {
     "allergens": [
@@ -2704,7 +2768,8 @@
       "weekend-special"
     ],
     "tasty_score": 95,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [
@@ -2765,7 +2830,8 @@
       "weekend-special"
     ],
     "tasty_score": 85,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [
@@ -2824,7 +2890,8 @@
       "weekend-special"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "malai-kofta"
   },
   {
     "allergens": [
@@ -2877,7 +2944,8 @@
       "high-protein"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fried-rice"
   },
   {
     "allergens": [
@@ -2927,7 +2995,8 @@
       "quick-save"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fried-rice"
   },
   {
     "allergens": [
@@ -2980,7 +3049,8 @@
       "comfort"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-hakka-noodles"
   },
   {
     "allergens": [
@@ -3030,7 +3100,8 @@
       "kids-favorite"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "white-sauce-pasta"
   },
   {
     "allergens": [
@@ -3079,7 +3150,8 @@
       "spicy"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "red-sauce-pasta"
   },
   {
     "allergens": [
@@ -3133,7 +3205,8 @@
       "pantry-staple"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-grilled-sandwich"
   },
   {
     "allergens": [
@@ -3185,7 +3258,8 @@
       "comfort"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-cheese-burger"
   },
   {
     "allergens": [
@@ -3237,7 +3311,8 @@
       "high-protein"
     ],
     "tasty_score": 85,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chilli-paneer"
   },
   {
     "allergens": [
@@ -3287,7 +3362,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "poha"
   },
   {
     "allergens": [
@@ -3340,7 +3416,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "upma"
   },
   {
     "allergens": [
@@ -3389,7 +3466,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "upma"
   },
   {
     "allergens": [],
@@ -3431,7 +3509,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "idli",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -3477,7 +3557,9 @@
       "dinner-friendly"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -3527,7 +3609,9 @@
       "dinner-friendly"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [],
@@ -3571,7 +3655,8 @@
       "veggie-topped"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "uttapam"
   },
   {
     "allergens": [
@@ -3622,7 +3707,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-thepla"
   },
   {
     "allergens": [
@@ -3674,7 +3760,9 @@
       "comfort"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -3724,7 +3812,9 @@
       "heavy-breakfast"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -3772,7 +3862,8 @@
       "chewy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-sabudana"
   },
   {
     "allergens": [
@@ -3821,7 +3912,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bread-omelette"
   },
   {
     "allergens": [],
@@ -3869,7 +3961,8 @@
       "spongy"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khaman-dhokla"
   },
   {
     "allergens": [
@@ -3923,7 +4016,8 @@
       "comfort"
     ],
     "tasty_score": 86,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pav-bhaji"
   },
   {
     "allergens": [
@@ -3972,7 +4066,8 @@
       "finger-food"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-cutlet"
   },
   {
     "allergens": [
@@ -4017,7 +4112,8 @@
       "winter-special"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "gajar-halwa"
   },
   {
     "allergens": [
@@ -4060,7 +4156,8 @@
       "dessert-classic"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "rice-kheer"
   },
   {
     "allergens": [
@@ -4104,7 +4201,8 @@
       "summer-friendly"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "shrikhand"
   },
   {
     "allergens": [
@@ -4151,7 +4249,8 @@
       "dessert-classic"
     ],
     "tasty_score": 92,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "gulab-jamun"
   },
   {
     "allergens": [],
@@ -4200,7 +4299,8 @@
       "homestyle"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-beans-sabzi"
   },
   {
     "allergens": [],
@@ -4249,7 +4349,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-palak-sabzi"
   },
   {
     "allergens": [
@@ -4298,7 +4399,8 @@
       "protein-rich"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-soya-sabzi"
   },
   {
     "allergens": [],
@@ -4347,7 +4449,8 @@
       "homestyle"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-gajar-matar"
   },
   {
     "allergens": [],
@@ -4395,7 +4498,8 @@
       "homestyle"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gobi-matar"
   },
   {
     "allergens": [],
@@ -4442,7 +4546,8 @@
       "homestyle"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gobi-masala"
   },
   {
     "allergens": [
@@ -4492,7 +4597,8 @@
       "homestyle"
     ],
     "tasty_score": 54,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "baingan-curry"
   },
   {
     "allergens": [
@@ -4544,7 +4650,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharli-vangi"
   },
   {
     "allergens": [
@@ -4596,7 +4703,8 @@
       "stuffed"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "ennegai"
   },
   {
     "allergens": [
@@ -4645,7 +4753,8 @@
       "north-indian"
     ],
     "tasty_score": 54,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-baingan"
   },
   {
     "allergens": [],
@@ -4694,7 +4803,8 @@
       "protein-rich"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lauki-chana-dal"
   },
   {
     "allergens": [
@@ -4746,7 +4856,8 @@
       "north-indian"
     ],
     "tasty_score": 64,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "lauki-kofta"
   },
   {
     "allergens": [],
@@ -4794,7 +4905,8 @@
       "homestyle"
     ],
     "tasty_score": 36,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tinda-sabzi"
   },
   {
     "allergens": [],
@@ -4843,7 +4955,8 @@
       "homestyle"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "parwal-sabzi"
   },
   {
     "allergens": [],
@@ -4888,7 +5001,8 @@
       "north-indian"
     ],
     "tasty_score": 44,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-parwal"
   },
   {
     "allergens": [],
@@ -4935,7 +5049,8 @@
       "south-indian"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tindora-sabzi"
   },
   {
     "allergens": [],
@@ -4981,7 +5096,8 @@
       "homestyle"
     ],
     "tasty_score": 28,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "karela-sabzi"
   },
   {
     "allergens": [],
@@ -5026,7 +5142,8 @@
       "homestyle"
     ],
     "tasty_score": 30,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "karela-pyaz"
   },
   {
     "allergens": [],
@@ -5070,7 +5187,8 @@
       "north-indian"
     ],
     "tasty_score": 34,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-karela"
   },
   {
     "allergens": [],
@@ -5117,7 +5235,8 @@
       "homestyle"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khatta-meetha-kaddu"
   },
   {
     "allergens": [],
@@ -5164,7 +5283,8 @@
       "homestyle"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "petha-sabzi"
   },
   {
     "allergens": [],
@@ -5212,7 +5332,8 @@
       "quick-save"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-peas-sabzi"
   },
   {
     "allergens": [],
@@ -5260,7 +5381,8 @@
       "quick-save"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-carrot-sabzi"
   },
   {
     "allergens": [],
@@ -5309,7 +5431,8 @@
       "quick-save"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "carrot-beans-poriyal"
   },
   {
     "allergens": [],
@@ -5357,7 +5480,8 @@
       "homestyle"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beans-aloo-sabzi"
   },
   {
     "allergens": [],
@@ -5404,7 +5528,8 @@
       "quick-save"
     ],
     "tasty_score": 44,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "french-beans-dry"
   },
   {
     "allergens": [],
@@ -5451,7 +5576,8 @@
       "homestyle"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cluster-beans-sabzi"
   },
   {
     "allergens": [],
@@ -5498,7 +5624,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "green-peas-masala"
   },
   {
     "allergens": [],
@@ -5545,7 +5672,8 @@
       "quick-save"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "besan-capsicum"
   },
   {
     "allergens": [],
@@ -5591,7 +5719,8 @@
       "north-indian"
     ],
     "tasty_score": 50,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-shimla-mirch"
   },
   {
     "allergens": [
@@ -5641,7 +5770,8 @@
       "rich"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "methi-matar-malai"
   },
   {
     "allergens": [],
@@ -5689,7 +5819,8 @@
       "homestyle"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-mutter"
   },
   {
     "allergens": [],
@@ -5736,7 +5867,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mushroom-masala"
   },
   {
     "allergens": [],
@@ -5784,7 +5916,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mushroom-matar"
   },
   {
     "allergens": [],
@@ -5832,7 +5965,8 @@
       "kadai"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kadai-mushroom"
   },
   {
     "allergens": [
@@ -5881,7 +6015,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-corn"
   },
   {
     "allergens": [
@@ -5929,7 +6064,8 @@
       "winter-special"
     ],
     "tasty_score": 64,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "sarson-ka-saag"
   },
   {
     "allergens": [
@@ -5979,7 +6115,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mixed-greens-saag"
   },
   {
     "allergens": [],
@@ -6028,7 +6165,8 @@
       "homestyle"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mooli-sabzi"
   },
   {
     "allergens": [],
@@ -6077,7 +6215,8 @@
       "homestyle"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mooli-mutter"
   },
   {
     "allergens": [],
@@ -6125,7 +6264,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "arbi-masala"
   },
   {
     "allergens": [],
@@ -6172,7 +6312,8 @@
       "homestyle"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "arbi-fry"
   },
   {
     "allergens": [],
@@ -6221,7 +6362,8 @@
       "homestyle"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sukhi-arbi"
   },
   {
     "allergens": [],
@@ -6269,7 +6411,8 @@
       "homestyle"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "suran-sabzi"
   },
   {
     "allergens": [],
@@ -6315,7 +6458,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "jimikand-masala"
   },
   {
     "allergens": [],
@@ -6363,7 +6507,8 @@
       "homestyle"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kacche-kele-ki-sabzi"
   },
   {
     "allergens": [
@@ -6416,7 +6561,8 @@
       "north-indian"
     ],
     "tasty_score": 74,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "raw-banana-kofta"
   },
   {
     "allergens": [],
@@ -6462,7 +6608,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "shakarkandi-sabzi"
   },
   {
     "allergens": [],
@@ -6509,7 +6656,8 @@
       "homestyle"
     ],
     "tasty_score": 66,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kathal-masala"
   },
   {
     "allergens": [],
@@ -6559,7 +6707,8 @@
       "quick-save"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tamatar-ki-sabzi"
   },
   {
     "allergens": [],
@@ -6608,7 +6757,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-curry"
   },
   {
     "allergens": [],
@@ -6656,7 +6806,8 @@
       "quick-save"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pyaz-ki-sabzi"
   },
   {
     "allergens": [],
@@ -6703,7 +6854,8 @@
       "north-indian"
     ],
     "tasty_score": 66,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-bhindi"
   },
   {
     "allergens": [
@@ -6756,7 +6908,8 @@
       "north-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "cabbage-kofta"
   },
   {
     "allergens": [
@@ -6813,7 +6966,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 74,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mixed-veg-kofta"
   },
   {
     "allergens": [],
@@ -6865,7 +7019,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mix-veg-sabzi"
   },
   {
     "allergens": [],
@@ -6917,7 +7072,8 @@
       "quick-save"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sukhi-mixed-veg"
   },
   {
     "allergens": [],
@@ -6966,7 +7122,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-jalfrezi"
   },
   {
     "allergens": [
@@ -7022,7 +7179,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "veg-handi"
   },
   {
     "allergens": [
@@ -7078,7 +7236,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 68,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "hyderabadi-veg"
   },
   {
     "allergens": [
@@ -7135,7 +7294,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "navratan-korma"
   },
   {
     "allergens": [],
@@ -7185,7 +7345,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "undhiyu"
   },
   {
     "allergens": [],
@@ -7234,7 +7395,8 @@
       "quick-save"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sev-tameta"
   },
   {
     "allergens": [],
@@ -7283,7 +7445,8 @@
       "homestyle"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ringan-bateta"
   },
   {
     "allergens": [],
@@ -7331,7 +7494,8 @@
       "quick-save"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "batata-bhaji"
   },
   {
     "allergens": [],
@@ -7380,7 +7544,8 @@
       "quick-save"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kobi-batata"
   },
   {
     "allergens": [],
@@ -7429,7 +7594,8 @@
       "protein-rich"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sai-bhaji"
   },
   {
     "allergens": [],
@@ -7477,7 +7643,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-baingan-tamatar"
   },
   {
     "allergens": [],
@@ -7528,7 +7695,8 @@
       "homestyle"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gobi-aloo-matar"
   },
   {
     "allergens": [],
@@ -7577,7 +7745,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-aloo-matar"
   },
   {
     "allergens": [],
@@ -7626,7 +7795,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gobi-capsicum"
   },
   {
     "allergens": [
@@ -7679,7 +7849,8 @@
       "rich"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "matar-mushroom-masala"
   },
   {
     "allergens": [],
@@ -7727,7 +7898,8 @@
       "quick-save"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "corn-capsicum-sabzi"
   },
   {
     "allergens": [],
@@ -7774,7 +7946,8 @@
       "homestyle"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "baby-corn-masala"
   },
   {
     "allergens": [],
@@ -7824,7 +7997,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-simla-matar"
   },
   {
     "allergens": [],
@@ -7871,7 +8045,8 @@
       "protein-rich"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "turai-chana-dal"
   },
   {
     "allergens": [],
@@ -7919,7 +8094,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "capsicum-besan-masala"
   },
   {
     "allergens": [],
@@ -7967,7 +8143,8 @@
       "protein-rich"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chana-aloo-rasedar"
   },
   {
     "allergens": [],
@@ -8016,7 +8193,8 @@
       "homestyle"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sem-ki-sabzi"
   },
   {
     "allergens": [],
@@ -8065,7 +8243,8 @@
       "protein-rich"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chana-saag"
   },
   {
     "allergens": [],
@@ -8113,7 +8292,8 @@
       "protein-rich"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kaddu-chana-dal"
   },
   {
     "allergens": [
@@ -8164,7 +8344,8 @@
       "homestyle"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-jalfrezi"
   },
   {
     "allergens": [],
@@ -8214,7 +8395,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gajar-matar-aloo"
   },
   {
     "allergens": [],
@@ -8262,7 +8444,8 @@
       "winter-special"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "surti-papdi-nu-shaak"
   },
   {
     "allergens": [],
@@ -8310,7 +8493,8 @@
       "homestyle"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bhindi-do-pyaza"
   },
   {
     "allergens": [],
@@ -8358,7 +8542,9 @@
       "homestyle"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-gobi",
+    "variant_style": "gravy"
   },
   {
     "allergens": [
@@ -8408,7 +8594,9 @@
       "homestyle"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "matar-paneer",
+    "variant_style": "dry"
   },
   {
     "allergens": [],
@@ -8457,7 +8645,8 @@
       "homestyle"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-tinda"
   },
   {
     "allergens": [],
@@ -8505,7 +8694,8 @@
       "quick-save"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vendakkai-poriyal"
   },
   {
     "allergens": [],
@@ -8553,7 +8743,8 @@
       "quick-save"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-poriyal"
   },
   {
     "allergens": [],
@@ -8601,7 +8792,8 @@
       "quick-save"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beetroot-poriyal"
   },
   {
     "allergens": [
@@ -8650,7 +8842,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "avial"
   },
   {
     "allergens": [],
@@ -8699,7 +8892,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vegetable-stew"
   },
   {
     "allergens": [],
@@ -8748,7 +8942,8 @@
       "homestyle"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beetroot-sabzi"
   },
   {
     "allergens": [],
@@ -8798,7 +8993,8 @@
       "quick-save"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lauki-tamatar"
   },
   {
     "allergens": [],
@@ -8847,7 +9043,8 @@
       "homestyle"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "baingan-tamatar"
   },
   {
     "allergens": [
@@ -8899,7 +9096,8 @@
       "north-indian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chana-dal-lauki-koftas"
   },
   {
     "allergens": [],
@@ -8949,7 +9147,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-aloo-matar"
   },
   {
     "allergens": [],
@@ -8995,7 +9194,8 @@
       "homestyle"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kathal-dry-fry"
   },
   {
     "allergens": [],
@@ -9043,7 +9243,8 @@
       "homestyle"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mushroom-do-pyaza"
   },
   {
     "allergens": [],
@@ -9089,7 +9290,8 @@
       "homestyle"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-arbi"
   },
   {
     "allergens": [],
@@ -9137,7 +9339,8 @@
       "homestyle"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kachumber-aloo-rasa"
   },
   {
     "allergens": [],
@@ -9186,7 +9389,8 @@
       "homestyle"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "matar-aloo-rasedar"
   },
   {
     "allergens": [
@@ -9242,7 +9446,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "vegetable-makhanwala"
   },
   {
     "allergens": [],
@@ -9288,7 +9493,8 @@
       "homestyle"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "capsicum-aloo-besan"
   },
   {
     "allergens": [],
@@ -9337,7 +9543,8 @@
       "homestyle"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vatana-bateta"
   },
   {
     "allergens": [],
@@ -9383,7 +9590,8 @@
       "homestyle"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "flower-bateta"
   },
   {
     "allergens": [],
@@ -9429,7 +9637,8 @@
       "homestyle"
     ],
     "tasty_score": 32,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-karela-pyaz"
   },
   {
     "allergens": [
@@ -9479,7 +9688,8 @@
       "veggie-loaded"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "corn-palak"
   },
   {
     "allergens": [
@@ -9529,7 +9739,8 @@
       "protein-rich"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "soya-matar"
   },
   {
     "allergens": [],
@@ -9574,7 +9785,8 @@
       "north-indian"
     ],
     "tasty_score": 42,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bharwa-tinda"
   },
   {
     "allergens": [
@@ -9622,7 +9834,8 @@
       "homestyle"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dahi-bhindi"
   },
   {
     "allergens": [],
@@ -9669,7 +9882,8 @@
       "achari"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "achari-aloo"
   },
   {
     "allergens": [],
@@ -9716,7 +9930,8 @@
       "quick-save"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "zucchini-sabzi"
   },
   {
     "allergens": [],
@@ -9764,7 +9979,9 @@
       "sambar"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "drumstick-sambar"
   },
   {
     "allergens": [],
@@ -9813,7 +10030,9 @@
       "sambar"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "sambar",
+    "variant_style": "arachuvitta-sambar"
   },
   {
     "allergens": [],
@@ -9860,7 +10079,9 @@
       "sambar"
     ],
     "tasty_score": 63,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "udupi-sambar"
   },
   {
     "allergens": [],
@@ -9907,7 +10128,9 @@
       "sambar"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "vengaya-sambar"
   },
   {
     "allergens": [],
@@ -9953,7 +10176,9 @@
       "sambar"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "radish-sambar"
   },
   {
     "allergens": [],
@@ -10001,7 +10226,9 @@
       "sambar"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "brinjal-sambar"
   },
   {
     "allergens": [],
@@ -10047,7 +10274,9 @@
       "sambar"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambar",
+    "variant_style": "ladies-finger-sambar"
   },
   {
     "allergens": [],
@@ -10095,7 +10324,9 @@
       "rasam"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "milagu-rasam"
   },
   {
     "allergens": [],
@@ -10143,7 +10374,9 @@
       "rasam"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "poondu-rasam"
   },
   {
     "allergens": [],
@@ -10191,7 +10424,9 @@
       "rasam"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "lemon-rasam"
   },
   {
     "allergens": [],
@@ -10239,7 +10474,9 @@
       "rasam"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "jeera-rasam"
   },
   {
     "allergens": [],
@@ -10287,7 +10524,9 @@
       "rasam"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "paruppu-rasam"
   },
   {
     "allergens": [],
@@ -10335,7 +10574,9 @@
       "rasam"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "mysore-rasam"
   },
   {
     "allergens": [
@@ -10385,7 +10626,8 @@
       "kuzhambu"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vatha-kuzhambu"
   },
   {
     "allergens": [
@@ -10434,7 +10676,8 @@
       "kuzhambu"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "puli-kuzhambu"
   },
   {
     "allergens": [
@@ -10486,7 +10729,8 @@
       "kuzhambu"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kara-kuzhambu"
   },
   {
     "allergens": [
@@ -10536,7 +10780,8 @@
       "tangy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mor-kuzhambu"
   },
   {
     "allergens": [
@@ -10585,7 +10830,8 @@
       "kuzhambu"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vendakai-puli-kuzhambu"
   },
   {
     "allergens": [
@@ -10636,7 +10882,8 @@
       "kuzhambu"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "ennai-kathirikai-kuzhambu"
   },
   {
     "allergens": [],
@@ -10681,7 +10928,8 @@
       "poriyal"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beans-poriyal"
   },
   {
     "allergens": [],
@@ -10726,7 +10974,8 @@
       "poriyal"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "carrot-poriyal"
   },
   {
     "allergens": [],
@@ -10771,7 +11020,8 @@
       "poriyal"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "snake-gourd-poriyal"
   },
   {
     "allergens": [],
@@ -10816,7 +11066,8 @@
       "poriyal"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cluster-beans-poriyal"
   },
   {
     "allergens": [],
@@ -10861,7 +11112,8 @@
       "poriyal"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "raw-banana-poriyal"
   },
   {
     "allergens": [],
@@ -10906,7 +11158,8 @@
       "poriyal"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chow-chow-poriyal"
   },
   {
     "allergens": [],
@@ -10951,7 +11204,8 @@
       "poriyal"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ridge-gourd-poriyal"
   },
   {
     "allergens": [],
@@ -10996,7 +11250,8 @@
       "poriyal"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "plantain-poriyal"
   },
   {
     "allergens": [],
@@ -11043,7 +11298,8 @@
       "kootu"
     ],
     "tasty_score": 42,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chow-chow-kootu"
   },
   {
     "allergens": [],
@@ -11090,7 +11346,8 @@
       "kootu"
     ],
     "tasty_score": 44,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-kootu"
   },
   {
     "allergens": [],
@@ -11137,7 +11394,8 @@
       "kootu"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "snake-gourd-kootu"
   },
   {
     "allergens": [],
@@ -11184,7 +11442,8 @@
       "kootu"
     ],
     "tasty_score": 36,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bottle-gourd-kootu"
   },
   {
     "allergens": [],
@@ -11231,7 +11490,8 @@
       "kootu"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "keerai-kootu"
   },
   {
     "allergens": [],
@@ -11278,7 +11538,8 @@
       "kootu"
     ],
     "tasty_score": 38,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ash-gourd-kootu"
   },
   {
     "allergens": [],
@@ -11328,7 +11589,8 @@
       "kootu"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mixed-veg-kootu"
   },
   {
     "allergens": [],
@@ -11374,7 +11636,8 @@
       "thoran"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-thoran"
   },
   {
     "allergens": [],
@@ -11420,7 +11683,8 @@
       "thoran"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beans-thoran"
   },
   {
     "allergens": [],
@@ -11466,7 +11730,8 @@
       "thoran"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "carrot-thoran"
   },
   {
     "allergens": [],
@@ -11512,7 +11777,8 @@
       "thoran"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beetroot-thoran"
   },
   {
     "allergens": [],
@@ -11553,7 +11819,8 @@
       "sadya"
     ],
     "tasty_score": 50,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "olan"
   },
   {
     "allergens": [],
@@ -11597,7 +11864,8 @@
       "sadya"
     ],
     "tasty_score": 56,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "erissery"
   },
   {
     "allergens": [
@@ -11646,7 +11914,8 @@
       "tangy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kalan"
   },
   {
     "allergens": [
@@ -11694,7 +11963,8 @@
       "tangy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulissery"
   },
   {
     "allergens": [],
@@ -11743,7 +12013,8 @@
       "pappu"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosakaya-pappu"
   },
   {
     "allergens": [],
@@ -11791,7 +12062,8 @@
       "pappu"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gongura-pappu"
   },
   {
     "allergens": [],
@@ -11841,7 +12113,8 @@
       "pulusu"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-pulusu"
   },
   {
     "allergens": [],
@@ -11888,7 +12161,8 @@
       "vepudu"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bendakaya-vepudu"
   },
   {
     "allergens": [],
@@ -11934,7 +12208,8 @@
       "vepudu"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aratikaya-vepudu"
   },
   {
     "allergens": [
@@ -11986,7 +12261,8 @@
       "tangy"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "gutti-vankaya"
   },
   {
     "allergens": [],
@@ -12034,7 +12310,8 @@
       "pachadi"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-pachadi"
   },
   {
     "allergens": [],
@@ -12083,7 +12360,8 @@
       "pachadi"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vankaya-pachadi"
   },
   {
     "allergens": [],
@@ -12135,7 +12413,8 @@
       "huli"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vegetable-huli"
   },
   {
     "allergens": [],
@@ -12182,7 +12461,8 @@
       "palya"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cabbage-palya"
   },
   {
     "allergens": [],
@@ -12228,7 +12508,8 @@
       "palya"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "beans-palya"
   },
   {
     "allergens": [],
@@ -12276,7 +12557,8 @@
       "gojju"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-gojju"
   },
   {
     "allergens": [
@@ -12326,7 +12608,8 @@
       "huli"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "majjige-huli"
   },
   {
     "allergens": [
@@ -12378,7 +12661,8 @@
       "tangy"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "badanekai-ennegai"
   },
   {
     "allergens": [
@@ -12429,7 +12713,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "idli",
+    "variant_style": "rava"
   },
   {
     "allergens": [
@@ -12476,7 +12762,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "idli",
+    "variant_style": "kanchipuram"
   },
   {
     "allergens": [
@@ -12524,7 +12812,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -12566,7 +12856,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -12608,7 +12900,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -12646,7 +12940,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dosa",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -12688,7 +12984,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pesarattu"
   },
   {
     "allergens": [],
@@ -12733,7 +13030,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "adai"
   },
   {
     "allergens": [],
@@ -12776,7 +13074,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "onion-uttapam"
   },
   {
     "allergens": [
@@ -12823,7 +13122,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ven-pongal"
   },
   {
     "allergens": [
@@ -12874,7 +13174,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khara-pongal"
   },
   {
     "allergens": [
@@ -12929,7 +13230,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khara-bath"
   },
   {
     "allergens": [
@@ -12974,7 +13276,8 @@
       "sweet"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kesari-bath"
   },
   {
     "allergens": [],
@@ -13019,7 +13322,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kara-paniyaram"
   },
   {
     "allergens": [],
@@ -13059,7 +13363,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "appam"
   },
   {
     "allergens": [],
@@ -13098,7 +13403,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "idiyappam"
   },
   {
     "allergens": [],
@@ -13136,7 +13442,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "puttu"
   },
   {
     "allergens": [],
@@ -13179,7 +13486,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "medu-vada"
   },
   {
     "allergens": [],
@@ -13221,7 +13529,8 @@
       "tiffin"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "masala-vada"
   },
   {
     "allergens": [
@@ -13271,7 +13580,8 @@
       "tangy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "lemon-sevai"
   },
   {
     "allergens": [
@@ -13325,7 +13635,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rava-kichadi"
   },
   {
     "allergens": [
@@ -13376,7 +13687,8 @@
       "tangy"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "puliyogare"
   },
   {
     "allergens": [
@@ -13423,7 +13735,8 @@
       "south-indian"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mint-rice"
   },
   {
     "allergens": [
@@ -13469,7 +13782,8 @@
       "south-indian"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ellu-sadam"
   },
   {
     "allergens": [],
@@ -13511,7 +13825,8 @@
       "south-indian"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "idli-podi-rice"
   },
   {
     "allergens": [],
@@ -13561,7 +13876,8 @@
       "non-veg"
     ],
     "tasty_score": 84,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chettinad-chicken"
   },
   {
     "allergens": [],
@@ -13610,7 +13926,8 @@
       "non-veg"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kongunad-chicken"
   },
   {
     "allergens": [],
@@ -13659,7 +13976,8 @@
       "tangy"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "meen-kuzhambu"
   },
   {
     "allergens": [],
@@ -13706,7 +14024,8 @@
       "non-veg"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "eral-varuval"
   },
   {
     "allergens": [
@@ -13757,7 +14076,8 @@
       "non-veg"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "nadan-egg-roast"
   },
   {
     "allergens": [],
@@ -13805,7 +14125,8 @@
       "non-veg"
     ],
     "tasty_score": 76,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "nattu-kozhi-kuzhambu"
   },
   {
     "allergens": [],
@@ -13852,7 +14173,8 @@
       "non-veg"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-chukka"
   },
   {
     "allergens": [],
@@ -13897,7 +14219,8 @@
       "non-veg"
     ],
     "tasty_score": 76,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "meen-varuval"
   },
   {
     "allergens": [],
@@ -13944,7 +14267,8 @@
       "south-indian"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bassaru"
   },
   {
     "allergens": [],
@@ -13988,7 +14312,8 @@
       "south-indian"
     ],
     "tasty_score": 42,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "keerai-masiyal"
   },
   {
     "allergens": [],
@@ -14036,7 +14361,8 @@
       "south-indian"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadala-curry"
   },
   {
     "allergens": [
@@ -14086,7 +14412,9 @@
       "rasam"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rasam",
+    "variant_style": "more-rasam"
   },
   {
     "allergens": [],
@@ -14135,7 +14463,9 @@
       "high-protein"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -14184,7 +14514,9 @@
       "comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "palak"
   },
   {
     "allergens": [],
@@ -14233,7 +14565,9 @@
       "high-protein"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "palak"
   },
   {
     "allergens": [
@@ -14285,7 +14619,9 @@
       "high-protein"
     ],
     "tasty_score": 68,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -14336,7 +14672,9 @@
       "comfort"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "fry"
   },
   {
     "allergens": [
@@ -14389,7 +14727,9 @@
       "rich"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -14435,7 +14775,8 @@
       "high-protein"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sookhi-urad-dal"
   },
   {
     "allergens": [],
@@ -14484,7 +14825,9 @@
       "high-protein"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -14534,7 +14877,9 @@
       "comfort"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "lauki"
   },
   {
     "allergens": [],
@@ -14583,7 +14928,9 @@
       "high-protein"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -14636,7 +14983,8 @@
       "gujarati"
     ],
     "tasty_score": 64,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "dal-dhokli"
   },
   {
     "allergens": [
@@ -14689,7 +15037,8 @@
       "gujarati"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "gujarati-dal"
   },
   {
     "allergens": [],
@@ -14740,7 +15089,8 @@
       "comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sambhar-style-dal"
   },
   {
     "allergens": [
@@ -14786,7 +15136,8 @@
       "comfort"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "varan"
   },
   {
     "allergens": [],
@@ -14833,7 +15184,8 @@
       "sweet-tangy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "amti"
   },
   {
     "allergens": [],
@@ -14880,7 +15232,8 @@
       "tangy"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khatti-dal"
   },
   {
     "allergens": [],
@@ -14927,7 +15280,8 @@
       "quick"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pithla"
   },
   {
     "allergens": [],
@@ -14974,7 +15328,8 @@
       "quick"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "zunka"
   },
   {
     "allergens": [],
@@ -15023,7 +15378,8 @@
       "healthy"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "green-moong-sprouts-curry"
   },
   {
     "allergens": [],
@@ -15074,7 +15430,8 @@
       "maharashtrian"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mixed-sprouts-usal"
   },
   {
     "allergens": [],
@@ -15122,7 +15479,8 @@
       "comfort"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kala-chana-curry"
   },
   {
     "allergens": [],
@@ -15172,7 +15530,8 @@
       "special"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "pindi-chole"
   },
   {
     "allergens": [],
@@ -15222,7 +15581,8 @@
       "special"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "amritsari-chole"
   },
   {
     "allergens": [],
@@ -15269,7 +15629,8 @@
       "comfort"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chole-palak"
   },
   {
     "allergens": [],
@@ -15317,7 +15678,8 @@
       "combo-plate"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "rajma-chawal-plate"
   },
   {
     "allergens": [],
@@ -15363,7 +15725,8 @@
       "dry"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kala-chana-sundal"
   },
   {
     "allergens": [],
@@ -15412,7 +15775,8 @@
       "maharashtrian"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vatana-usal"
   },
   {
     "allergens": [],
@@ -15462,7 +15826,8 @@
       "sprouts"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "matki-usal"
   },
   {
     "allergens": [],
@@ -15509,7 +15874,8 @@
       "comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "moth-bean-curry"
   },
   {
     "allergens": [],
@@ -15555,7 +15921,8 @@
       "healthy"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kulith-saaru"
   },
   {
     "allergens": [
@@ -15606,7 +15973,8 @@
       "comfort"
     ],
     "tasty_score": 74,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "dal-baati"
   },
   {
     "allergens": [
@@ -15657,7 +16025,8 @@
       "punjabi"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "langar-wali-dal"
   },
   {
     "allergens": [
@@ -15708,7 +16077,9 @@
       "sweet-tangy"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadhi",
+    "variant_style": "gujarati-kadhi"
   },
   {
     "allergens": [
@@ -15759,7 +16130,9 @@
       "punjabi"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kadhi",
+    "variant_style": "pakora-kadhi"
   },
   {
     "allergens": [],
@@ -15808,7 +16181,9 @@
       "comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kadhi",
+    "variant_style": "sindhi-kadhi"
   },
   {
     "allergens": [
@@ -15857,7 +16232,9 @@
       "rajasthani"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadhi",
+    "variant_style": "boondi-kadhi"
   },
   {
     "allergens": [
@@ -15905,7 +16282,9 @@
       "quick"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadhi",
+    "variant_style": "dahi-kadhi"
   },
   {
     "allergens": [],
@@ -15948,7 +16327,8 @@
       "quick"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "jeera-rice"
   },
   {
     "allergens": [
@@ -16000,7 +16380,8 @@
       "south-indian"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ghee-rice"
   },
   {
     "allergens": [],
@@ -16048,7 +16429,8 @@
       "one-pot"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -16100,7 +16482,8 @@
       "high-protein"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [],
@@ -16149,7 +16532,8 @@
       "one-pot"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -16203,7 +16587,8 @@
       "festive"
     ],
     "tasty_score": 76,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kashmiri-pulao"
   },
   {
     "allergens": [
@@ -16262,7 +16647,8 @@
       "one-pot"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "hyderabadi-veg-biryani"
   },
   {
     "allergens": [],
@@ -16313,7 +16699,8 @@
       "hyderabadi"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bagara-rice"
   },
   {
     "allergens": [],
@@ -16360,7 +16747,8 @@
       "healthy"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-rice"
   },
   {
     "allergens": [],
@@ -16410,7 +16798,8 @@
       "healthy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-rice"
   },
   {
     "allergens": [
@@ -16460,7 +16849,8 @@
       "one-pot"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "coconut-rice"
   },
   {
     "allergens": [
@@ -16510,7 +16900,8 @@
       "tangy"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tamarind-rice"
   },
   {
     "allergens": [
@@ -16561,7 +16952,8 @@
       "rice-dish"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-rice"
   },
   {
     "allergens": [
@@ -16615,7 +17007,8 @@
       "healthy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-rice"
   },
   {
     "allergens": [
@@ -16662,7 +17055,8 @@
       "rajasthani"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-bajra"
   },
   {
     "allergens": [
@@ -16715,7 +17109,8 @@
       "one-pot"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-bhaat"
   },
   {
     "allergens": [
@@ -16766,7 +17161,8 @@
       "one-pot"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vangi-bhaat"
   },
   {
     "allergens": [
@@ -16816,7 +17212,8 @@
       "tangy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chitranna"
   },
   {
     "allergens": [
@@ -16867,7 +17264,9 @@
       "daily-dal"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -16917,7 +17316,9 @@
       "comfort"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadhi",
+    "variant_style": "kadhi-chawal"
   },
   {
     "allergens": [
@@ -16966,7 +17367,9 @@
       "comfort"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -17016,7 +17419,9 @@
       "healthy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "palak"
   },
   {
     "allergens": [
@@ -17066,7 +17471,9 @@
       "quick"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "tadka"
   },
   {
     "allergens": [],
@@ -17115,7 +17522,9 @@
       "healthy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -17163,7 +17572,8 @@
       "comfort"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kabuli-chana-curry"
   },
   {
     "allergens": [
@@ -17214,7 +17624,8 @@
       "high-protein"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dalma"
   },
   {
     "allergens": [
@@ -17264,7 +17675,9 @@
       "high-protein"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -17311,7 +17724,9 @@
       "high-protein"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [],
@@ -17358,7 +17773,8 @@
       "tangy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mango-dal"
   },
   {
     "allergens": [],
@@ -17405,7 +17821,8 @@
       "high-protein"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-pappu"
   },
   {
     "allergens": [],
@@ -17454,7 +17871,8 @@
       "healthy"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palakura-pappu"
   },
   {
     "allergens": [
@@ -17501,7 +17919,9 @@
       "high-protein"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dal",
+    "variant_style": "plain"
   },
   {
     "allergens": [
@@ -17554,7 +17974,8 @@
       "quick"
     ],
     "tasty_score": 44,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-oats"
   },
   {
     "allergens": [],
@@ -17603,7 +18024,8 @@
       "one-pot"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -17658,7 +18080,8 @@
       "high-protein"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -17713,7 +18136,8 @@
       "high-protein"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [],
@@ -17768,7 +18192,8 @@
       "healthy"
     ],
     "tasty_score": 63,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -17820,7 +18245,8 @@
       "comfort"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "khichdi-moong"
   },
   {
     "allergens": [
@@ -17860,7 +18286,8 @@
       "everyday-bread"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "plain-roti"
   },
   {
     "allergens": [
@@ -17900,7 +18327,8 @@
       "soft-roti"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chapati"
   },
   {
     "allergens": [
@@ -17939,7 +18367,8 @@
       "everyday-bread"
     ],
     "tasty_score": 47,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "phulka"
   },
   {
     "allergens": [
@@ -17981,7 +18410,9 @@
       "everyday-paratha"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "tawa"
   },
   {
     "allergens": [
@@ -18023,7 +18454,9 @@
       "flaky-paratha"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "layered"
   },
   {
     "allergens": [
@@ -18068,7 +18501,8 @@
       "chole-bhature"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bhatura"
   },
   {
     "allergens": [
@@ -18109,7 +18543,8 @@
       "puffed"
     ],
     "tasty_score": 75,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "poori"
   },
   {
     "allergens": [
@@ -18157,7 +18592,8 @@
       "spiced-roti"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "missi-roti"
   },
   {
     "allergens": [],
@@ -18196,7 +18632,8 @@
       "winter-special"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "makki-di-roti"
   },
   {
     "allergens": [],
@@ -18235,7 +18672,8 @@
       "winter-special"
     ],
     "tasty_score": 48,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "bajra-roti"
   },
   {
     "allergens": [],
@@ -18274,7 +18712,8 @@
       "maharashtrian"
     ],
     "tasty_score": 46,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "jowar-bhakri"
   },
   {
     "allergens": [],
@@ -18318,7 +18757,8 @@
       "south-indian"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ragi-roti"
   },
   {
     "allergens": [
@@ -18367,7 +18807,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18415,7 +18857,9 @@
       "winter-special"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18462,7 +18906,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 67,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18510,7 +18956,8 @@
       "travel-friendly"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "thepla-plain"
   },
   {
     "allergens": [
@@ -18559,7 +19006,9 @@
       "protein-rich"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18608,7 +19057,9 @@
       "protein-rich"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18660,7 +19111,9 @@
       "breakfast-staple"
     ],
     "tasty_score": 65,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18708,7 +19161,9 @@
       "kid-friendly"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18757,7 +19212,9 @@
       "healthy"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18804,7 +19261,9 @@
       "kid-friendly"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paratha",
+    "variant_style": "stuffed"
   },
   {
     "allergens": [
@@ -18852,7 +19311,8 @@
       "maharashtrian"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "poha"
   },
   {
     "allergens": [
@@ -18900,7 +19360,8 @@
       "maharashtrian"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "poha"
   },
   {
     "allergens": [
@@ -18947,7 +19408,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 61,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "poha"
   },
   {
     "allergens": [
@@ -18998,7 +19460,8 @@
       "south-indian"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "upma"
   },
   {
     "allergens": [],
@@ -19044,7 +19507,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "moong-dal-chilla"
   },
   {
     "allergens": [],
@@ -19093,7 +19557,8 @@
       "healthy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vegetable-chilla"
   },
   {
     "allergens": [
@@ -19141,7 +19606,8 @@
       "leftover-friendly"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "upma"
   },
   {
     "allergens": [
@@ -19192,7 +19658,8 @@
       "south-indian"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "upma"
   },
   {
     "allergens": [
@@ -19238,7 +19705,8 @@
       "fasting-food"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "sabudana-vada"
   },
   {
     "allergens": [
@@ -19282,7 +19750,8 @@
       "healthy"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dalia-porridge"
   },
   {
     "allergens": [
@@ -19324,7 +19793,8 @@
       "healthy"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "oats-porridge"
   },
   {
     "allergens": [],
@@ -19373,7 +19843,8 @@
       "healthy"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-oats"
   },
   {
     "allergens": [
@@ -19424,7 +19895,8 @@
       "savory"
     ],
     "tasty_score": 54,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "vegetable-daliya"
   },
   {
     "allergens": [
@@ -19465,7 +19937,8 @@
       "no-cook"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cornflakes-bowl"
   },
   {
     "allergens": [
@@ -19508,7 +19981,8 @@
       "healthy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "muesli-bowl"
   },
   {
     "allergens": [],
@@ -19548,7 +20022,8 @@
       "healthy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fruit-bowl"
   },
   {
     "allergens": [
@@ -19597,7 +20072,8 @@
       "weekend-special"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "poori-bhaji"
   },
   {
     "allergens": [
@@ -19650,7 +20126,8 @@
       "punjabi"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chole-bhature-plate"
   },
   {
     "allergens": [],
@@ -19695,7 +20172,8 @@
       "no-cook"
     ],
     "tasty_score": 42,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sprouts-salad"
   },
   {
     "allergens": [],
@@ -19740,7 +20218,8 @@
       "protein-rich"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "moong-sprouts-bhel"
   },
   {
     "allergens": [],
@@ -19777,7 +20256,8 @@
       "gluten-free"
     ],
     "tasty_score": 30,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ragi-mudde"
   },
   {
     "allergens": [
@@ -19820,7 +20300,8 @@
       "drink"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ragi-malt"
   },
   {
     "allergens": [
@@ -19869,7 +20350,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-tikki-breakfast"
   },
   {
     "allergens": [
@@ -19917,7 +20399,8 @@
       "tea-time"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "aloo-tikki"
   },
   {
     "allergens": [],
@@ -19962,7 +20445,8 @@
       "monsoon-special"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "onion-pakora"
   },
   {
     "allergens": [],
@@ -20007,7 +20491,8 @@
       "monsoon-special"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "potato-pakora"
   },
   {
     "allergens": [],
@@ -20052,7 +20537,8 @@
       "monsoon-special"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-pakora"
   },
   {
     "allergens": [],
@@ -20096,7 +20582,8 @@
       "monsoon-special"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mirchi-bhajiya"
   },
   {
     "allergens": [
@@ -20145,7 +20632,8 @@
       "street-food"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bread-pakora"
   },
   {
     "allergens": [
@@ -20193,7 +20681,8 @@
       "comfort-food"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-maggi"
   },
   {
     "allergens": [],
@@ -20238,7 +20727,8 @@
       "quick-snack"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "corn-chaat"
   },
   {
     "allergens": [
@@ -20284,7 +20774,8 @@
       "quick-snack"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "peanut-chaat"
   },
   {
     "allergens": [],
@@ -20327,7 +20818,8 @@
       "starter"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-papad"
   },
   {
     "allergens": [
@@ -20376,7 +20868,8 @@
       "gujarati"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "white-dhokla"
   },
   {
     "allergens": [
@@ -20428,7 +20921,8 @@
       "healthy"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rava-dhokla"
   },
   {
     "allergens": [
@@ -20481,7 +20975,8 @@
       "savory-cake"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "handvo"
   },
   {
     "allergens": [
@@ -20534,7 +21029,8 @@
       "healthy"
     ],
     "tasty_score": 55,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "muthia"
   },
   {
     "allergens": [],
@@ -20577,7 +21073,8 @@
       "gujarati"
     ],
     "tasty_score": 68,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "fafda"
   },
   {
     "allergens": [
@@ -20626,7 +21123,8 @@
       "delicate"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "khandvi"
   },
   {
     "allergens": [
@@ -20676,7 +21174,8 @@
       "gujarati"
     ],
     "tasty_score": 58,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "patra"
   },
   {
     "allergens": [
@@ -20722,7 +21221,8 @@
       "travel-friendly"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "methi-puri"
   },
   {
     "allergens": [],
@@ -20766,7 +21266,8 @@
       "tea-time"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sweet-corn-fritters"
   },
   {
     "allergens": [
@@ -20814,7 +21315,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "besan-toast"
   },
   {
     "allergens": [
@@ -20863,7 +21365,8 @@
       "tea-time"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "poha"
   },
   {
     "allergens": [
@@ -20909,7 +21412,8 @@
       "maharashtrian"
     ],
     "tasty_score": 62,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "sabudana-thalipeeth"
   },
   {
     "allergens": [
@@ -20960,7 +21464,8 @@
       "healthy"
     ],
     "tasty_score": 56,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "thalipeeth"
   },
   {
     "allergens": [
@@ -21009,7 +21514,8 @@
       "breakfast-staple"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "rava-toast"
   },
   {
     "allergens": [],
@@ -21056,7 +21562,8 @@
       "tea-time"
     ],
     "tasty_score": 72,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "aloo-bonda"
   },
   {
     "allergens": [
@@ -21105,7 +21612,8 @@
       "south-indian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mysore-bonda"
   },
   {
     "allergens": [],
@@ -21151,7 +21659,8 @@
       "healthy"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chana-chaat"
   },
   {
     "allergens": [
@@ -21203,7 +21712,8 @@
       "north-indian"
     ],
     "tasty_score": 84,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-tikka-masala"
   },
   {
     "allergens": [
@@ -21255,7 +21765,8 @@
       "rich"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "shahi-paneer"
   },
   {
     "allergens": [
@@ -21307,7 +21818,8 @@
       "rich"
     ],
     "tasty_score": 85,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-lababdar"
   },
   {
     "allergens": [
@@ -21356,7 +21868,8 @@
       "north-indian"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-do-pyaza"
   },
   {
     "allergens": [
@@ -21407,7 +21920,8 @@
       "rich"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-korma"
   },
   {
     "allergens": [
@@ -21456,7 +21970,8 @@
       "north-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-paneer"
   },
   {
     "allergens": [
@@ -21505,7 +22020,8 @@
       "north-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "achari-paneer"
   },
   {
     "allergens": [
@@ -21557,7 +22073,8 @@
       "rich"
     ],
     "tasty_score": 84,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-pasanda"
   },
   {
     "allergens": [
@@ -21607,7 +22124,8 @@
       "rich"
     ],
     "tasty_score": 90,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-makhani"
   },
   {
     "allergens": [
@@ -21656,7 +22174,8 @@
       "north-indian"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "saag-paneer"
   },
   {
     "allergens": [
@@ -21708,7 +22227,8 @@
       "rich"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "paneer-kofta"
   },
   {
     "allergens": [
@@ -21757,7 +22277,8 @@
       "north-indian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-capsicum"
   },
   {
     "allergens": [
@@ -21808,7 +22329,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "paneer-roll"
   },
   {
     "allergens": [
@@ -21856,7 +22378,8 @@
       "vegan"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tofu-bhurji"
   },
   {
     "allergens": [
@@ -21904,7 +22427,8 @@
       "vegan"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tofu-stir-fry"
   },
   {
     "allergens": [
@@ -21955,7 +22479,8 @@
       "vegan"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tofu-curry"
   },
   {
     "allergens": [
@@ -22004,7 +22529,8 @@
       "vegan"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-tofu"
   },
   {
     "allergens": [
@@ -22052,7 +22578,8 @@
       "north-indian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-masala"
   },
   {
     "allergens": [
@@ -22101,7 +22628,8 @@
       "north-indian"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "anda-masala"
   },
   {
     "allergens": [
@@ -22147,7 +22675,8 @@
       "breakfast"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "masala-omelette"
   },
   {
     "allergens": [
@@ -22195,7 +22724,8 @@
       "quick"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-drop-curry"
   },
   {
     "allergens": [
@@ -22244,7 +22774,8 @@
       "bengali"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dim-curry"
   },
   {
     "allergens": [
@@ -22295,7 +22826,8 @@
       "south-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-kurma"
   },
   {
     "allergens": [
@@ -22337,7 +22869,8 @@
       "breakfast"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "scrambled-eggs"
   },
   {
     "allergens": [
@@ -22385,7 +22918,8 @@
       "quick"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "boiled-egg-sabzi"
   },
   {
     "allergens": [
@@ -22432,7 +22966,8 @@
       "street-food"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "egg-ghotala"
   },
   {
     "allergens": [
@@ -22471,7 +23006,8 @@
       "breakfast"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "half-fry"
   },
   {
     "allergens": [
@@ -22525,7 +23061,8 @@
       "feast"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [
@@ -22576,7 +23113,8 @@
       "one-pot"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [],
@@ -22622,7 +23160,8 @@
       "north-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-masala"
   },
   {
     "allergens": [
@@ -22673,7 +23212,8 @@
       "rich"
     ],
     "tasty_score": 95,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "butter-chicken"
   },
   {
     "allergens": [
@@ -22723,7 +23263,8 @@
       "north-indian"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chicken-tikka-masala"
   },
   {
     "allergens": [],
@@ -22772,7 +23313,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kadai-chicken"
   },
   {
     "allergens": [
@@ -22823,7 +23365,8 @@
       "rich"
     ],
     "tasty_score": 84,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chicken-korma"
   },
   {
     "allergens": [
@@ -22872,7 +23415,8 @@
       "north-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-do-pyaza"
   },
   {
     "allergens": [],
@@ -22918,7 +23462,8 @@
       "north-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-bhuna"
   },
   {
     "allergens": [
@@ -22967,7 +23512,8 @@
       "north-indian"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "methi-chicken"
   },
   {
     "allergens": [],
@@ -23014,7 +23560,8 @@
       "north-indian"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "palak-chicken"
   },
   {
     "allergens": [
@@ -23065,7 +23612,8 @@
       "one-pot"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pulao"
   },
   {
     "allergens": [
@@ -23116,7 +23664,8 @@
       "fried"
     ],
     "tasty_score": 90,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chicken-65"
   },
   {
     "allergens": [],
@@ -23162,7 +23711,8 @@
       "south-indian"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-fry"
   },
   {
     "allergens": [],
@@ -23209,7 +23759,8 @@
       "south-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pepper-chicken"
   },
   {
     "allergens": [
@@ -23256,7 +23807,8 @@
       "indo-chinese"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "ginger-chicken"
   },
   {
     "allergens": [
@@ -23308,7 +23860,8 @@
       "south-indian"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-stew"
   },
   {
     "allergens": [],
@@ -23356,7 +23909,8 @@
       "north-indian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-kheema"
   },
   {
     "allergens": [
@@ -23406,7 +23960,8 @@
       "north-indian"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "dahi-chicken"
   },
   {
     "allergens": [],
@@ -23455,7 +24010,8 @@
       "maharashtrian"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chicken-sukha"
   },
   {
     "allergens": [
@@ -23507,7 +24063,8 @@
       "rich"
     ],
     "tasty_score": 85,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "chicken-handi"
   },
   {
     "allergens": [],
@@ -23555,7 +24112,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-curry"
   },
   {
     "allergens": [
@@ -23608,7 +24166,8 @@
       "rich"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-korma"
   },
   {
     "allergens": [],
@@ -23656,7 +24215,8 @@
       "north-indian"
     ],
     "tasty_score": 79,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mutton-keema"
   },
   {
     "allergens": [],
@@ -23704,7 +24264,8 @@
       "north-indian"
     ],
     "tasty_score": 79,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "keema-matar"
   },
   {
     "allergens": [
@@ -23756,7 +24317,8 @@
       "feast"
     ],
     "tasty_score": 92,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [],
@@ -23805,7 +24367,8 @@
       "maharashtrian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-sukha"
   },
   {
     "allergens": [],
@@ -23853,7 +24416,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-masala"
   },
   {
     "allergens": [],
@@ -23901,7 +24465,8 @@
       "north-indian"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "bhuna-gosht"
   },
   {
     "allergens": [
@@ -23951,7 +24516,8 @@
       "north-indian"
     ],
     "tasty_score": 79,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "mutton-do-pyaza"
   },
   {
     "allergens": [],
@@ -23999,7 +24565,8 @@
       "south-indian"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fish-curry"
   },
   {
     "allergens": [],
@@ -24047,7 +24614,8 @@
       "south-indian"
     ],
     "tasty_score": 73,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fish-masala"
   },
   {
     "allergens": [],
@@ -24094,7 +24662,8 @@
       "bengali"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "machher-jhol"
   },
   {
     "allergens": [],
@@ -24141,7 +24710,8 @@
       "goan"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "goan-fish-curry"
   },
   {
     "allergens": [],
@@ -24189,7 +24759,8 @@
       "coastal"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "prawn-curry"
   },
   {
     "allergens": [],
@@ -24237,7 +24808,8 @@
       "coastal"
     ],
     "tasty_score": 76,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "prawn-masala"
   },
   {
     "allergens": [
@@ -24289,7 +24861,8 @@
       "feast"
     ],
     "tasty_score": 88,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [
@@ -24341,7 +24914,8 @@
       "feast"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "biryani"
   },
   {
     "allergens": [],
@@ -24390,7 +24964,8 @@
       "coastal"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "crab-masala"
   },
   {
     "allergens": [
@@ -24444,7 +25019,8 @@
       "comfort"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-manchow-soup"
   },
   {
     "allergens": [
@@ -24496,7 +25072,8 @@
       "spicy"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "hot-and-sour-soup"
   },
   {
     "allergens": [],
@@ -24541,7 +25118,8 @@
       "comfort"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sweet-corn-soup"
   },
   {
     "allergens": [],
@@ -24588,7 +25166,8 @@
       "grilled"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "grilled-vegetables"
   },
   {
     "allergens": [
@@ -24636,7 +25215,8 @@
       "creamy"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mushroom-soup"
   },
   {
     "allergens": [
@@ -24684,7 +25264,8 @@
       "comfort"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "tomato-soup"
   },
   {
     "allergens": [
@@ -24736,7 +25317,8 @@
       "healthy"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "minestrone-soup"
   },
   {
     "allergens": [],
@@ -24779,7 +25361,8 @@
       "fresh"
     ],
     "tasty_score": 35,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "green-salad"
   },
   {
     "allergens": [],
@@ -24822,7 +25405,8 @@
       "indian"
     ],
     "tasty_score": 40,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "kachumber-salad"
   },
   {
     "allergens": [],
@@ -24865,7 +25449,8 @@
       "fruit"
     ],
     "tasty_score": 60,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fruit-salad"
   },
   {
     "allergens": [],
@@ -24908,7 +25493,8 @@
       "fresh"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "corn-salad"
   },
   {
     "allergens": [],
@@ -24951,7 +25537,8 @@
       "protein"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chickpea-salad"
   },
   {
     "allergens": [
@@ -25000,7 +25587,8 @@
       "cold"
     ],
     "tasty_score": 64,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "pasta-salad"
   },
   {
     "allergens": [
@@ -25046,7 +25634,8 @@
       "classic"
     ],
     "tasty_score": 66,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "caesar-salad"
   },
   {
     "allergens": [
@@ -25095,7 +25684,8 @@
       "fresh"
     ],
     "tasty_score": 62,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "greek-salad"
   },
   {
     "allergens": [],
@@ -25138,7 +25728,8 @@
       "protein"
     ],
     "tasty_score": 52,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "quinoa-salad"
   },
   {
     "allergens": [
@@ -25183,7 +25774,8 @@
       "cooling"
     ],
     "tasty_score": 58,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "boondi-raita"
   },
   {
     "allergens": [
@@ -25228,7 +25820,8 @@
       "cooling"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "cucumber-raita"
   },
   {
     "allergens": [
@@ -25273,7 +25866,8 @@
       "cooling"
     ],
     "tasty_score": 55,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mixed-veg-raita"
   },
   {
     "allergens": [
@@ -25317,7 +25911,8 @@
       "halwa"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "suji-halwa"
   },
   {
     "allergens": [
@@ -25360,7 +25955,8 @@
       "festive"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "moong-dal-halwa"
   },
   {
     "allergens": [
@@ -25403,7 +25999,8 @@
       "south-indian"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "payasam"
   },
   {
     "allergens": [
@@ -25448,7 +26045,8 @@
       "kheer"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sevai-kheer"
   },
   {
     "allergens": [
@@ -25491,7 +26089,8 @@
       "fasting"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "sabudana-kheer"
   },
   {
     "allergens": [
@@ -25534,7 +26133,8 @@
       "creamy"
     ],
     "tasty_score": 82,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "phirni"
   },
   {
     "allergens": [
@@ -25577,7 +26177,8 @@
       "frozen"
     ],
     "tasty_score": 86,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kulfi"
   },
   {
     "allergens": [
@@ -25621,7 +26222,8 @@
       "fruit"
     ],
     "tasty_score": 78,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fruit-custard"
   },
   {
     "allergens": [
@@ -25662,7 +26264,8 @@
       "fruit"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "fruit-cream"
   },
   {
     "allergens": [],
@@ -25702,7 +26305,8 @@
       "festive"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "modak"
   },
   {
     "allergens": [
@@ -25745,7 +26349,8 @@
       "festive"
     ],
     "tasty_score": 80,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "puran-poli"
   },
   {
     "allergens": [
@@ -25790,7 +26395,8 @@
       "halwa"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "atte-ka-halwa"
   },
   {
     "allergens": [
@@ -25833,7 +26439,8 @@
       "halwa"
     ],
     "tasty_score": 76,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "lauki-halwa"
   },
   {
     "allergens": [
@@ -25876,7 +26483,8 @@
       "halwa"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "beetroot-halwa"
   },
   {
     "allergens": [
@@ -25919,7 +26527,8 @@
       "tandoor"
     ],
     "tasty_score": 72,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "plain-naan"
   },
   {
     "allergens": [],
@@ -25956,7 +26565,8 @@
       "maharashtrian"
     ],
     "tasty_score": 50,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "plain-bhakri"
   },
   {
     "allergens": [
@@ -25996,7 +26606,8 @@
       "rajasthani"
     ],
     "tasty_score": 65,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "baati"
   },
   {
     "allergens": [
@@ -26035,7 +26646,8 @@
       "bengali"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "luchi"
   },
   {
     "allergens": [
@@ -26077,7 +26689,8 @@
       "snack"
     ],
     "tasty_score": 78,
-    "weekday_friendly": false
+    "weekday_friendly": false,
+    "dish_family": "kachori"
   },
   {
     "allergens": [
@@ -26121,7 +26734,8 @@
       "side"
     ],
     "tasty_score": 74,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "mirchi-ka-salan"
   },
   {
     "allergens": [
@@ -26163,7 +26777,8 @@
       "chutney"
     ],
     "tasty_score": 68,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "thecha"
   },
   {
     "allergens": [
@@ -26208,7 +26823,8 @@
       "indo-chinese"
     ],
     "tasty_score": 80,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "veg-manchurian"
   },
   {
     "allergens": [
@@ -26249,7 +26865,8 @@
       "snack"
     ],
     "tasty_score": 75,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "spring-rolls"
   },
   {
     "allergens": [
@@ -26293,7 +26910,8 @@
       "punjabi"
     ],
     "tasty_score": 70,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "plain-kulcha"
   },
   {
     "allergens": [
@@ -26336,7 +26954,8 @@
       "indo-chinese"
     ],
     "tasty_score": 82,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "chilli-chicken"
   },
   {
     "allergens": [
@@ -26376,7 +26995,8 @@
       "drink"
     ],
     "tasty_score": 85,
-    "weekday_friendly": true
+    "weekday_friendly": true,
+    "dish_family": "falooda"
   },
   {
     "id": "masala-chai",
@@ -26417,6 +27037,7 @@
     "onion_garlic": false,
     "jain_safe": false,
     "healthy_score": 45,
-    "tasty_score": 72
+    "tasty_score": 72,
+    "dish_family": "masala-chai"
   }
 ]
