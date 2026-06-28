@@ -33,6 +33,43 @@ export interface DishLookupResponse {
   image_urls?: Partial<Record<'hero' | 'card' | 'thumb', string>>;
 }
 
+export interface DishRecipe {
+  dish_id: string;
+  source: string;
+  source_url?: string;
+  title: string;
+  description?: string;
+  prep_time_minutes?: number;
+  cook_time_minutes?: number;
+  total_time_minutes?: number;
+  yield?: string;
+  ingredients: string[];
+  instructions: string[];
+  images?: string[];
+  match_method?: string;
+}
+
+export interface DishRecipeSummary {
+  dish_id: string;
+  dish_name: string;
+  title: string;
+  description?: string;
+  prep_time_minutes?: number;
+  cook_time_minutes?: number;
+  total_time_minutes?: number;
+  yield?: string;
+  ingredient_count: number;
+  step_count: number;
+}
+
+export interface DishRecipeListPage {
+  items: DishRecipeSummary[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}
+
 export interface InventoryItem {
   item_id: string;
   ingredient_id?: string;
@@ -75,6 +112,27 @@ export interface InventoryBucketsResponse {
   expiring?: ExpiringItem[];
   expired?: ExpiringItem[];
   counts: InventoryBucketCounts;
+}
+
+export type PantryPageItem = InventoryItem | ExpiringItem;
+
+export interface InventoryListPage {
+  items: PantryPageItem[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+  counts: InventoryBucketCounts;
+  group_counts?: Record<string, number>;
+}
+
+export interface ShoppingListPage {
+  items: UserShoppingItem[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+  count?: number;
 }
 
 export interface RescueMealSuggestion {
@@ -295,13 +353,27 @@ export interface WhatsAppParsedAction {
     qty?: number;
     unit?: string;
     dish_name?: string;
+    meal_slot?: string;
     note?: string;
   };
 }
 
 export interface WhatsAppParseResponse {
   action: WhatsAppParsedAction;
+  actions?: WhatsAppParsedAction[];
+  reply?: string;
   raw_text: string;
+}
+
+export type BuddyChatHistoryTurn = {
+  role: 'user' | 'buddy';
+  text: string;
+};
+
+export interface WhatsAppApplyItemResult {
+  success: boolean;
+  message: string;
+  intent?: string;
 }
 
 export interface WhatsAppApplyResponse {
@@ -309,6 +381,7 @@ export interface WhatsAppApplyResponse {
   message: string;
   intent?: string;
   details?: Record<string, unknown>;
+  results?: WhatsAppApplyItemResult[];
 }
 
 export interface UserMemory {

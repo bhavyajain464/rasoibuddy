@@ -39,6 +39,8 @@ type CatalogDish struct {
 	JainSafe        bool     `json:"jain_safe,omitempty"`     // no onion/garlic/root veg
 	HealthyScore    int      `json:"healthy_score,omitempty"` // 0-100, general-public perceived healthiness
 	TastyScore      int      `json:"tasty_score,omitempty"`   // 0-100, general-public crowd-pleasing/indulgence
+	DishFamily      string   `json:"dish_family,omitempty"`   // meal-plan grouping (defaults to id)
+	VariantStyle    string   `json:"variant_style,omitempty"` // sub-variant within family (e.g. tadka, plain)
 }
 
 // CatalogIngredients returns key_ingredients (or legacy ingredients).
@@ -140,6 +142,8 @@ func dishRowToCatalog(d catalogdb.DishRow) CatalogDish {
 		JainSafe:        d.JainSafe,
 		HealthyScore:    d.HealthyScore,
 		TastyScore:      d.TastyScore,
+		DishFamily:      d.DishFamily,
+		VariantStyle:    d.VariantStyle,
 		OnionGarlic:     !d.JainSafe,
 	}
 }

@@ -430,6 +430,29 @@ func GetInventory(db *sql.DB) http.HandlerFunc {
 			schedulePurgeStaleExpired(db, kitchen.KitchenID)
 		}
 
+		if requestWantsPagination(r) {
+			filters, err := parseInventoryPageFilters(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			offset, limit := parseListPagination(r)
+			tLoad := time.Now()
+			page, err := listInventoryPage(r.Context(), db, kitchen.KitchenID, filters, offset, limit)
+			loadMs := time.Since(tLoad).Milliseconds()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(page)
+			if ms := time.Since(start).Milliseconds(); ms > 300 {
+				log.Printf("[inventory] GET page kitchen=%s items=%d total=%d load_ms=%d ms=%d",
+					kitchen.KitchenID, len(page.Items), page.Total, loadMs, ms)
+			}
+			return
+		}
+
 		tLoad := time.Now()
 		resp, err := loadInventoryBuckets(db, kitchen.KitchenID, wantActive, wantExpiring, wantExpired)
 		loadMs := time.Since(tLoad).Milliseconds()

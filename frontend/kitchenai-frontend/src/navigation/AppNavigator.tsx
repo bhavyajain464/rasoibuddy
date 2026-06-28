@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Icon } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
@@ -22,13 +22,16 @@ import { setDishImagesCdnBase } from '../data/dishImageConfig';
 import { WhatsAppShareProvider } from '../components/WhatsAppShareHandler';
 import { EntitlementsProvider } from '../context/EntitlementsContext';
 import { AppRefreshProvider } from '../context/AppRefreshContext';
-import { UpgradePaywallProvider } from '../context/UpgradePaywallContext';
+import { UpgradePaywallProvider, useUpgradePaywall } from '../context/UpgradePaywallContext';
 import { MealLogNotificationProvider } from '../context/MealLogNotificationContext';
+import { ProductTourProvider } from '../context/ProductTourContext';
 import { useTabBarLayout } from '../hooks/useTabBarLayout';
 import { syncWebPathForAuthState } from '../navigation/webHomePath';
 import { isAdminWebPlatform } from '../navigation/adminPath';
 import { AdminPanelGate } from '../navigation/AdminPanelGate';
 import { palette } from '../theme';
+import { TourTarget } from '../components/tour/TourTarget';
+import { APP_TOUR_TARGET_IDS } from '../tour/appTourSteps';
 import type { MainTabParamList, PublicStackParamList, RootStackParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -103,6 +106,11 @@ function MainTabNavigator() {
 
   return (
     <Tab.Navigator
+      tabBar={(props) => (
+        <TourTarget id={APP_TOUR_TARGET_IDS.tabBar}>
+          <BottomTabBar {...props} />
+        </TourTarget>
+      )}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color }) => (
           <TabBarIcon name={route.name as keyof MainTabParamList} color={color} />
@@ -138,6 +146,24 @@ function PublicNavigator() {
       <PublicStack.Screen name="Landing" component={LandingScreen} />
       <PublicStack.Screen name="Login" component={LoginScreen} />
     </PublicStack.Navigator>
+  );
+}
+
+function AuthenticatedAppTree() {
+  const { paywallVisible } = useUpgradePaywall();
+
+  return (
+    <ProductTourProvider paywallVisible={paywallVisible}>
+      <AppRefreshProvider>
+        <WhatsAppShareProvider>
+          <MealLogNotificationProvider navigationRef={navigationRef}>
+            <NavigationContainer ref={navigationRef} linking={appLinking}>
+              <RootNavigator />
+            </NavigationContainer>
+          </MealLogNotificationProvider>
+        </WhatsAppShareProvider>
+      </AppRefreshProvider>
+    </ProductTourProvider>
   );
 }
 
@@ -230,15 +256,7 @@ export function AppNavigator() {
   return (
     <EntitlementsProvider>
     <UpgradePaywallProvider>
-    <AppRefreshProvider>
-    <WhatsAppShareProvider>
-    <MealLogNotificationProvider navigationRef={navigationRef}>
-    <NavigationContainer ref={navigationRef} linking={appLinking}>
-      <RootNavigator />
-    </NavigationContainer>
-    </MealLogNotificationProvider>
-    </WhatsAppShareProvider>
-    </AppRefreshProvider>
+    <AuthenticatedAppTree />
     </UpgradePaywallProvider>
     </EntitlementsProvider>
   );

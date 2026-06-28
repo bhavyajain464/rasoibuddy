@@ -13,7 +13,6 @@ import { parseShoppingQtyInput } from '../../utils/shoppingFormat';
 import { BottomSheet, bottomSheetPrimaryBtn } from '../BottomSheet';
 import { showAppError, showAppSuccess } from '../../utils/alertMessage';
 import { useAppRefresh } from '../../context/AppRefreshContext';
-import { useIngredientCatalog } from '../../hooks/useIngredientCatalog';
 import { palette } from '../../theme';
 
 let draftRowCounter = 0;
@@ -45,7 +44,6 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
   const [draftRows, setDraftRows] = useState<InventoryDraftRow[]>(initialDraftRows);
   const [saving, setSaving] = useState(false);
   const { bump } = useAppRefresh();
-  const { catalog } = useIngredientCatalog();
 
   useEffect(() => {
     if (!visible) return;
@@ -149,7 +147,6 @@ export function AddInventoryModal({ visible, onDismiss, onAdded }: Props) {
         <InventoryItemRowEditor
           key={row.key}
           row={row}
-          catalog={catalog}
           isLastRow={index === draftRows.length - 1}
           isLastInList={index === draftRows.length - 1}
           stacked={stackedRows}

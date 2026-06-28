@@ -19,24 +19,35 @@ import (
 )
 
 type parseWhatsAppRequest struct {
-	Text string `json:"text"`
+	Text    string                      `json:"text"`
+	History []services.WhatsAppChatTurn `json:"history,omitempty"`
 }
 
 type parseWhatsAppResponse struct {
-	Action  *services.WhatsAppParsedAction `json:"action"`
-	RawText string                         `json:"raw_text"`
+	Action  *services.WhatsAppParsedAction   `json:"action"`
+	Actions []*services.WhatsAppParsedAction `json:"actions"`
+	Reply   string                           `json:"reply,omitempty"`
+	RawText string                           `json:"raw_text"`
 }
 
 type applyWhatsAppRequest struct {
-	Text   string                         `json:"text,omitempty"`
-	Action *services.WhatsAppParsedAction `json:"action,omitempty"`
+	Text    string                           `json:"text,omitempty"`
+	Action  *services.WhatsAppParsedAction   `json:"action,omitempty"`
+	Actions []*services.WhatsAppParsedAction `json:"actions,omitempty"`
+}
+
+type applyWhatsAppItemResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Intent  string `json:"intent,omitempty"`
 }
 
 type applyWhatsAppResponse struct {
-	Success bool     `json:"success"`
-	Message string   `json:"message"`
-	Intent  string   `json:"intent,omitempty"`
-	Details any      `json:"details,omitempty"`
+	Success bool                      `json:"success"`
+	Message string                    `json:"message"`
+	Intent  string                    `json:"intent,omitempty"`
+	Details any                       `json:"details,omitempty"`
+	Results []applyWhatsAppItemResult `json:"results,omitempty"`
 }
 
 // ParseWhatsAppMessage classifies shared WhatsApp text (no side effects).
@@ -53,20 +64,26 @@ func ParseWhatsAppMessage(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		action, err := services.ParseWhatsAppMessage(r.Context(), cfg, req.Text)
+		result, err := services.ParseWhatsAppMessages(r.Context(), cfg, req.Text, req.History)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": httputil.UserFacingMessage(err)})
 			return
 		}
-		if action == nil {
+		actions := result.Actions
+		var action *services.WhatsAppParsedAction
+		if len(actions) > 0 {
+			action = actions[0]
+		} else {
 			action = services.UnknownWhatsAppAction("")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(parseWhatsAppResponse{
 			Action:  action,
+			Actions: actions,
+			Reply:   result.Reply,
 			RawText: req.Text,
 		})
 	}
@@ -83,6 +100,12 @@ func ApplyWhatsAppAction(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 		}
 
 		action := req.Action
+		actions := req.Actions
+		if len(actions) > 0 {
+			writeApplyWhatsAppBatch(w, r, db, cookedLog, userID, actions)
+			return
+		}
+
 		if action == nil {
 			text := strings.TrimSpace(req.Text)
 			if text == "" {
@@ -101,36 +124,100 @@ func ApplyWhatsAppAction(db *sql.DB, cfg *config.Config, cookedLog *services.Coo
 			}
 		}
 
-		if action.Intent == services.IntentUnknown || action.Confidence < 0.5 {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(applyWhatsAppResponse{
-				Success: false,
-				Message: "Could not understand this message well enough to act on it.",
-				Intent:  string(action.Intent),
-			})
-			return
-		}
+		writeApplyWhatsAppSingle(w, r, db, cookedLog, userID, action)
+	}
+}
 
-		msg, details, err := executeWhatsAppAction(r.Context(), db, cookedLog, userID, action)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(applyWhatsAppResponse{
-				Success: false,
-				Message: httputil.UserFacingMessage(err),
-			})
-			return
-		}
-
+func writeApplyWhatsAppSingle(w http.ResponseWriter, r *http.Request, db *sql.DB, cookedLog *services.CookedLogService, userID string, action *services.WhatsAppParsedAction) {
+	if action.Intent == services.IntentUnknown || action.Confidence < 0.5 {
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		json.NewEncoder(w).Encode(applyWhatsAppResponse{
+			Success: false,
+			Message: "Could not understand this message well enough to act on it.",
+			Intent:  string(action.Intent),
+		})
+		return
+	}
+
+	msg, details, err := executeWhatsAppAction(r.Context(), db, cookedLog, userID, action)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(applyWhatsAppResponse{
+			Success: false,
+			Message: httputil.UserFacingMessage(err),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(applyWhatsAppResponse{
+		Success: true,
+		Message: msg,
+		Intent:  string(action.Intent),
+		Details: details,
+		Results: []applyWhatsAppItemResult{{
 			Success: true,
 			Message: msg,
 			Intent:  string(action.Intent),
-			Details: details,
+		}},
+	})
+}
+
+func writeApplyWhatsAppBatch(w http.ResponseWriter, r *http.Request, db *sql.DB, cookedLog *services.CookedLogService, userID string, actions []*services.WhatsAppParsedAction) {
+	results := make([]applyWhatsAppItemResult, 0, len(actions))
+	var okMsgs []string
+	anyOK := false
+
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		if action.Intent == services.IntentUnknown || action.Confidence < 0.5 {
+			results = append(results, applyWhatsAppItemResult{
+				Success: false,
+				Message: strings.TrimSpace(action.Summary),
+				Intent:  string(action.Intent),
+			})
+			continue
+		}
+		msg, _, err := executeWhatsAppAction(r.Context(), db, cookedLog, userID, action)
+		if err != nil {
+			results = append(results, applyWhatsAppItemResult{
+				Success: false,
+				Message: httputil.UserFacingMessage(err),
+				Intent:  string(action.Intent),
+			})
+			continue
+		}
+		anyOK = true
+		okMsgs = append(okMsgs, msg)
+		results = append(results, applyWhatsAppItemResult{
+			Success: true,
+			Message: msg,
+			Intent:  string(action.Intent),
 		})
 	}
+
+	combined := strings.Join(okMsgs, " ")
+	if combined == "" && len(results) > 0 {
+		combined = "Could not complete any of the requested tasks."
+	}
+
+	status := http.StatusOK
+	success := anyOK
+	if !anyOK {
+		status = http.StatusUnprocessableEntity
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(applyWhatsAppResponse{
+		Success: success,
+		Message: combined,
+		Results: results,
+	})
 }
 
 func executeWhatsAppAction(ctx context.Context, db *sql.DB, cookedLog *services.CookedLogService, userID string, action *services.WhatsAppParsedAction) (string, any, error) {

@@ -59,6 +59,8 @@ type dishRaw struct {
 	JainSafe        bool     `json:"jain_safe"`
 	HealthyScore    int      `json:"healthy_score"`
 	TastyScore      int      `json:"tasty_score"`
+	DishFamily      string   `json:"dish_family"`
+	VariantStyle    string   `json:"variant_style"`
 }
 
 func (d dishRaw) ingredientTokens() []string {
@@ -318,6 +320,11 @@ func seedDishes(ctx context.Context, conn *sql.DB, dishesJSON, ingredientsJSON [
 		if display == "" {
 			display = strings.TrimSpace(d.Name)
 		}
+		dishFamily := strings.TrimSpace(d.DishFamily)
+		if dishFamily == "" {
+			dishFamily = id
+		}
+		variantStyle := strings.TrimSpace(d.VariantStyle)
 		meta, _ := json.Marshal(map[string]any{
 			"onion_garlic": !d.JainSafe,
 		})
@@ -331,8 +338,8 @@ func seedDishes(ctx context.Context, conn *sql.DB, dishesJSON, ingredientsJSON [
 			INSERT INTO dishes (id, name, display_name, cuisine, diet, meal_type, tags, effort,
 				cook_time_minutes, weekday_friendly, one_pot, frequency_class, half_life_days,
 				spice_level, healthy_score, tasty_score, jain_safe, allergens, pairs_with,
-				verified, metadata, updated_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,true,$20,NOW())
+				verified, metadata, dish_family, variant_style, updated_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,true,$20,$21,$22,NOW())
 			ON CONFLICT (id) DO UPDATE SET
 				name = EXCLUDED.name,
 				display_name = EXCLUDED.display_name,
@@ -353,13 +360,15 @@ func seedDishes(ctx context.Context, conn *sql.DB, dishesJSON, ingredientsJSON [
 				allergens = EXCLUDED.allergens,
 				pairs_with = EXCLUDED.pairs_with,
 				metadata = EXCLUDED.metadata,
+				dish_family = EXCLUDED.dish_family,
+				variant_style = EXCLUDED.variant_style,
 				updated_at = NOW()
 		`, id, d.Name, display, nullIfEmpty(d.Cuisine), nullIfEmpty(d.Diet),
 			pq.Array(d.MealType), pq.Array(d.Tags), nullIfEmpty(d.Effort),
 			nullInt(d.CookTimeMinutes), d.WeekdayFriendly, d.OnePot,
 			nullIfEmpty(d.FrequencyClass), nullInt(d.HalfLifeDays),
 			nullIfEmpty(d.SpiceLevel), nullInt(d.HealthyScore), nullInt(d.TastyScore),
-			d.JainSafe, pq.Array(d.Allergens), pq.Array(normalizedPairs), meta)
+			d.JainSafe, pq.Array(d.Allergens), pq.Array(normalizedPairs), meta, dishFamily, nullIfEmpty(variantStyle))
 		if err != nil {
 			return stats, fmt.Errorf("upsert dish %q: %w", id, err)
 		}

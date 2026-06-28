@@ -61,6 +61,26 @@ func GetShoppingItems(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "kitchen not found", http.StatusNotFound)
 			return
 		}
+
+		if requestWantsPagination(r) {
+			offset, limit := parseListPagination(r)
+			q := strings.TrimSpace(r.URL.Query().Get("q"))
+			tQuery := time.Now()
+			page, err := listShoppingPage(r.Context(), db, kitchen.KitchenID, q, offset, limit)
+			queryMs := time.Since(tQuery).Milliseconds()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(page)
+			if ms := time.Since(start).Milliseconds(); ms > 300 {
+				log.Printf("[shopping] GET page kitchen=%s items=%d total=%d query_ms=%d ms=%d",
+					kitchen.KitchenID, len(page.Items), page.Total, queryMs, ms)
+			}
+			return
+		}
+
 		tQuery := time.Now()
 		rows, err := db.Query(`
 			SELECT id, name, qty, unit, ingredient_id, bought, created_at, bought_at

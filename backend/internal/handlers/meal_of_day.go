@@ -249,7 +249,7 @@ func GenerateAndCacheMealOfDayForUser(
 			Category:         services.MealOfDayCategoryID,
 			MealType:         slot.MealType,
 			MealOfDayForUser: true,
-			Exclude:          append([]string(nil), exclude...),
+			Exclude:          services.ExpandExcludeByDishFamilies(append([]string(nil), exclude...)),
 		})
 		if err != nil {
 			return fmt.Errorf("generate %s: %w", slot.Slot, err)
